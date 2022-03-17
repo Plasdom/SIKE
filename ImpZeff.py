@@ -2,19 +2,20 @@ from lib2to3.pgen2.token import STAR
 import sk_plotting_functions as spf
 import sys
 import os
-import numpy
 import rates
 import numpy as np
+import scipy
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 from numba import jit
 
 NUM_Z = 11          # Number of tracked ionization states of tungsten
-DELTA_T = 1E-5      # Timestep in seconds
+DELTA_T = 1E3       # Timestep in seconds
 RES_THRESH = 1E-10  # Residual threshold at which to stop evolving
-MAX_STEPS = 1e6     # Max number of timesteps to evolve if equilibrium not reached
-T_SAVE = 1e5        # Timestep multiple on which to save output
+MAX_STEPS = 1e3     # Max number of timesteps to evolve if equilibrium not reached
+T_SAVE = 1e3        # Timestep multiple on which to save output
 START_CELL = 150
+IMPLICIT = True
 
 
 def run(skrun_dir):
@@ -66,7 +67,12 @@ def run(skrun_dir):
             np.savetxt('output/fluid/tot_imp_dens/n_W_tot_' + str(step) +
                        '.txt', n_W_tot_max)
 
+        # Define the rate matrix
+        rate_mat = [np.zeros([NUM_Z, NUM_Z])
+                    for _ in range(skrun.num_x - START_CELL)]
+
         n_W, res = evolve(
+            rate_mat,
             n_W,
             f0,
             sigma_ion_W,
@@ -81,6 +87,7 @@ def run(skrun_dir):
             skrun.num_x)
 
         n_W_max, res_max = evolve(
+            rate_mat,
             n_W_max,
             f0_max,
             sigma_ion_W,
@@ -94,88 +101,64 @@ def run(skrun_dir):
             skrun.dvc/skrun.v_th,
             skrun.num_x)
 
+        # if step % 100 == 0:
         print(step, max(res, res_max))
         step += 1
         if step > MAX_STEPS:
             break
 
 
-@jit(nopython=True)
-def evolve(imp_dens, f0, sigma_ion, T_norm, sigma_0, n_norm, v_th, Te, ne, vgrid, dvc, num_x):
+# @jit(nopython=True)
+def evolve(rate_mat, imp_dens, f0, sigma_ion, T_norm, sigma_0, n_norm, v_th, Te, ne, vgrid, dvc, num_x):
 
     # Load relevant data from SOL-KiT run
-    tbrec_norm = np.sqrt((spf.planck_h ** 2) / (2*np.pi *
-                                                spf.el_mass * T_norm * spf.el_charge)) ** 3
+    tbrec_norm = n_norm * np.sqrt((spf.planck_h ** 2) / (2*np.pi *
+                                                         spf.el_mass * T_norm * spf.el_charge)) ** 3
     statw = np.ones(NUM_Z)
     ion_eps = np.array([7.86403, 16.37, 26.0, 38.2, 51.6,
                        64.77, 122.01, 141.2, 160.2, 179.0, 208.9, 231.6])
+    imp_dens_new = np.zeros(np.shape(imp_dens))
 
     # Compute the particle source for each ionization state
     part_source = [np.zeros(num_x-START_CELL) for _ in range(NUM_Z)]
-    for z in range(NUM_Z):
-        for i in range(num_x-START_CELL):
-            if i % 2 == 0:
+    for i in range(num_x-START_CELL):
 
-                S_ion = 0
-                S_rec = 0
+        # Compute ionisation rate coeffs
+        for z in range(NUM_Z-1):
+            K_ion = rates.ion_rate(
+                f0[i, :],
+                vgrid,
+                dvc,
+                sigma_ion[z, :])
+            rate_mat[i][z, z] -= v_th * sigma_0 * K_ion
+            rate_mat[i][z+1, z] += v_th * sigma_0 * K_ion
 
-                # Ion gain
-                if z > 0:
-                    ion_rate = rates.ion_rate(
-                        f0[i, :],
-                        vgrid,
-                        dvc,
-                        sigma_ion[z-1])
-                    S_ion += (ion_rate * n_norm *
-                              v_th * sigma_0) * imp_dens[i, z-1]
+        # Compute recombination rate coeffs
+        for z in range(1, NUM_Z):
+            eps = ion_eps[z] - ion_eps[z-1]
+            statw_ratio = statw[z] / statw[z-1]
+            K_rec = tbrec_norm * rates.tbrec_rate(
+                f0[i, :],
+                Te[i],
+                vgrid,
+                dvc,
+                eps,
+                statw_ratio,
+                sigma_ion[z-1, :])
+            rate_mat[i][z-1, z] += v_th * sigma_0 * K_rec
+            rate_mat[i][z, z] -= v_th * sigma_0 * K_rec
 
-                # Ion loss
-                if z < NUM_Z-1:
-                    ion_rate = rates.ion_rate(
-                        f0[i, :],
-                        vgrid,
-                        dvc,
-                        sigma_ion[z])
-                    S_ion -= (ion_rate * n_norm *
-                              v_th * sigma_0) * imp_dens[i, z]
+        # Calculate new densities
+        if IMPLICIT:
+            op_mat = np.identity(NUM_Z) - DELTA_T * \
+                rate_mat[i]
+            imp_dens_new[i, :] = np.linalg.inv(op_mat).dot(imp_dens[i, :])
+        else:
+            imp_dens_new[i, :] = imp_dens[i, :] + \
+                (rate_mat[i].dot(imp_dens[i, :])) * DELTA_T
 
-                # 3b-rec gain
-                if z < NUM_Z-1:
-                    eps = ion_eps[z+1] - ion_eps[z]
-                    statw_ratio = statw[z+1] / statw[z]
-                    rec_rate = rates.tbrec_rate(
-                        f0[i, :],
-                        Te[i],
-                        vgrid,
-                        dvc,
-                        eps,
-                        statw_ratio,
-                        sigma_ion[z])
-                    S_rec += rec_rate * (n_norm ** 2) * v_th * \
-                        sigma_0 * tbrec_norm * ne[i] * imp_dens[i, z+1]
-
-                # 3b-rec loss
-                if z > 0:
-                    eps = ion_eps[z] - ion_eps[z-1]
-                    statw_ratio = statw[z] / statw[z-1]
-                    rec_rate = rates.tbrec_rate(
-                        f0[i, :],
-                        Te[i],
-                        vgrid,
-                        dvc,
-                        eps,
-                        statw_ratio,
-                        sigma_ion[z-1])
-                    S_rec -= rec_rate * (n_norm ** 2) * v_th * \
-                        sigma_0 * tbrec_norm * ne[i] * imp_dens[i, z]
-
-                part_source[z][i] = S_ion + S_rec
-
-    # Update the impurity densities
-    imp_dens_new = np.zeros(np.shape(imp_dens))
-    for z in range(NUM_Z):
-        imp_dens_new[:, z] = imp_dens[:, z] + \
-            (part_source[z][:] / n_norm) * DELTA_T
+        # Reset the matrix
+        rate_mat[i][:, :] = 0.0
 
     residual = np.max(np.abs(imp_dens_new - imp_dens))
 
@@ -194,11 +177,11 @@ def load_cross_sections(vgrid, T_norm, sigma_0, impurity='W'):
     # Interpolate to the provided velocity grid
     E_grid = [vgrid[i]**2 * T_norm
               for i in range(len(vgrid))]
-    W_ion_interp = [None] * len(W_ion_raw)
+    W_ion_interp = np.zeros([len(W_ion_raw), len(vgrid)])
     for i in range(len(W_ion_raw)):
         f = interp1d(W_ion_raw[i][:, 0], W_ion_raw[i]
                      [:, 1], bounds_error=False, fill_value=0)
-        W_ion_interp[i] = f(E_grid)
+        W_ion_interp[i, :] = f(E_grid)
 
     return W_ion_interp
 
@@ -213,7 +196,7 @@ def get_maxwellians(skrun):
     return f0_max
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def get_Zeff(imp_dens, num_x):
     Zeff = np.zeros(num_x-START_CELL)
     imp_dens_tot = np.zeros(num_x-START_CELL)
