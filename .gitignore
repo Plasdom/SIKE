@@ -1,0 +1,7 @@
+output/kinetic/Z_eff/*
+output/kinetic/imp_dens/*
+output/kinetic/tot_imp_dens/*
+output/fluid/Z_eff/*
+output/fluid/imp_dens/*
+output/fluid/tot_imp_dens/*
+output*
