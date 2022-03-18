@@ -10,11 +10,11 @@ import matplotlib.pyplot as plt
 from numba import jit
 
 NUM_Z = 11          # Number of tracked ionization states of tungsten
-DELTA_T = 1E3       # Timestep in seconds
-RES_THRESH = 1E-10  # Residual threshold at which to stop evolving
-MAX_STEPS = 1e3     # Max number of timesteps to evolve if equilibrium not reached
+DELTA_T = 1E6       # Timestep in seconds
+RES_THRESH = 1E-12  # Residual threshold at which to stop evolving
+MAX_STEPS = 1e6     # Max number of timesteps to evolve if equilibrium not reached
 T_SAVE = 1e3        # Timestep multiple on which to save output
-START_CELL = 150
+START_CELL = 0
 IMPLICIT = True
 
 
@@ -49,23 +49,7 @@ def run(skrun_dir):
     while max(res, res_max) > RES_THRESH:
 
         if step % T_SAVE == 0:
-            # Output kinetic data
-            np.savetxt('output/kinetic/imp_dens/n_W_' +
-                       str(step) + '.txt', n_W)
-            Zeff, n_W_tot = get_Zeff(n_W, skrun.num_x)
-            np.savetxt('output/kinetic/Z_eff/Z_eff_' + str(step) +
-                       '.txt', Zeff)
-            np.savetxt('output/kinetic/tot_imp_dens/n_W_tot_' + str(step) +
-                       '.txt', n_W_tot)
-
-            # Ouptut fluid data
-            np.savetxt('output/fluid/imp_dens/n_W_' +
-                       str(step) + '.txt', n_W_max)
-            Zeff_max, n_W_tot_max = get_Zeff(n_W_max, skrun.num_x)
-            np.savetxt('output/fluid/Z_eff/Z_eff_' + str(step) +
-                       '.txt', Zeff_max)
-            np.savetxt('output/fluid/tot_imp_dens/n_W_tot_' + str(step) +
-                       '.txt', n_W_tot_max)
+            save_output(n_W, n_W_max, step, skrun.num_x)
 
         # Define the rate matrix
         rate_mat = [np.zeros([NUM_Z, NUM_Z])
@@ -101,14 +85,16 @@ def run(skrun_dir):
             skrun.dvc/skrun.v_th,
             skrun.num_x)
 
-        # if step % 100 == 0:
         print(step, max(res, res_max))
         step += 1
         if step > MAX_STEPS:
             break
 
+    # Print converged output
+    save_output(n_W, n_W_max, step, skrun.num_x)
 
-# @jit(nopython=True)
+
+@jit(nopython=True)
 def evolve(rate_mat, imp_dens, f0, sigma_ion, T_norm, sigma_0, n_norm, v_th, Te, ne, vgrid, dvc, num_x):
 
     # Load relevant data from SOL-KiT run
@@ -165,6 +151,26 @@ def evolve(rate_mat, imp_dens, f0, sigma_ion, T_norm, sigma_0, n_norm, v_th, Te,
     return imp_dens_new, residual
 
 
+def save_output(n_W, n_W_max, step, num_x):
+    # Output kinetic data
+    np.savetxt('output/kinetic/imp_dens/n_W_' +
+               str(step) + '.txt', n_W)
+    Zeff, n_W_tot = get_Zeff(n_W, num_x)
+    np.savetxt('output/kinetic/Z_eff/Z_eff_' + str(step) +
+               '.txt', Zeff)
+    np.savetxt('output/kinetic/tot_imp_dens/n_W_tot_' + str(step) +
+               '.txt', n_W_tot)
+
+    # Ouptut fluid data
+    np.savetxt('output/fluid/imp_dens/n_W_' +
+               str(step) + '.txt', n_W_max)
+    Zeff_max, n_W_tot_max = get_Zeff(n_W_max, num_x)
+    np.savetxt('output/fluid/Z_eff/Z_eff_' + str(step) +
+               '.txt', Zeff_max)
+    np.savetxt('output/fluid/tot_imp_dens/n_W_tot_' + str(step) +
+               '.txt', n_W_tot_max)
+
+
 def load_cross_sections(vgrid, T_norm, sigma_0, impurity='W'):
     # Read in raw cross-sections
     W_ion_raw = [None] * NUM_Z
@@ -196,7 +202,7 @@ def get_maxwellians(skrun):
     return f0_max
 
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def get_Zeff(imp_dens, num_x):
     Zeff = np.zeros(num_x-START_CELL)
     imp_dens_tot = np.zeros(num_x-START_CELL)

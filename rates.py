@@ -2,7 +2,7 @@ import numpy as np
 from numba import jit
 
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def ion_rate(f0, vgrid, dv, sigma_ion):
 
     # Compute the ionisation rate
@@ -13,7 +13,7 @@ def ion_rate(f0, vgrid, dv, sigma_ion):
     return rate
 
 
-# @ jit(nopython=True)
+@ jit(nopython=True)
 def tbrec_rate(f0, Te, vgrid, dv, eps, statw_ratio, sigma_ion):
 
     # Find 3b-rec cross-section from detailed balance
