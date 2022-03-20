@@ -5,6 +5,8 @@ import rates
 import output
 import numpy as np
 
+TEMP_FAC = 1.0
+
 
 def run(skrun_dir):
 
@@ -13,21 +15,22 @@ def run(skrun_dir):
     skrun.load_dist()
     f0 = np.transpose(skrun.data['DIST_F'][0])
     f0 = f0[input.START_CELL:, :]
-    f0_max = get_maxwellians(skrun)
+    # ne = skrun.data['DENSITY']
+    ne = np.ones(skrun.num_x)
+    Te = skrun.data['TEMPERATURE']*TEMP_FAC
+    f0_max = get_maxwellians(
+        skrun.num_x, ne, Te, skrun.vgrid, skrun.v_th, skrun.num_v)
 
     # Load the tungsten cross-sections and interpolate onto the SOL-KiT velocity grid
     sigma_ion_W = input.load_cross_sections(
         skrun.vgrid / skrun.v_th, skrun.T_norm, skrun.sigma_0, 'W')
 
     # Initialise relative impurity densities (start in ground state)
-    frac_imp_dens = 0.01
-    start_cell = 150
+    frac_imp_dens = 1.0
     n_W = np.zeros([skrun.num_x - input.START_CELL, input.NUM_Z])
     n_W_max = np.zeros([skrun.num_x - input.START_CELL, input.NUM_Z])
-    n_W[:, 0] = frac_imp_dens * skrun.data['DENSITY'][input.START_CELL:]
-    n_W_max[:, 0] = frac_imp_dens * skrun.data['DENSITY'][input.START_CELL:]
-    # n_W = np.loadtxt('output/kinetic/imp_dens/n_W_100000.txt')
-    # n_W_max = np.loadtxt('output/fluid/imp_dens/n_W_100000.txt')
+    n_W[:, 0] = frac_imp_dens * ne
+    n_W_max[:, 0] = frac_imp_dens * ne
 
     # Evolve until equilibrium reached
     res = 1.0
@@ -43,7 +46,8 @@ def run(skrun_dir):
                                       skrun.sigma_0,
                                       sigma_ion_W,
                                       f0,
-                                      skrun.data['TEMPERATURE'],
+                                      Te,
+                                      ne,
                                       skrun.vgrid/skrun.v_th,
                                       skrun.dvc/skrun.v_th)
 
@@ -55,16 +59,13 @@ def run(skrun_dir):
                                               skrun.sigma_0,
                                               sigma_ion_W,
                                               f0_max,
-                                              skrun.data['TEMPERATURE'],
+                                              Te,
+                                              ne,
                                               skrun.vgrid/skrun.v_th,
                                               skrun.dvc/skrun.v_th)
 
     # Evolve densities
     while max(res, res_max) > input.RES_THRESH:
-
-        if step % input.T_SAVE == 0:
-            output.save_output(n_W, n_W_max, step, skrun.num_x,
-                               skrun.data['TEMPERATURE'], skrun.T_norm, skrun.data['DENSITY'], skrun.n_norm)
 
         n_W, res = evolve(
             op_mat,
@@ -86,11 +87,12 @@ def run(skrun_dir):
 
     # Print converged output
     output.save_output(n_W, n_W_max, step, skrun.num_x,
-                       skrun.data['TEMPERATURE'], skrun.T_norm, skrun.data['DENSITY'], skrun.n_norm)
+                       Te, skrun.T_norm, ne, skrun.n_norm)
 
 
-def build_matrices(num_x, v_th, n_norm, T_norm, t_norm, sigma_0, sigma_ion, f0, Te, vgrid, dvc):
+def build_matrices(num_x, v_th, n_norm, T_norm, t_norm, sigma_0, sigma_ion, f0, Te, ne, vgrid, dvc):
 
+    collrate_const = n_norm * v_th * sigma_0 * t_norm
     op_mat = [np.zeros((input.NUM_Z, input.NUM_Z))
               for _ in range(num_x - input.START_CELL)]
     rate_mat = [np.zeros((input.NUM_Z, input.NUM_Z))
@@ -102,7 +104,7 @@ def build_matrices(num_x, v_th, n_norm, T_norm, t_norm, sigma_0, sigma_ion, f0, 
 
         # Compute ionisation rate coeffs
         for z in range(input.NUM_Z-1):
-            K_ion = n_norm * v_th * sigma_0 * rates.ion_rate(
+            K_ion = collrate_const * rates.ion_rate(
                 f0[i, :],
                 vgrid,
                 dvc,
@@ -112,9 +114,9 @@ def build_matrices(num_x, v_th, n_norm, T_norm, t_norm, sigma_0, sigma_ion, f0, 
 
         # Compute recombination rate coeffs
         for z in range(1, input. NUM_Z):
-            eps = (input.ION_EPS[z] - input.ION_EPS[z-1]) / T_norm
+            eps = input.ION_EPS[z-1] / T_norm
             statw_ratio = input.STATW[z] / input.STATW[z-1]
-            K_rec = n_norm * v_th * sigma_0 * tbrec_norm * rates.tbrec_rate(
+            K_rec = ne[i] * collrate_const * tbrec_norm * rates.tbrec_rate(
                 f0[i, :],
                 Te[i],
                 vgrid,
@@ -146,12 +148,10 @@ def evolve(op_mat, imp_dens, num_x, n_norm):
     return imp_dens_new, residual
 
 
-def get_maxwellians(skrun):
-    f0_max = np.zeros([skrun.num_x-input.START_CELL, skrun.num_v])
-    vgrid = skrun.vgrid / skrun.v_th
-    Te = skrun.data['TEMPERATURE'][input.START_CELL:]
-    ne = skrun.data['DENSITY'][input.START_CELL:]
-    for i in range(skrun.num_x-input.START_CELL):
+def get_maxwellians(num_x, ne, Te, vgrid, v_th, num_v):
+    f0_max = np.zeros([num_x-input.START_CELL, num_v])
+    vgrid = vgrid / v_th
+    for i in range(num_x-input.START_CELL):
         f0_max[i, :] = spf.maxwellian(Te[i], ne[i], vgrid)
     return f0_max
 
