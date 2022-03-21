@@ -10,14 +10,14 @@ def save_output(n_W, n_W_max, step, num_x, Te, T_norm, ne, n_norm):
     # Output kinetic data
     np.savetxt('output/kinetic/imp_dens/n_W_' +
                str(step) + '.txt', n_W)
-    Zeff = get_Zeff(n_W, num_x)
+    Zeff = get_Zeff(n_W, ne, num_x)
     np.savetxt('output/kinetic/Z_eff/Z_eff_' + str(step) +
                '.txt', Zeff)
 
     # Ouptut fluid data
     np.savetxt('output/fluid/imp_dens/n_W_' +
                str(step) + '.txt', n_W_max)
-    Zeff_max = get_Zeff(n_W_max, num_x)
+    Zeff_max = get_Zeff(n_W_max, ne, num_x)
     np.savetxt('output/fluid/Z_eff/Z_eff_' + str(step) +
                '.txt', Zeff_max)
 
@@ -25,20 +25,21 @@ def save_output(n_W, n_W_max, step, num_x, Te, T_norm, ne, n_norm):
     n_W_saha = get_saha_dens(n_W_max, Te, T_norm, ne, n_norm, num_x)
     np.savetxt('output/saha/imp_dens/n_W_' + str(step) +
                '.txt', n_W_saha)
-    Zeff_saha = get_Zeff(n_W_saha, num_x)
+    Zeff_saha = get_Zeff(n_W_saha, ne, num_x)
     np.savetxt('output/saha/Z_eff/Z_eff_' + str(step) +
                '.txt', Zeff_saha)
 
 
-def get_Zeff(imp_dens, num_x):
+def get_Zeff(imp_dens, ne, num_x):
     Zeff = np.zeros(num_x)
     imp_dens_tot = np.sum(imp_dens, 1)
 
     for i in range(num_x):
         for z in range(1, input.NUM_Z):
-            Zeff[i] += imp_dens[i, z] * float(z)
+            Zeff[i] += imp_dens[i, z] * (float(z) ** 2)
         if imp_dens_tot[i] > 0:
-            Zeff[i] = Zeff[i] / imp_dens_tot[i]
+            # Zeff[i] = Zeff[i] / imp_dens_tot[i]
+            Zeff[i] = Zeff[i] / ne[i]
 
     return Zeff
 

@@ -93,9 +93,9 @@ def run(skrun_dir, save=False):
     else:
         n_W_saha = output.get_saha_dens(
             n_W, Te, skrun.T_norm, ne, skrun.n_norm, skrun.num_x)
-        Zeff_saha = output.get_Zeff(n_W_saha, skrun.num_x)
-        Zeff = output.get_Zeff(n_W, skrun.num_x)
-        Zeff_max = output.get_Zeff(n_W_max, skrun.num_x)
+        Zeff_saha = output.get_Zeff(n_W_saha, ne, skrun.num_x)
+        Zeff = output.get_Zeff(n_W, ne, skrun.num_x)
+        Zeff_max = output.get_Zeff(n_W_max, ne, skrun.num_x)
         return n_W, Zeff, n_W_max, Zeff_max, n_W_saha, Zeff_saha
 
 
