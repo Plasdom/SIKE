@@ -4,7 +4,7 @@ output/kinetic/tot_imp_dens/*
 output/fluid/Z_eff/*
 output/fluid/imp_dens/*
 output/fluid/tot_imp_dens/*
-output*
+output/*
 __pycache__/ImpZeff.cpython-39.pyc
 .DS_Store
 __pycache__/rates.cpython-39.pyc

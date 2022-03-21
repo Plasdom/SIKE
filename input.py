@@ -7,15 +7,11 @@ DELTA_T = 10000000000.0
 RES_THRESH = 1E-13
 MAX_STEPS = 1e6
 T_SAVE = 1e6
-START_CELL = 0
 LEVELS = np.array([7.86403, 17.98685, 35.3633, 54.99565428, 89.150121267,
                    130.884623956, 152.97199570, 187.1264626, 272.73443534, 373.556998, 533.6939364, 693.8308741])
 ION_EPS = [LEVELS[z] - LEVELS[z-1] for z in range(1, NUM_Z)]
-
+FRAC_IMP_DENS = 0.01
 STATW = np.ones(NUM_Z)
-# RUN = '/Users/dpower/Documents/01 - PhD/14 - ELM investigation/01 - Runs/01 - Equilibria/02 - Kinetic/P_in = 4MW/Output_job_EQ_K4_5e19/Run_6'
-# RUN = '/Users/dpower/Documents/01 - PhD/14 - ELM investigation/01 - Runs/01 - Equilibria/02 - Kinetic/P_in = 64MW/Output_job_EQ_K64_3e19/Run_20'
-RUN = '/Users/dpower/Documents/01 - PhD/14 - ELM investigation/01 - Runs/01 - Equilibria/02 - Kinetic/P_in = 4MW/Output_job_EQ_K4_10e19/Run_9'
 
 
 def load_cross_sections(vgrid, T_norm, sigma_0, impurity='W'):
