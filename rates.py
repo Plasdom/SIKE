@@ -3,6 +3,7 @@ import numpy as np
 from numba import jit
 
 
+@jit(nopython=True)
 def ion_rate(f0, vgrid, dv, sigma_ion):
     f0[np.where(f0 < 0.0)] = 0.0
     # Compute the ionisation rate
@@ -13,6 +14,7 @@ def ion_rate(f0, vgrid, dv, sigma_ion):
     return rate
 
 
+@jit(nopython=True)
 def tbrec_rate(f0, Te, vgrid, dv, eps, statw_ratio, sigma_ion):
     f0[np.where(f0 < 0.0)] = 0.0
     # Find 3b-rec cross-section from detailed balance
@@ -27,6 +29,7 @@ def tbrec_rate(f0, Te, vgrid, dv, eps, statw_ratio, sigma_ion):
     return rate
 
 
+@jit(nopython=True)
 def sigma_tbrec(sigma_ion, statw_ratio, vgrid, Te, eps):
     # Find 3b-rec cross-section from detailed balance
     sigma_tbrec = np.zeros(len(sigma_ion))

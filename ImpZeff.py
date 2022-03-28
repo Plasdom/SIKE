@@ -21,27 +21,6 @@ def run(skrun_dir, save=False, modelled_species=['C', 'W']):
     for imp in modelled_species:
         species[imp] = Impurity(imp, skrun)
 
-    sigma_ion_W, ion_eps_W = input.load_tungsten_cross_sections(
-        skrun.vgrid / skrun.v_th, skrun.T_norm, skrun.sigma_0, 11)
-
-    # Load Carbon cross-sections
-    sigma_ion_C, ion_eps_C = input.load_carbon_cross_sections(
-        skrun.vgrid / skrun.v_th, skrun.T_norm, skrun.sigma_0, 7)
-
-    # Initialise relative impurity densities (start in ground state)
-    n_W = np.zeros([skrun.num_x, 11])
-    n_W_max = np.zeros([skrun.num_x, 11])
-    n_W[:, 0] = input.FRAC_IMP_DENS * ne
-    n_W_max[:, 0] = input.FRAC_IMP_DENS * ne
-
-    # Initialise relative impurity densities (start in ground state)
-    n_C = np.zeros([skrun.num_x, 7])
-    n_C_max = np.zeros([skrun.num_x, 7])
-    # n_C[:, 0] = input.FRAC_IMP_DENS
-    # n_C_max[:, 0] = input.FRAC_IMP_DENS
-    n_C[:, 0] = input.FRAC_IMP_DENS * ne
-    n_C_max[:, 0] = input.FRAC_IMP_DENS * ne
-
     # Evolve until equilibrium reached
     res = 1.0
     step = 0

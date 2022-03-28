@@ -24,9 +24,9 @@ class Impurity:
         self.dens = np.zeros((self.skrun.num_x, self.num_z))
         self.dens_max = np.zeros((self.skrun.num_x, self.num_z))
         self.dens_saha = np.zeros((self.skrun.num_x, self.num_z))
-        self.dens[:, 0] = input.FRAC_IMP_DENS * self.skrun.data['TEMPERATURE']
+        self.dens[:, 0] = input.FRAC_IMP_DENS * self.skrun.data['DENSITY']
         self.dens_max[:, 0] = input.FRAC_IMP_DENS * \
-            self.skrun.data['TEMPERATURE']
+            self.skrun.data['DENSITY']
         self.tmp_dens = np.zeros((self.skrun.num_x, self.num_z))
 
     def load_cross_sections(self):
