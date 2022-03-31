@@ -159,6 +159,25 @@ class Impurity:
         self.op_mat_max = op_mat_max
         self.rate_mat_max = rate_mat_max
 
+    def solve(self):
+        for i in range(self.skrun.num_x):
+            loc_mat = self.rate_mat[i]
+            loc_mat[-1, :] = 1.0
+            rhs = np.zeros(self.num_z)
+            rhs[-1] = np.sum(self.dens[i, :])
+            loc_mat_inv = np.linalg.inv(loc_mat)
+            dens = loc_mat_inv.dot(rhs)
+            self.dens[i, :] = dens.copy()
+
+        for i in range(self.skrun.num_x):
+            loc_mat = self.rate_mat_max[i]
+            loc_mat[-1, :] = 1.0
+            rhs = np.zeros(self.num_z)
+            rhs[-1] = np.sum(self.dens_max[i, :])
+            loc_mat_inv = np.linalg.inv(loc_mat)
+            dens = loc_mat_inv.dot(rhs)
+            self.dens_max[i, :] = dens.copy()
+
     def evolve(self):
 
         # Compute the particle source for each ionization state
@@ -217,7 +236,7 @@ class Impurity:
         ax.legend()
         ax.set_xlabel('x [m]')
         ax.set_ylabel('$Z_{eff}=\Sigma_i Z^2_i n_{Z}^i / n_e$')
-        ax.set_title('$Z_{eff}$ profile')
+        ax.set_title('$Z_{eff}$ profile, ' + self.longname)
         # ax.set_xlim([10.4, 11.8])
 
     def plot_dens(self, xaxis='normal', plot_kin=True, plot_max=True, plot_saha=False):
@@ -265,7 +284,7 @@ class Impurity:
         ax.legend(legend_lines, legend_labels)
         ax.grid()
         ax.set_ylabel('$n_Z / n_Z^{tot}$')
-        ax.set_title('$n_Z$ profiles')
+        ax.set_title('$n_Z$ profiles, ' + self.longname)
 
     def plot_Zdist(self, cells=-1):
         if isinstance(cells, int):
@@ -292,7 +311,7 @@ class Impurity:
         ax.set_yscale('log')
         ax.set_xlabel('$Z$')
         ax.set_ylabel('$n_Z / n_0$')
-        ax.set_title('Impurity state densities')
+        ax.set_title('Impurity state densities, ' + self.longname)
 
 
 def get_maxwellians(num_x, ne, Te, vgrid, v_th, num_v):

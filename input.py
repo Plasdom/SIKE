@@ -3,10 +3,10 @@ import os
 from scipy.interpolate import interp1d
 
 DELTA_T = 1.0e13
-RES_THRESH = 1E-13
+RES_THRESH = 1E-12
 MAX_STEPS = 5e4
 T_SAVE = 1e6
-FRAC_IMP_DENS = 0.04
+FRAC_IMP_DENS = 0.05
 STATW_W = np.ones(11)
 C_ION_COEFFS = [
     [
@@ -34,11 +34,10 @@ C_ION_COEFFS_I = [[10.6], [24.4], [41.4], [64.5, 285], [392.0], [490.0]]
 
 def load_tungsten_cross_sections(vgrid, T_norm, sigma_0, num_z):
     # Read in raw cross-sections
-    impurity = 'W'
     W_ion_raw = [None] * num_z
     for i in range(num_z):
         dat_file = os.path.join(
-            'imp_data', impurity + str(i) + '+->' + impurity + str(i+1) + '+.dat')
+            'imp_data', 'Tungsten', 'W' + str(i) + '+->' + 'W' + str(i+1) + '+.dat')
         W_ion_raw[i] = np.loadtxt(dat_file, skiprows=1)
         W_ion_raw[i][:, 1] = W_ion_raw[i][:, 1] / (1e4 * sigma_0)
 
