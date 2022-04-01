@@ -1,0 +1,7 @@
+type	from_iz	from_state	to_iz	to_state	cs_type
+ionization	0	2s2-2p2 3P	1	2s2-2p 2P	SunoKato
+ionization	1	2s2-2p 2P	2	2s2 1S	SunoKato
+ionization	2	2s2 1S	3	2s 2S	SunoKato
+ionization	3	2s 2S	4	1s2 1S	SunoKato
+ionization	4	1s2 1S	5	1s	SunoKato
+ionization	5	1s	6	BARE	SunoKato

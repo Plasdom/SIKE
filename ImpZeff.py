@@ -11,7 +11,7 @@ from numba import jit
 TEMP_FAC = 1.0
 
 
-def run(skrun_dir, save=False, modelled_species=['C', 'W'], evolve=False):
+def run(skrun_dir, save=False, modelled_species=['C'], evolve=False):
 
     # Load the SOL-KiT run
     skrun = spf.SKRun(skrun_dir)
@@ -21,18 +21,15 @@ def run(skrun_dir, save=False, modelled_species=['C', 'W'], evolve=False):
     for imp in modelled_species:
         species[imp] = Impurity(imp, skrun)
 
-    # Evolve until equilibrium reached
-    res = 1.0
-    step = 0
-
     # Build the rate matrices
     for imp in modelled_species:
         species[imp].build_rate_matrices()
         species[imp].get_saha_eq()
 
-    # Calulate densities
+    # Calculate densities
+    res = 1.0
+    step = 0
     if evolve:
-
         while res > input.RES_THRESH:
             res = 0
             for imp in modelled_species:

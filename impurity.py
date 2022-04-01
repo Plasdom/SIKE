@@ -1,9 +1,80 @@
 import numpy as np
 import input
 import rates
+import os
 import sk_plotting_functions as spf
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+
+
+class State:
+    def __init__(self, iz_stage, statename, loc):
+        self.iz = iz_stage
+        self.statename = statename
+        self.loc = loc
+        self.statw = 1  # TODO: Implement proper statistical weights
+
+
+class Transition:
+    def __init__(self, imp_name, vgrid, T_norm, sigma_0, from_state, to_state, cs_type):
+        self.imp_name = imp_name
+        self.vgrid = vgrid
+        self.T_norm = T_norm
+        self.sigma_0 = sigma_0
+        self.from_state = from_state
+        self.from_loc = from_state.loc
+        self.to_state = to_state
+        self.to_loc = to_state.loc
+        self.cs_type = cs_type
+        self.load_cross_section()
+
+    def load_cross_section(self):
+
+        if self.cs_type == 'SunoKato':
+
+            self.sigma = np.zeros(len(self.vgrid))
+
+            cs_file = os.path.join(
+                'imp_data', self.imp_name, 'sunokato_iz_cs.txt')
+            with open(cs_file) as f:
+                lines = f.readlines()
+                for l in lines[1:]:
+                    line_data = l.split('\t')
+                    from_iz = int(line_data[0])
+                    from_statename = line_data[1]
+                    to_iz = int(line_data[2])
+                    to_statename = line_data[3]
+                    if self.from_state.iz == from_iz and \
+                            self.from_state.statename == from_statename and \
+                            self.to_state.iz == to_iz and \
+                            self.to_state.statename == to_statename:
+                        coeffs = [float(x) for x in line_data[5:-1]]
+                        coeffs_I = float(line_data[4])
+                        try:
+                            self.thresh = float(line_data[-1])
+                        except:
+                            pass
+                        self.sigma += self.sunokato_iz_fit(coeffs_I, coeffs)
+
+    def sunokato_iz_fit(self, I, coeffs):
+        sigma = np.zeros(len(self.vgrid))
+        A_1 = coeffs[0]
+        for i in range(len(self.vgrid)):
+            v = self.vgrid[i]
+            E = self.T_norm * (v ** 2)
+
+            sigma[i] += (1e-13 / (I * E)) * (A_1 * np.log(E / I))
+            for k in range(1, len(coeffs)):
+                A_k = coeffs[k]
+                sigma[i] += (1e-13 / (I * E)) * (A_k * (1.0 - (I / E)) ** k)
+
+        for i in range(len(self.vgrid)):
+            E = self.vgrid[i]**2 * self.T_norm
+            if E > self.thresh:
+                sigma[:i] = 0.0
+                break
+
+        return sigma / (1e4 * self.sigma_0)
 
 
 class Impurity:
@@ -16,36 +87,83 @@ class Impurity:
         elif self.name == 'W':
             self.num_z = 11
             self.longname = 'Tungsten'
-
-        self.load_cross_sections()
+        self.load_states()
+        self.load_transitions()
         self.init_dens()
 
+    def load_states(self):
+        self.states = []
+        statedata_file = os.path.join(
+            'imp_data', self.longname, 'states.txt')
+        with open(statedata_file) as f:
+            lines = f.readlines()
+            i = 0
+            for l in lines[1:]:
+                iz = int(l.split('\t')[0])
+                statename = l.split('\t')[1].strip('\n')
+                self.states.append(State(iz, statename, i))
+                i += 1
+        self.tot_states = len(self.states)
+
+    def load_transitions(self):
+
+        self.iz_transitions = []
+        self.ex_transitions = []
+        self.radrec_transitions = []
+        self.spontem_transitions = []
+
+        trans_file = os.path.join(
+            'imp_data', self.longname, 'transitions.txt')
+        with open(trans_file) as f:
+            lines = f.readlines()
+            for l in lines[1:]:
+                line_data = l.split('\t')
+                trans_type = line_data[0]
+
+                from_iz = int(line_data[1])
+                from_statename = line_data[2]
+                from_state = self.get_state(from_iz, from_statename)
+
+                to_iz = int(line_data[3])
+                to_statename = line_data[4]
+                to_state = self.get_state(to_iz, to_statename)
+
+                cs_type = line_data[5].strip('\n')
+
+                if trans_type == 'ionization' and input.COLL_ION_REC:
+                    self.iz_transitions.append(Transition(
+                        self.longname,
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.T_norm,
+                        self.skrun.sigma_0,
+                        from_state,
+                        to_state,
+                        cs_type))
+
+    def get_state(self, iz, statename):
+        for state in self.states:
+            if state.iz == iz and state.statename == statename:
+                return state
+
+    def get_ground_state(self, z):
+        for state in self.states:
+            if state.iz == z:
+                return state
+
     def init_dens(self):
-        self.dens = np.zeros((self.skrun.num_x, self.num_z))
-        self.dens_max = np.zeros((self.skrun.num_x, self.num_z))
-        self.dens_saha = np.zeros((self.skrun.num_x, self.num_z))
+        self.dens = np.zeros((self.skrun.num_x, self.tot_states))
+        self.dens_max = np.zeros((self.skrun.num_x, self.tot_states))
+        self.dens_saha = np.zeros((self.skrun.num_x, self.tot_states))
         self.dens[:, 0] = input.FRAC_IMP_DENS * self.skrun.data['DENSITY']
-        self.dens_max[:, 0] = input.FRAC_IMP_DENS * \
-            self.skrun.data['DENSITY']
-        self.tmp_dens = np.zeros((self.skrun.num_x, self.num_z))
-
-    def load_cross_sections(self):
-        if self.name == 'C':
-            self.sigma_ion, self.ion_eps = input.load_carbon_cross_sections(
-                self.skrun.vgrid / self.skrun.v_th,
-                self.skrun.T_norm,
-                self.skrun.sigma_0,
-                self.num_z)
-        elif self.name == 'W':
-            self.sigma_ion, self.ion_eps = input.load_tungsten_cross_sections(
-                self.skrun.vgrid / self.skrun.v_th,
-                self.skrun.T_norm,
-                self.skrun.sigma_0,
-                self.num_z)
-
-        self.statw = np.ones(self.num_z)
+        self.dens_max[:, 0] = input.FRAC_IMP_DENS * self.skrun.data['DENSITY']
+        self.tmp_dens = np.zeros((self.skrun.num_x, self.tot_states))
 
     def get_saha_eq(self):
+
+        gs_locs = []
+        for z in range(self.num_z):
+            gs = self.get_ground_state(z)
+            gs_locs.append(gs.loc)
 
         for i in range(self.skrun.num_x):
             de_broglie_l = np.sqrt(
@@ -54,7 +172,7 @@ class Impurity:
             # Compute ratios
             dens_ratios = np.zeros(self.num_z - 1)
             for z in range(1, self.num_z):
-                eps = self.ion_eps[z-1]
+                eps = self.iz_transitions[z-1].thresh
                 dens_ratios[z-1] = (2 * np.exp(-eps / (self.skrun.data['TEMPERATURE'][i]*self.skrun.T_norm))) / (
                     (self.skrun.data['DENSITY'][i] * self.skrun.n_norm) * (de_broglie_l ** 3))
             # Fill densities
@@ -63,8 +181,8 @@ class Impurity:
                                       for z in range(self.num_z-1)])
             self.dens_saha[i, 0] = imp_dens_tot / denom_sum
             for z in range(1, self.num_z):
-                self.dens_saha[i, z] = self.dens_saha[i,
-                                                      z-1] * dens_ratios[z-1]
+                self.dens_saha[i, gs_locs[z]] = self.dens_saha[i,
+                                                               gs_locs[z-1]] * dens_ratios[z-1]
 
     def build_rate_matrices(self):
 
@@ -80,13 +198,13 @@ class Impurity:
 
         collrate_const = self.skrun.n_norm * self.skrun.v_th * \
             self.skrun.sigma_0 * self.skrun.t_norm
-        op_mat = [np.zeros((self.num_z, self.num_z))
+        op_mat = [np.zeros((self.tot_states, self.tot_states))
                   for _ in range(self.skrun.num_x)]
-        rate_mat = [np.zeros((self.num_z, self.num_z))
+        rate_mat = [np.zeros((self.tot_states, self.tot_states))
                     for _ in range(self.skrun.num_x)]
-        op_mat_max = [np.zeros((self.num_z, self.num_z))
+        op_mat_max = [np.zeros((self.tot_states, self.tot_states))
                       for _ in range(self.skrun.num_x)]
-        rate_mat_max = [np.zeros((self.num_z, self.num_z))
+        rate_mat_max = [np.zeros((self.tot_states, self.tot_states))
                         for _ in range(self.skrun.num_x)]
         tbrec_norm = self.skrun.n_norm * np.sqrt((spf.planck_h ** 2) / (2 * np.pi *
                                                                         spf.el_mass * self.skrun.T_norm * spf.el_charge)) ** 3
@@ -94,68 +212,70 @@ class Impurity:
         # Build kinetic rate matrices
         for i in range(self.skrun.num_x):
 
-            # Compute ionisation rate coeffs
-            for z in range(self.num_z-1):
-                K_ion = collrate_const * rates.ion_rate(
-                    f0[i, :],
-                    self.skrun.vgrid/self.skrun.v_th,
-                    self.skrun.dvc/self.skrun.v_th,
-                    self.sigma_ion[z, :])
-                rate_mat[i][z, z] -= K_ion
-                rate_mat[i][z+1, z] += K_ion
+            if input.COLL_ION_REC:
+                for iz_trans in self.iz_transitions:
 
-            # Compute recombination rate coeffs
-            for z in range(1, self.num_z):
-                eps = self.ion_eps[z-1] / self.skrun.T_norm
-                statw_ratio = self.statw[z] / self.statw[z-1]
-                K_rec = ne[i] * collrate_const * tbrec_norm * rates.tbrec_rate(
-                    f0[i, :],
-                    Te[i],
-                    self.skrun.vgrid/self.skrun.v_th,
-                    self.skrun.dvc/self.skrun.v_th,
-                    eps,
-                    statw_ratio,
-                    self.sigma_ion[z-1, :])
-                rate_mat[i][z-1, z] += K_rec
-                rate_mat[i][z, z] -= K_rec
+                    # Ionization
+                    K_ion = collrate_const * rates.ion_rate(
+                        f0[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        iz_trans.sigma
+                    )
+                    K_ion_max = collrate_const * rates.ion_rate(
+                        f0_max[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        iz_trans.sigma
+                    )
+                    # ...loss
+                    row = iz_trans.from_loc
+                    col = iz_trans.from_loc
+                    rate_mat[i][row, col] += -K_ion
+                    rate_mat_max[i][row, col] += -K_ion_max
+                    # ...gain
+                    row = iz_trans.to_loc
+                    col = iz_trans.from_loc
+                    rate_mat[i][row, col] += K_ion
+                    rate_mat_max[i][row, col] += K_ion_max
+
+                    # Three-body recombination
+                    eps = iz_trans.thresh / self.skrun.T_norm
+                    statw_ratio = iz_trans.to_state.statw / iz_trans.from_state.statw
+                    K_rec = ne[i] * collrate_const * tbrec_norm * rates.tbrec_rate(
+                        f0[i, :],
+                        Te[i],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        eps,
+                        statw_ratio,
+                        iz_trans.sigma)
+                    K_rec_max = ne[i] * collrate_const * tbrec_norm * rates.tbrec_rate(
+                        f0_max[i, :],
+                        Te[i],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        eps,
+                        statw_ratio,
+                        iz_trans.sigma)
+                    # ...loss
+                    row = iz_trans.from_loc
+                    col = iz_trans.to_loc
+                    rate_mat[i][row, col] += K_rec
+                    rate_mat_max[i][row, col] += K_rec_max
+                    # ...gain
+                    row = iz_trans.to_loc
+                    col = iz_trans.to_loc
+                    rate_mat[i][row, col] += -K_rec
+                    rate_mat_max[i][row, col] += -K_rec_max
 
             op_mat[i] = np.linalg.inv(np.identity(
-                self.num_z) - input.DELTA_T * rate_mat[i])
+                self.tot_states) - input.DELTA_T * rate_mat[i])
+            op_mat_max[i] = np.linalg.inv(np.identity(
+                self.tot_states) - input.DELTA_T * rate_mat_max[i])
 
         self.op_mat = op_mat
         self.rate_mat = rate_mat
-
-        # Build Maxwellian rate matrices
-        for i in range(self.skrun.num_x):
-
-            # Compute ionisation rate coeffs
-            for z in range(self.num_z-1):
-                K_ion = collrate_const * rates.ion_rate(
-                    f0_max[i, :],
-                    self.skrun.vgrid/self.skrun.v_th,
-                    self.skrun.dvc/self.skrun.v_th,
-                    self.sigma_ion[z, :])
-                rate_mat_max[i][z, z] -= K_ion
-                rate_mat_max[i][z+1, z] += K_ion
-
-            # Compute recombination rate coeffs
-            for z in range(1, self.num_z):
-                eps = self.ion_eps[z-1] / self.skrun.T_norm
-                statw_ratio = self.statw[z] / self.statw[z-1]
-                K_rec = ne[i] * collrate_const * tbrec_norm * rates.tbrec_rate(
-                    f0_max[i, :],
-                    Te[i],
-                    self.skrun.vgrid/self.skrun.v_th,
-                    self.skrun.dvc/self.skrun.v_th,
-                    eps,
-                    statw_ratio,
-                    self.sigma_ion[z-1, :])
-                rate_mat_max[i][z-1, z] += K_rec
-                rate_mat_max[i][z, z] -= K_rec
-
-            op_mat_max[i] = np.linalg.inv(np.identity(
-                self.num_z) - input.DELTA_T * rate_mat_max[i])
-
         self.op_mat_max = op_mat_max
         self.rate_mat_max = rate_mat_max
 
@@ -163,7 +283,7 @@ class Impurity:
         for i in range(self.skrun.num_x):
             loc_mat = self.rate_mat[i]
             loc_mat[-1, :] = 1.0
-            rhs = np.zeros(self.num_z)
+            rhs = np.zeros(self.tot_states)
             rhs[-1] = np.sum(self.dens[i, :])
             loc_mat_inv = np.linalg.inv(loc_mat)
             dens = loc_mat_inv.dot(rhs)
@@ -172,7 +292,7 @@ class Impurity:
         for i in range(self.skrun.num_x):
             loc_mat = self.rate_mat_max[i]
             loc_mat[-1, :] = 1.0
-            rhs = np.zeros(self.num_z)
+            rhs = np.zeros(self.tot_states)
             rhs[-1] = np.sum(self.dens_max[i, :])
             loc_mat_inv = np.linalg.inv(loc_mat)
             dens = loc_mat_inv.dot(rhs)
@@ -210,10 +330,13 @@ class Impurity:
         dens_tot_saha = np.sum(self.dens_saha, 1)
 
         for i in range(self.skrun.num_x):
-            for z in range(1, self.num_z):
-                self.Zeff[i] += self.dens[i, z] * (float(z) ** 2)
-                self.Zeff_max[i] += self.dens_max[i, z] * (float(z) ** 2)
-                self.Zeff_saha[i] += self.dens_saha[i, z] * (float(z) ** 2)
+
+            for k, state in enumerate(self.states):
+                z = state.iz
+                k = state.loc
+                self.Zeff[i] += self.dens[i, k] * (float(z) ** 2)
+                self.Zeff_max[i] += self.dens_max[i, k] * (float(z) ** 2)
+                self.Zeff_saha[i] += self.dens_saha[i, k] * (float(z) ** 2)
             if dens_tot[i] > 0:
                 self.Zeff[i] = self.Zeff[i] / self.skrun.data['DENSITY'][i]
             if dens_tot_max[i] > 0:
@@ -242,6 +365,7 @@ class Impurity:
     def plot_dens(self, xaxis='normal', plot_kin=True, plot_max=True, plot_saha=False):
         fig, ax = plt.subplots(1)
         cmap = plt.cm.get_cmap('plasma')
+        z_dens, z_dens_max, z_dens_saha = self.get_z_dens()
         min_z = 0
         max_z = self.num_z
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(
@@ -257,14 +381,14 @@ class Impurity:
             ax.set_xscale('log')
         for z in range(min_z, max_z):
             if plot_kin:
-                ax.plot(x, self.dens[:-1, z] / np.sum(self.dens[:-1, :], 1),
+                ax.plot(x, z_dens[:-1, z] / np.sum(z_dens[:-1, :], 1),
                         '--', color=sm.to_rgba(z))
             if plot_max:
-                ax.plot(x, self.dens_max[:-1, z] / np.sum(self.dens_max[:-1, :], 1),
+                ax.plot(x, z_dens_max[:-1, z] / np.sum(z_dens_max[:-1, :], 1),
                         color=sm.to_rgba(z))
             if plot_saha:
                 ax.plot(
-                    x, self.dens_saha[:-1, z] / np.sum(self.dens_saha[:-1, :], 1), '-.', color=sm.to_rgba(z))
+                    x, z_dens_saha[:-1, z] / np.sum(z_dens_saha[:-1, :], 1), '-.', color=sm.to_rgba(z))
             legend_labels.append('$Z=$' + str(z))
             legend_lines.append(Line2D([0], [0], color=sm.to_rgba(z)))
         if plot_max:
@@ -285,6 +409,17 @@ class Impurity:
         ax.grid()
         ax.set_ylabel('$n_Z / n_Z^{tot}$')
         ax.set_title('$n_Z$ profiles, ' + self.longname)
+
+    def get_z_dens(self):
+        z_dens = np.zeros([self.skrun.num_x, self.num_z])
+        z_dens_max = np.zeros([self.skrun.num_x, self.num_z])
+        z_dens_saha = np.zeros([self.skrun.num_x, self.num_z])
+        for state in self.states:
+            z = state.iz
+            z_dens[:, z] += self.dens[:, state.loc]
+            z_dens_max[:, z] += self.dens_max[:, state.loc]
+            z_dens_saha[:, z] += self.dens_saha[:, state.loc]
+        return z_dens, z_dens_max, z_dens_saha
 
     def plot_Zdist(self, cells=-1):
         if isinstance(cells, int):
