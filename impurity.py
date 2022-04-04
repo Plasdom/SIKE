@@ -5,76 +5,7 @@ import os
 import sk_plotting_functions as spf
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-
-
-class State:
-    def __init__(self, iz_stage, statename, loc):
-        self.iz = iz_stage
-        self.statename = statename
-        self.loc = loc
-        self.statw = 1  # TODO: Implement proper statistical weights
-
-
-class Transition:
-    def __init__(self, imp_name, vgrid, T_norm, sigma_0, from_state, to_state, cs_type):
-        self.imp_name = imp_name
-        self.vgrid = vgrid
-        self.T_norm = T_norm
-        self.sigma_0 = sigma_0
-        self.from_state = from_state
-        self.from_loc = from_state.loc
-        self.to_state = to_state
-        self.to_loc = to_state.loc
-        self.cs_type = cs_type
-        self.load_cross_section()
-
-    def load_cross_section(self):
-
-        if self.cs_type == 'SunoKato':
-
-            self.sigma = np.zeros(len(self.vgrid))
-
-            cs_file = os.path.join(
-                'imp_data', self.imp_name, 'sunokato_iz_cs.txt')
-            with open(cs_file) as f:
-                lines = f.readlines()
-                for l in lines[1:]:
-                    line_data = l.split('\t')
-                    from_iz = int(line_data[0])
-                    from_statename = line_data[1]
-                    to_iz = int(line_data[2])
-                    to_statename = line_data[3]
-                    if self.from_state.iz == from_iz and \
-                            self.from_state.statename == from_statename and \
-                            self.to_state.iz == to_iz and \
-                            self.to_state.statename == to_statename:
-                        coeffs = [float(x) for x in line_data[5:-1]]
-                        coeffs_I = float(line_data[4])
-                        try:
-                            self.thresh = float(line_data[-1])
-                        except:
-                            pass
-                        self.sigma += self.sunokato_iz_fit(coeffs_I, coeffs)
-
-    def sunokato_iz_fit(self, I, coeffs):
-        sigma = np.zeros(len(self.vgrid))
-        A_1 = coeffs[0]
-        for i in range(len(self.vgrid)):
-            v = self.vgrid[i]
-            E = self.T_norm * (v ** 2)
-
-            sigma[i] += (1e-13 / (I * E)) * (A_1 * np.log(E / I))
-            for k in range(1, len(coeffs)):
-                A_k = coeffs[k]
-                sigma[i] += (1e-13 / (I * E)) * (A_k * (1.0 - (I / E)) ** k)
-
-        for i in range(len(self.vgrid)):
-            E = self.vgrid[i]**2 * self.T_norm
-            if E > self.thresh:
-                sigma[:i] = 0.0
-                break
-
-        return sigma / (1e4 * self.sigma_0)
+import transition
 
 
 class Impurity:
@@ -93,15 +24,20 @@ class Impurity:
 
     def load_states(self):
         self.states = []
-        statedata_file = os.path.join(
-            'imp_data', self.longname, 'states.txt')
+        if input.GS_ONLY:
+            statedata_file = os.path.join(
+                'imp_data', self.longname, 'states_gsonly.txt')
+        else:
+            statedata_file = os.path.join(
+                'imp_data', self.longname, 'states.txt')
         with open(statedata_file) as f:
             lines = f.readlines()
             i = 0
             for l in lines[1:]:
                 iz = int(l.split('\t')[0])
-                statename = l.split('\t')[1].strip('\n')
-                self.states.append(State(iz, statename, i))
+                statename = l.split('\t')[1]
+                statw = int(l.split('\t')[-1].strip('\n'))
+                self.states.append(transition.State(iz, statename, i, statw))
                 i += 1
         self.tot_states = len(self.states)
 
@@ -128,17 +64,29 @@ class Impurity:
                 to_statename = line_data[4]
                 to_state = self.get_state(to_iz, to_statename)
 
-                cs_type = line_data[5].strip('\n')
+                if from_state is not None and to_state is not None:
 
-                if trans_type == 'ionization' and input.COLL_ION_REC:
-                    self.iz_transitions.append(Transition(
-                        self.longname,
-                        self.skrun.vgrid/self.skrun.v_th,
-                        self.skrun.T_norm,
-                        self.skrun.sigma_0,
-                        from_state,
-                        to_state,
-                        cs_type))
+                    dtype = line_data[5].strip('\n')
+
+                    if trans_type == 'ionization' and input.COLL_ION_REC:
+                        self.iz_transitions.append(transition.Transition('ionization',
+                                                                         self.longname,
+                                                                         from_state,
+                                                                         to_state,
+                                                                         vgrid=self.skrun.vgrid/self.skrun.v_th,
+                                                                         T_norm=self.skrun.T_norm,
+                                                                         sigma_0=self.skrun.sigma_0,
+                                                                         dtype=dtype))
+
+                    if trans_type == 'rad-rec' and input.RAD_REC:
+                        self.radrec_transitions.append(transition.Transition('rad-rec',
+                                                                             self.longname,
+                                                                             from_state,
+                                                                             to_state,
+                                                                             T_norm=self.skrun.T_norm,
+                                                                             n_norm=self.skrun.n_norm,
+                                                                             t_norm=self.skrun.t_norm,
+                                                                             dtype=dtype))
 
     def get_state(self, iz, statename):
         for state in self.states:
@@ -173,7 +121,7 @@ class Impurity:
             dens_ratios = np.zeros(self.num_z - 1)
             for z in range(1, self.num_z):
                 eps = self.iz_transitions[z-1].thresh
-                dens_ratios[z-1] = (2 * np.exp(-eps / (self.skrun.data['TEMPERATURE'][i]*self.skrun.T_norm))) / (
+                dens_ratios[z-1] = (2 * (self.states[gs_locs[z-1]].statw / self.states[gs_locs[z]].statw) * np.exp(-eps / (self.skrun.data['TEMPERATURE'][i]*self.skrun.T_norm))) / (
                     (self.skrun.data['DENSITY'][i] * self.skrun.n_norm) * (de_broglie_l ** 3))
             # Fill densities
             imp_dens_tot = np.sum(self.dens[i, :])
@@ -268,6 +216,23 @@ class Impurity:
                     col = iz_trans.to_loc
                     rate_mat[i][row, col] += -K_rec
                     rate_mat_max[i][row, col] += -K_rec_max
+
+            if input.RAD_REC:
+                for radrec_trans in self.radrec_transitions:
+
+                    # Radiative recombination
+                    alpha_radrec = radrec_trans.radrec_interp(
+                        Te[i])
+                    # ...loss
+                    row = radrec_trans.from_loc
+                    col = radrec_trans.from_loc
+                    rate_mat[i][row, col] += -(ne[i] * alpha_radrec)
+                    rate_mat_max[i][row, col] += -(ne[i] * alpha_radrec)
+                    # ...gain
+                    row = radrec_trans.to_loc
+                    col = radrec_trans.from_loc
+                    rate_mat[i][row, col] += (ne[i] * alpha_radrec)
+                    rate_mat_max[i][row, col] += (ne[i] * alpha_radrec)
 
             op_mat[i] = np.linalg.inv(np.identity(
                 self.tot_states) - input.DELTA_T * rate_mat[i])
@@ -364,7 +329,7 @@ class Impurity:
 
     def plot_dens(self, xaxis='normal', plot_kin=True, plot_max=True, plot_saha=False):
         fig, ax = plt.subplots(1)
-        cmap = plt.cm.get_cmap('plasma')
+        cmap = plt.cm.get_cmap('turbo')
         z_dens, z_dens_max, z_dens_saha = self.get_z_dens()
         min_z = 0
         max_z = self.num_z

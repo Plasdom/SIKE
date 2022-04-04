@@ -1,16 +1,18 @@
 import numpy as np
 import os
 from scipy.interpolate import interp1d
+import re
 
-DELTA_T = 1.0e13
+DELTA_T = 1.0e10
 RES_THRESH = 1E-12
 MAX_STEPS = 5e4
 T_SAVE = 1e6
 FRAC_IMP_DENS = 0.01
 COLL_ION_REC = True
+RAD_REC = True
 COLL_EX_DEEX = False
-RAD_REC = False
 SPONT_EM = False
+GS_ONLY = True
 STATW_W = np.ones(11)
 C_ION_COEFFS = [
     [
@@ -34,6 +36,166 @@ C_ION_COEFFS = [
     ]
 ]
 C_ION_COEFFS_I = [[10.6], [24.4], [41.4], [64.5, 285], [392.0], [490.0]]
+
+
+def load_sunokato_iz_sigma(vgrid, from_state, to_state, T_norm, sigma_0):
+
+    sigma = np.zeros(len(vgrid))
+
+    cs_file = os.path.join(
+        'imp_data', 'Carbon', 'sunokato_iz_cs.txt')
+    with open(cs_file) as f:
+        lines = f.readlines()
+        for l in lines[1:]:
+            line_data = l.split('\t')
+            from_iz = int(line_data[0])
+            from_statename = line_data[1]
+            to_iz = int(line_data[2])
+            to_statename = line_data[3]
+            if from_state.iz == from_iz and \
+                    from_state.statename == from_statename and \
+                    to_state.iz == to_iz and \
+                    to_state.statename == to_statename:
+                coeffs = [float(x) for x in line_data[5:-1]]
+                coeffs_I = float(line_data[4])
+                try:
+                    thresh = float(line_data[-1])
+                except:
+                    pass
+                sigma += sunokato_iz_fit(coeffs_I, coeffs,
+                                         vgrid, T_norm, sigma_0, thresh)
+
+    return sigma, thresh
+
+
+def sunokato_iz_fit(I, coeffs, vgrid, T_norm, sigma_0, thresh):
+    sigma = np.zeros(len(vgrid))
+    A_1 = coeffs[0]
+    for i in range(len(vgrid)):
+        v = vgrid[i]
+        E = T_norm * (v ** 2)
+
+        sigma[i] += (1e-13 / (I * E)) * (A_1 * np.log(E / I))
+        for k in range(1, len(coeffs)):
+            A_k = coeffs[k]
+            sigma[i] += (1e-13 / (I * E)) * (A_k * (1.0 - (I / E)) ** k)
+
+    for i in range(len(vgrid)):
+        E = vgrid[i]**2 * T_norm
+        if E > thresh:
+            sigma[:i] = 0.0
+            break
+
+    return sigma / (1e4 * sigma_0)
+
+
+def adas_rm1(a):
+    return a[0][:-1]
+
+
+def lmom(l):
+    if l == '0':
+        return 'S'
+    if l == '1':
+        return 'P'
+    if l == '2':
+        return 'D'
+    if l == '3':
+        return 'F'
+    if l == '4':
+        return 'G'
+
+
+def get_adas_statename(line):
+    fields = line.split('    ')
+    shell = fields[2][1:].lower().replace(' ', '-')
+    shell = re.sub('[spdfg]1', adas_rm1, shell)
+    mom = re.search('\(\d\)\d\(', line)
+    s = mom[0][1]
+    l = lmom(mom[0][3])
+    return shell + ' ' + s + l
+
+
+def load_adas_radrec_rates(imp_name, from_state, to_state, T_norm, n_norm, t_norm):
+    adas_file = get_adas_file('radrec', imp_name, from_state.iz)
+    with open(adas_file) as f:
+        lines = f.readlines()
+
+    # Get parent and child states
+    started_to = False
+    for i, l in enumerate(lines):
+        if 'PARENT TERM INDEXING' in l:
+            from_start = i+4
+        if 'LS RESOLVED TERM INDEXING' in l:
+            from_end = i-1
+            started_to = True
+            to_start = i+4
+        if started_to:
+            if l == ' \n' or l == '\n':
+                to_end = i
+                break
+    from_states = []
+    to_states = []
+    for l in lines[from_start:from_end]:
+        from_states.append(get_adas_statename(l))
+    for l in lines[to_start:to_end]:
+        to_states.append(get_adas_statename(l))
+
+    # Get Te index
+    for i, l in enumerate(lines):
+        if 'INDX TE=' in l and 'PRTI=' in lines[i-2]:
+            Te = np.array([float(T.replace('D', 'E')) for T in l.split()[2:]])
+            break
+    K2eV = 11603.247217
+    Te = Te / (K2eV * T_norm)  # Convert to eV and normalise
+
+    # Get transitions
+    started_trans = False
+    from_trans = []
+    to_trans = []
+    for i, l in enumerate(lines):
+        if i > 4:
+            if 'INDX TE=' in l and 'PRTI=' in lines[i-2]:
+                started_trans = True
+                from_trans.append(i+2)
+            if started_trans:
+                if l == ' \n' or l == '\n':
+                    to_trans.append(i)
+                    started_trans = False
+    searching = True
+    for i, from_idx in enumerate(from_trans):
+        to_idx = to_trans[i]
+        parent_idx = i
+        if searching:
+            for l in lines[from_idx:to_idx]:
+                child_idx = int(l.split()[0]) - 1
+                if from_states[parent_idx] == from_state.statename and to_states[child_idx] == to_state.statename:
+                    rates = np.array([float(r.replace('D', 'E'))
+                                     for r in l.split()[1:]])
+                    searching = False
+                    break
+    rates = rates * t_norm * n_norm  # Normalise
+
+    return rates, Te
+
+
+def get_adas_file(trans_type, imp_name, z):
+    pref = os.path.join('imp_data', imp_name)
+    if trans_type == 'radrec':
+        if imp_name == 'Carbon':
+            if z == 1:
+                adas_file = os.path.join(pref, 'rrc93#b_c1ls.dat')
+            elif z == 2:
+                adas_file = os.path.join(pref, 'rrc96#be_c2ls.dat')
+            elif z == 3:
+                adas_file = os.path.join(pref, 'rrc93#li_c3ls.dat')
+            elif z == 4:
+                adas_file = os.path.join(pref, 'rrc96#he_c4ls.dat')
+            elif z == 5:
+                adas_file = os.path.join(pref, 'rrc96#h_c5ls.dat')
+            elif z == 6:
+                adas_file = os.path.join(pref, 'rrc93##_c6ls.dat')
+    return adas_file
 
 
 def load_tungsten_cross_sections(vgrid, T_norm, sigma_0, num_z):

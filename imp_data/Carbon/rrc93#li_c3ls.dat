@@ -1,0 +1,109 @@
+SEQ='BE'     NUCCHG= 6
+ 
+   PARENT TERM INDEXING            BWNP=    520177.8   NPRNTI= 2
+   --------------------
+   INDP    CODE                 S L   WI        WNP
+   ----    ----                 - -   --  ----------
+     1     1S2 2S1             (2)0( 0.5)        0.0
+     2     1S2 2P1             (2)1( 2.5)    64555.6
+ 
+   LS RESOLVED TERM INDEXING       BWNR=    386214.0    NTRM= 12
+   -------------------------
+   INDX    CODE                 S L   WJ        WNR
+   ----    ----                 - -   --  ----------
+     1     2S2                 (1)0( 0.0)        0.   {1}2.000
+     2     2S1 2P1             (3)1( 4.0)    52419.   {1}1.000 {2}1.000
+     3     2S1 2P1             (1)1( 1.0)   102352.   {1}1.000 {2}1.000
+     4     2P2                 (3)1( 4.0)   137478.   {2}2.000
+     5     2P2                 (1)2( 2.0)   145876.   {2}2.000
+     6     2P2                 (1)0( 0.0)   182520.   {2}2.000
+     7     2S1 3S1             (1)0( 0.0)   247170.   {1}1.000
+     8     2S1 3P1             (1)1( 1.0)   258931.   {1}1.000
+     9     2S1 3D1             (1)2( 2.0)   276483.   {1}1.000
+    10     2S1 3S1             (3)0( 1.0)   238213.   {1}1.000
+    11     2S1 3P1             (3)1( 4.0)   259718.   {1}1.000
+    12     2S1 3D1             (3)2( 7.0)   270013.   {1}1.000
+ 
+ 
+ 
+ ---------------------------------
+ PRTI= 1  TRMPRT= (2S)  SPNPRT= 2
+ 
+   INDX TE=  9.00D+03  1.80D+04  4.50D+04  9.00D+04  1.80D+05  4.50D+05  9.00D+05  1.80D+06
+   ---- ---
+     1       1.86D-13  1.32D-13  8.32D-14  5.76D-14  3.90D-14  2.71D-14  1.54D-14  1.01D-14
+     2       1.13D-12  7.81D-13  4.66D-13  3.05D-13  1.96D-13  9.85D-14  6.01D-14  3.06D-14
+     3       2.54D-13  1.76D-13  1.05D-13  6.97D-14  4.54D-14  2.12D-14  1.19D-14  6.18D-15
+     7       1.41D-14  1.04D-14  7.06D-15  5.19D-15  4.19D-15  2.78D-15  2.04D-15  1.30D-15
+     8       8.12D-14  5.75D-14  3.58D-14  2.43D-14  1.62D-14  8.16D-15  4.54D-15  2.32D-15
+     9       6.46D-14  4.26D-14  2.28D-14  1.31D-14  6.79D-15  2.49D-15  1.09D-15  4.34D-16
+    10       6.95D-14  5.02D-14  3.28D-14  2.23D-14  1.46D-14  8.93D-15  5.79D-15  3.38D-15
+    11       2.42D-13  1.71D-13  1.06D-13  7.22D-14  4.78D-14  2.41D-14  1.33D-14  6.85D-15
+    12       3.04D-13  2.04D-13  1.12D-13  6.74D-14  3.64D-14  1.45D-14  6.59D-15  2.74D-15
+ 
+ 
+ ---------------------------------
+ PRTI= 2  TRMPRT= (2P)  SPNPRT= 2
+ 
+   INDX TE=  9.00D+03  1.80D+04  4.50D+04  9.00D+04  1.80D+05  4.50D+05  9.00D+05  1.80D+06
+   ---- ---
+     2       3.00D-13  2.14D-13  1.35D-13  9.36D-14  6.30D-14  4.20D-14  2.31D-14  1.53D-14
+     3       7.38D-14  5.21D-14  3.25D-14  2.24D-14  1.56D-14  1.18D-14  8.80D-15  6.25D-15
+     4       6.58D-13  4.55D-13  2.72D-13  1.79D-13  1.16D-13  5.54D-14  3.20D-14  1.62D-14
+     5       3.43D-13  2.37D-13  1.42D-13  9.35D-14  6.07D-14  2.86D-14  1.62D-14  8.31D-15
+     6       4.69D-14  3.24D-14  1.94D-14  1.29D-14  8.31D-15  4.18D-15  2.24D-15  1.11D-15
+ 
+ 
+C---------------------------------------------------------------------------------
+C ADAS ADF08 DATA - SCCS info: @(#)$Header: /home/adascvs/adas/adf08/rrc93#li/rrc93#li_c3ls.dat,v 2.2 2011/01/13 18:03:29 mog Exp $ Date $Date: 2011/01/13 18:03:29 $
+C---------------------------------------------------------------------------------
+C----------------------------------------------------------------------------------
+C
+C  Add the missing '---- ---' after INDX line to make file conform to specification.
+C
+C  Martin O'Mullane
+C  13-01-2011
+C
+C----------------------------------------------------------------------------------
+
+C-----------------------------------------------------------------------
+C                               OPEN-ADAS
+C                               +++++++++
+C
+C This file has been downloaded from OPEN-ADAS (http://open.adas.ac.uk)
+C on 04-Apr-2022.
+C
+C TERMS AND CONDITIONS
+C --------------------
+C
+C The user of the OPEN-ADAS system and data (hereinafter "the User")
+C accepts the following terms and conditions:
+C
+C   1. The University of Strathclyde uses all reasonable endeavours to
+C      ensure the accuracy of the data provided and any information
+C      given, but the University makes no warranty, expressed or implied
+C      as to its accuracy, integrity, fitness for purpose and shall not
+C      be responsible for the use to which the data is put by the User
+C      and/or any consequences arising out of any inaccuracies or
+C      omissions.
+C
+C   2. Any downloaded OPEN-ADAS file is made available for the
+C      personal use of the User only.  It must not be used for any
+C      commercial application, incorporated into any web site or in
+C      any form re-distributed without express prior written permission
+C      from the ADAS Project. In particular, but not by way of
+C      limitation, it must not be:
+C        *  inserted into a managed database structure,
+C        *  redistributed along with a modelling or analysis code,
+C        *  made available on a public website.
+C
+C Permission for OPEN-ADAS data incorporation in non-commercial
+C code/system development for scientific advance will not be
+C unreasonably withheld, but will be subject to written agreement
+C on a case by case basis.
+C
+C The User will indemnify the University of Strathclyde and keep it
+C fully and effectively indemnified against each and every claim made
+C against the University as a result of the User's use of the data.
+C
+C-----------------------------------------------------------------------

@@ -1,0 +1,112 @@
+SEQ='LI'     NUCCHG= 6
+
+   PARENT TERM INDEXING            BWNP=   3162395.0   NPRNTI= 2
+   --------------------
+   INDP    CODE                 S L   WI        WNP
+   ----    ----                 - -   --  ----------
+     1     1S2                 (1)0( 1.0)        0.0
+     2     1S1 2S1             (3)0( 3.0)  2411262.0
+
+   LS RESOLVED TERM INDEXING       BWNR=    520178.4    NTRM= 14
+   -------------------------
+   INDX    CODE                 S L   WJ        WNR
+   ----    ----                 - -   --  ----------
+     1     1S2 2S1             (2)0( 0.5)        0.0  {1}1.000 {2}1.500
+     2     1S2 2P1             (2)1( 2.5)    64555.4  {1}1.000
+     3     1S2 3S1             (2)0( 0.5)   302849.0  {1}1.000
+     4     1S2 3P1             (2)1( 2.5)   320071.2  {1}1.000
+     5     1S2 3D1             (2)2( 4.5)   324886.1  {1}1.000
+     6     1S2 4S1             (2)0( 0.5)   401348.1  {1}1.000
+     7     1S2 4P1             (2)1( 2.5)   408319.8  {1}1.000
+     8     1S2 4D1             (2)2( 4.5)   410338.5  {1}1.000
+     9     1S2 4F1             (2)3( 6.5)   410434.2  {1}1.000
+    10     1S2 5S1             (2)0( 0.5)   445368.5  {1}1.000
+    11     1S2 5P1             (2)1( 2.5)   448860.5  {1}1.000
+    12     1S2 5D1             (2)2( 4.5)   449889.2  {1}1.000
+    13     1S2 5F1             (2)3( 6.5)   449939.8  {1}1.000
+    14     1S2 5G1             (2)4( 8.5)   449948.4  {1}1.000
+
+ 
+ 
+ ---------------------------------
+ PRTI= 1  TRMPRT= (1S)  SPNPRT= 1
+ 
+   INDX TE=  8.00D+03  1.60D+04  3.20D+04  8.00D+04  1.60D+05  3.20D+05  8.00D+05  1.60D+06  3.20D+06  8.00D+06  1.60D+07
+   ---- ---
+     1       4.33D-13  3.08D-13  2.19D-13  1.41D-13  1.01D-13  7.28D-14  4.61D-14  3.13D-14  2.00D-14  9.71D-15  5.06D-15
+     2       1.41D-12  9.87D-13  6.84D-13  4.09D-13  2.67D-13  1.65D-13  7.91D-14  4.14D-14  2.00D-14  6.84D-15  2.81D-15
+     3       1.23D-13  8.77D-14  6.27D-14  4.07D-14  2.95D-14  2.13D-14  1.34D-14  8.99D-15  5.67D-15  2.72D-15  1.41D-15
+     4       5.01D-13  3.51D-13  2.44D-13  1.46D-13  9.56D-14  5.93D-14  2.83D-14  1.48D-14  7.10D-15  2.41D-15  9.87D-16
+     5       5.11D-13  3.49D-13  2.31D-13  1.24D-13  7.11D-14  3.74D-14  1.39D-14  5.98D-15  2.41D-15  6.73D-16  2.48D-16
+     6       5.31D-14  3.78D-14  2.71D-14  1.76D-14  1.27D-14  9.14D-15  5.68D-15  3.77D-15  2.35D-15  1.12D-15  5.76D-16
+     7       2.33D-13  1.63D-13  1.13D-13  6.79D-14  4.42D-14  2.73D-14  1.29D-14  6.70D-15  3.21D-15  1.08D-15  4.42D-16
+     8       3.20D-13  2.18D-13  1.45D-13  7.75D-14  4.45D-14  2.34D-14  8.65D-15  3.71D-15  1.49D-15  4.16D-16  1.53D-16
+     9       2.24D-13  1.47D-13  9.16D-14  4.35D-14  2.22D-14  1.03D-14  3.26D-15  1.27D-15  4.76D-16  1.25D-16  4.49D-17
+    10       2.81D-14  2.00D-14  1.43D-14  9.30D-15  6.70D-15  4.78D-15  2.92D-15  1.91D-15  1.19D-15  5.58D-16  2.86D-16
+    11       1.28D-13  8.96D-14  6.21D-14  3.71D-14  2.40D-14  1.47D-14  6.93D-15  3.57D-15  1.70D-15  5.72D-16  2.33D-16
+    12       1.96D-13  1.34D-13  8.84D-14  4.73D-14  2.71D-14  1.42D-14  5.22D-15  2.23D-15  8.97D-16  2.50D-16  9.19D-17
+    13       1.97D-13  1.30D-13  8.06D-14  3.83D-14  1.95D-14  9.01D-15  2.86D-15  1.12D-15  4.17D-16  1.10D-16  3.93D-17
+    14       1.01D-13  6.34D-14  3.68D-14  1.54D-14  7.13D-15  3.02D-15  8.74D-16  3.26D-16  1.19D-16  3.05D-17  1.09D-17
+ 
+ 
+ ---------------------------------
+ PRTI= 2  TRMPRT= (3S)  SPNPRT= 3
+ 
+   INDX TE=  8.00D+03  1.60D+04  3.20D+04  8.00D+04  1.60D+05  3.20D+05  8.00D+05  1.60D+06  3.20D+06  8.00D+06  1.60D+07
+   ---- ---
+     1       3.04D-12  2.15D-12  1.52D-12  9.54D-13  6.69D-13  4.65D-13  2.81D-13  1.85D-13  1.16D-13  5.48D-14  2.80D-14
+ 
+ 
+C---------------------------------------------------------------------------------
+C ADAS ADF08 DATA - SCCS info: @(#)$Header: /home/adascvs/adas/adf08/rrc96#he/rrc96#he_c4ls.dat,v 2.2 2011/01/13 18:03:43 mog Exp $ Date $Date: 2011/01/13 18:03:43 $
+C---------------------------------------------------------------------------------
+C----------------------------------------------------------------------------------
+C
+C  Add the missing '---- ---' after INDX line to make file conform to specification.
+C
+C  Martin O'Mullane
+C  13-01-2011
+C
+C----------------------------------------------------------------------------------
+
+C-----------------------------------------------------------------------
+C                               OPEN-ADAS
+C                               +++++++++
+C
+C This file has been downloaded from OPEN-ADAS (http://open.adas.ac.uk)
+C on 04-Apr-2022.
+C
+C TERMS AND CONDITIONS
+C --------------------
+C
+C The user of the OPEN-ADAS system and data (hereinafter "the User")
+C accepts the following terms and conditions:
+C
+C   1. The University of Strathclyde uses all reasonable endeavours to
+C      ensure the accuracy of the data provided and any information
+C      given, but the University makes no warranty, expressed or implied
+C      as to its accuracy, integrity, fitness for purpose and shall not
+C      be responsible for the use to which the data is put by the User
+C      and/or any consequences arising out of any inaccuracies or
+C      omissions.
+C
+C   2. Any downloaded OPEN-ADAS file is made available for the
+C      personal use of the User only.  It must not be used for any
+C      commercial application, incorporated into any web site or in
+C      any form re-distributed without express prior written permission
+C      from the ADAS Project. In particular, but not by way of
+C      limitation, it must not be:
+C        *  inserted into a managed database structure,
+C        *  redistributed along with a modelling or analysis code,
+C        *  made available on a public website.
+C
+C Permission for OPEN-ADAS data incorporation in non-commercial
+C code/system development for scientific advance will not be
+C unreasonably withheld, but will be subject to written agreement
+C on a case by case basis.
+C
+C The User will indemnify the University of Strathclyde and keep it
+C fully and effectively indemnified against each and every claim made
+C against the University as a result of the User's use of the data.
+C
+C-----------------------------------------------------------------------
