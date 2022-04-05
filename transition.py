@@ -25,11 +25,19 @@ class Transition:
         self.to_loc = to_state.loc
         self.dtype = dtype
         if self.trans_type == 'ionization':
-            self.load_cross_section()
-        if self.trans_type == 'rad-rec':
+            self.load_iz_cross_section()
+        elif self.trans_type == 'rad-rec':
             self.load_rate_data()
+        elif self.trans_type == 'excitation':
+            self.load_ex_cross_section()
 
-    def load_cross_section(self):
+    def load_ex_cross_section(self):
+
+        if self.dtype == 'SunoKato':
+            self.sigma, self.thresh = input.load_sunokato_ex_sigma(
+                self.vgrid, self.from_state, self.to_state, self.T_norm, self.sigma_0, self.from_state.statw)
+
+    def load_iz_cross_section(self):
 
         if self.dtype == 'SunoKato':
             self.sigma, self.thresh = input.load_sunokato_iz_sigma(

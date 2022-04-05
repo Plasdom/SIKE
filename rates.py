@@ -30,12 +30,52 @@ def tbrec_rate(f0, Te, vgrid, dv, eps, statw_ratio, sigma_ion):
 
 
 @jit(nopython=True)
+def ex_rate(f0, vgrid, dv, sigma_ex):
+    f0[np.where(f0 < 0.0)] = 0.0
+    # Compute the excitation rate
+    rate = 0
+    for i in range(len(dv)):
+        rate = rate + 4 * np.pi * dv[i] * \
+            (vgrid[i] ** 3) * f0[i] * sigma_ex[i]
+    return rate
+
+
+@jit(nopython=True)
+def deex_rate(f0, vgrid, dv, eps, statw_ratio, sigma_ex):
+    f0[np.where(f0 < 0.0)] = 0.0
+    # Find the deexcitation cross-section from detailed balance
+    sigma = sigma_deex(sigma_ex, statw_ratio, vgrid, eps)
+    # Compute the deexcitation rate
+    rate = 0
+    for i in range(len(dv)):
+        rate = rate + 4 * np.pi * dv[i] * \
+            (vgrid[i] ** 3) * f0[i] * sigma[i]
+    return rate
+
+
+@jit(nopython=True)
+def sigma_deex(sigma_ex, statw_ratio, vgrid, eps):
+    # Find deexcitation cross-section from detailed balance
+    sigma = np.zeros(len(sigma_ex))
+    for i, vprime in enumerate(vgrid):
+
+        v = np.sqrt(vprime ** 2 + eps)
+
+        # Interpolate sigma_ion to v
+        sigma_interp = interp_val(sigma_ex, vgrid, v)
+
+        sigma[i] = statw_ratio * sigma_interp * \
+            ((v / vprime) ** 2)
+
+    return sigma
+
+
+@jit(nopython=True)
 def sigma_tbrec(sigma_ion, statw_ratio, vgrid, Te, eps):
     # Find 3b-rec cross-section from detailed balance
     sigma_tbrec = np.zeros(len(sigma_ion))
     for i, vprime in enumerate(vgrid):
 
-        # if vprime ** 2 > eps:
         v = np.sqrt(vprime ** 2 + eps)
 
         # Interpolate sigma_ion to v

@@ -37,8 +37,10 @@ class Impurity:
                 iz = int(l.split('\t')[0])
                 statename = l.split('\t')[1]
                 statw = int(l.split('\t')[-1].strip('\n'))
-                self.states.append(transition.State(iz, statename, i, statw))
-                i += 1
+                if iz < self.num_z:
+                    self.states.append(
+                        transition.State(iz, statename, i, statw))
+                    i += 1
         self.tot_states = len(self.states)
 
     def load_transitions(self):
@@ -87,6 +89,16 @@ class Impurity:
                                                                              n_norm=self.skrun.n_norm,
                                                                              t_norm=self.skrun.t_norm,
                                                                              dtype=dtype))
+
+                    if trans_type == 'excitation' and input.COLL_EX_DEEX:
+                        self.ex_transitions.append(transition.Transition('excitation',
+                                                                         self.longname,
+                                                                         from_state,
+                                                                         to_state,
+                                                                         vgrid=self.skrun.vgrid/self.skrun.v_th,
+                                                                         T_norm=self.skrun.T_norm,
+                                                                         sigma_0=self.skrun.sigma_0,
+                                                                         dtype=dtype))
 
     def get_state(self, iz, statename):
         for state in self.states:
@@ -207,22 +219,22 @@ class Impurity:
                         statw_ratio,
                         iz_trans.sigma)
                     # ...loss
-                    row = iz_trans.from_loc
-                    col = iz_trans.to_loc
-                    rate_mat[i][row, col] += K_rec
-                    rate_mat_max[i][row, col] += K_rec_max
-                    # ...gain
                     row = iz_trans.to_loc
                     col = iz_trans.to_loc
                     rate_mat[i][row, col] += -K_rec
                     rate_mat_max[i][row, col] += -K_rec_max
+                    # ...gain
+                    row = iz_trans.from_loc
+                    col = iz_trans.to_loc
+                    rate_mat[i][row, col] += K_rec
+                    rate_mat_max[i][row, col] += K_rec_max
 
             if input.RAD_REC:
                 for radrec_trans in self.radrec_transitions:
 
                     # Radiative recombination
-                    alpha_radrec = radrec_trans.radrec_interp(
-                        Te[i])
+                    alpha_radrec = max(radrec_trans.radrec_interp(
+                        Te[i]), 0.0)
                     # ...loss
                     row = radrec_trans.from_loc
                     col = radrec_trans.from_loc
@@ -233,6 +245,67 @@ class Impurity:
                     col = radrec_trans.from_loc
                     rate_mat[i][row, col] += (ne[i] * alpha_radrec)
                     rate_mat_max[i][row, col] += (ne[i] * alpha_radrec)
+
+            if input.COLL_EX_DEEX:
+                for ex_trans in self.ex_transitions:
+
+                    # Excitation
+                    K_ex = collrate_const * rates.ex_rate(
+                        f0[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        ex_trans.sigma
+                    )
+                    K_ex_max = collrate_const * rates.ex_rate(
+                        f0_max[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        ex_trans.sigma
+                    )
+                    # ...loss
+                    row = ex_trans.from_loc
+                    col = ex_trans.from_loc
+                    rate_mat[i][row, col] += -K_ex
+                    rate_mat_max[i][row, col] += -K_ex_max
+                    # ...gain
+                    row = ex_trans.to_loc
+                    col = ex_trans.from_loc
+                    rate_mat[i][row, col] += K_ex
+                    rate_mat_max[i][row, col] += K_ex_max
+
+                    # Deexcitation
+                    eps = ex_trans.thresh / self.skrun.T_norm
+                    statw_ratio = ex_trans.to_state.statw / ex_trans.from_state.statw
+                    K_deex = collrate_const * rates.deex_rate(
+                        f0[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        eps,
+                        statw_ratio,
+                        ex_trans.sigma
+                    )
+                    K_deex_max = collrate_const * rates.deex_rate(
+                        f0_max[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        eps,
+                        statw_ratio,
+                        ex_trans.sigma
+                    )
+                    # ...loss
+                    row = ex_trans.to_loc
+                    col = ex_trans.to_loc
+                    rate_mat[i][row, col] += -K_deex
+                    rate_mat_max[i][row, col] += -K_deex_max
+                    # ...gain
+                    row = ex_trans.from_loc
+                    col = ex_trans.to_loc
+                    rate_mat[i][row, col] += K_deex
+                    rate_mat_max[i][row, col] += K_deex_max
+
+            # for i,row in enumerate(rate_mat[0]):
+
+                # print(np.sum(np.abs(row)),i,self.states[i].iz,self.states[i].statename)
 
             op_mat[i] = np.linalg.inv(np.identity(
                 self.tot_states) - input.DELTA_T * rate_mat[i])
@@ -329,7 +402,7 @@ class Impurity:
 
     def plot_dens(self, xaxis='normal', plot_kin=True, plot_max=True, plot_saha=False):
         fig, ax = plt.subplots(1)
-        cmap = plt.cm.get_cmap('turbo')
+        cmap = plt.cm.get_cmap('gist_rainbow')
         z_dens, z_dens_max, z_dens_saha = self.get_z_dens()
         min_z = 0
         max_z = self.num_z
@@ -385,6 +458,51 @@ class Impurity:
             z_dens_max[:, z] += self.dens_max[:, state.loc]
             z_dens_saha[:, z] += self.dens_saha[:, state.loc]
         return z_dens, z_dens_max, z_dens_saha
+
+    def get_state_dens(self, all_dens):
+        state_dens = []
+
+        start_loc = 0
+        for z in range(self.num_z):
+            # Get number of states in current z
+            num_states = 0
+            for i, state in enumerate(self.states):
+                if state.iz == z:
+                    num_states += 1
+            end_loc = start_loc + num_states
+            # Extract these densities
+            state_dens.append(all_dens[:, start_loc:end_loc])
+            start_loc = end_loc
+
+        return state_dens
+
+    def plot_atomdist(self, z=0, cells=-1):
+        if isinstance(cells, int):
+            cells = [cells]
+            cell_pref = ['']
+        else:
+            cell_pref = []
+            for i in range(len(cells)):
+                cell_pref.append('Cell ' + str(cells[i]) + ', ')
+
+        fig, ax = plt.subplots(1)
+        allstates_dens = self.get_state_dens(self.dens)
+        for cell in cells:
+            locstate_dens = allstates_dens[z][cell, :]
+
+            for i, cell in enumerate(cells):
+                ax.plot(range(len(locstate_dens)), locstate_dens,
+                        label=cell_pref[i] + 'SOL-KiT $f_0$', color='red',  alpha=1.0-0.2*i)
+                # ax.plot(idx, self.dens[cell, min_z:max_z],
+                #         '--', label=cell_pref[i] + 'SOL-KiT $f_0$', color='red', alpha=1.0-0.2*i)
+                # ax.plot(idx, self.dens_saha[cell, min_z:max_z],
+                #         '--', label=cell_pref[i] + 'Saha equilibrium', color='blue', alpha=1.0-0.2*i)
+        ax.grid()
+        ax.legend()
+        ax.set_yscale('log')
+        ax.set_xlabel('State')
+        ax.set_ylabel('$n_{' + str(z) + ',i' + '}' + ' / n_0$')
+        ax.set_title('Atomic state densities, ' + self.longname + '+' + str(z))
 
     def plot_Zdist(self, cells=-1):
         if isinstance(cells, int):

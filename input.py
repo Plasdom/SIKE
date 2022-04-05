@@ -3,7 +3,7 @@ import os
 from scipy.interpolate import interp1d
 import re
 
-DELTA_T = 1.0e10
+DELTA_T = 1.0e3
 RES_THRESH = 1E-12
 MAX_STEPS = 5e4
 T_SAVE = 1e6
@@ -36,6 +36,96 @@ C_ION_COEFFS = [
     ]
 ]
 C_ION_COEFFS_I = [[10.6], [24.4], [41.4], [64.5, 285], [392.0], [490.0]]
+
+
+def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
+
+    cs_file = os.path.join(
+        'imp_data', 'Carbon', 'sunokato_ex_cs.txt')
+    with open(cs_file) as f:
+        lines = f.readlines()
+        for l in lines[1:]:
+            line_data = l.split('\t')
+            from_iz = int(line_data[0])
+            from_statename = line_data[1]
+            to_iz = from_iz
+            to_statename = line_data[2]
+            if from_state.iz == from_iz and \
+                    from_state.statename == from_statename and \
+                    to_state.iz == to_iz and \
+                    to_state.statename == to_statename:
+                A, B, C, D, E, F, P, Q, X_1 = [
+                    float(x) for x in line_data[3:-2]]
+                V_if = float(line_data[-2])
+                fit_eqn = int(line_data[-1])
+
+    fit_data = {'A': A, 'B': B, 'C': C,
+                'D': D, 'E': E, 'F': F,
+                'P': P, 'Q': Q, 'X_1': X_1,
+                'V_if': V_if}
+
+    if fit_eqn == 6:
+        sigma = sunokato_ex_fit6(fit_data, vgrid, T_norm, sigma_0, g_i)
+    elif fit_eqn == 7:
+        sigma = sunokato_ex_fit7(fit_data, vgrid, T_norm, sigma_0, g_i)
+    elif fit_eqn == 10:
+        sigma = sunokato_ex_fit6(fit_data, vgrid, T_norm, sigma_0, g_i)
+    elif fit_eqn == 11:
+        sigma = sunokato_ex_fit7(fit_data, vgrid, T_norm, sigma_0, g_i)
+
+    return sigma, V_if
+
+
+def sunokato_ex_fit6(fit_data, vgrid, T_norm, sigma_0, g_i):
+
+    A = fit_data['A']
+    B = fit_data['B']
+    C = fit_data['C']
+    D = fit_data['D']
+    E = fit_data['E']
+    V_if = fit_data['V_if']
+
+    sigma = np.zeros(len(vgrid))
+    Egrid = vgrid**2 * T_norm
+    Xgrid = Egrid / V_if
+    for i in range(len(vgrid)):
+        X = Xgrid[i]
+        sigma[i] = A + (B / X) + (C / X**2) + (D / X**3) + E * np.log(X)
+        sigma[i] = 1.1969e-15 * sigma[i] / (g_i * X * V_if)
+
+    # Tidy up and normalise
+    sigma[np.where(Egrid < V_if)] = 0.0
+    sigma[np.where(sigma < 0.0)] = 0.0
+    sigma = sigma / (1e4 * sigma_0)
+
+    return sigma
+
+
+def sunokato_ex_fit7(fit_data, vgrid, T_norm, sigma_0, g_i):
+
+    A = fit_data['A']
+    B = fit_data['B']
+    C = fit_data['C']
+    D = fit_data['D']
+    E = fit_data['E']
+    F = fit_data['F']
+    V_if = fit_data['V_if']
+
+    sigma = np.zeros(len(vgrid))
+    Egrid = vgrid**2 * T_norm
+    Xgrid = Egrid / V_if
+    for i in range(len(vgrid)):
+        X = Xgrid[i]
+        sigma[i] = (A / (X**2)) + (B * np.exp(-F*X)) + (C * np.exp(-2*F*X)
+                                                        ) + (D * np.exp(-3*F*X)) + (E * np.exp(-4*F*X))
+        sigma[i] = 1.1969e-15 * sigma[i] / (g_i * X * V_if)
+
+    # Tidy up and normalise
+    sigma[np.where(Egrid < V_if)] = 0.0
+    sigma[np.where(sigma < 0.0)] = 0.0
+    sigma = sigma / (1e4 * sigma_0)
+
+    return sigma
 
 
 def load_sunokato_iz_sigma(vgrid, from_state, to_state, T_norm, sigma_0):
@@ -113,7 +203,10 @@ def get_adas_statename(line):
     mom = re.search('\(\d\)\d\(', line)
     s = mom[0][1]
     l = lmom(mom[0][3])
-    return shell + ' ' + s + l
+    if shell == '':
+        return s + l
+    else:
+        return shell + ' ' + s + l
 
 
 def load_adas_radrec_rates(imp_name, from_state, to_state, T_norm, n_norm, t_norm):
@@ -174,7 +267,7 @@ def load_adas_radrec_rates(imp_name, from_state, to_state, T_norm, n_norm, t_nor
                                      for r in l.split()[1:]])
                     searching = False
                     break
-    rates = rates * t_norm * n_norm  # Normalise
+    rates = rates * t_norm * n_norm * 1e-6  # Normalise
 
     return rates, Te
 

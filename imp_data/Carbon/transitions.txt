@@ -1,10 +1,10 @@
 type	from_iz	from_state	to_iz	to_state	source
 ionization	0	2s2-2p2 3P	1	2s2-2p 2P	SunoKato
 ionization	1	2s2-2p 2P	2	2s2 1S	SunoKato
-ionization	2	2s2 1S	3	2s 2S	SunoKato
-ionization	3	2s 2S	4	1s2 1S	SunoKato
-ionization	4	1s2 1S	5	1s	SunoKato
-ionization	5	1s	6	BARE	SunoKato
+ionization	2	2s2 1S	3	1s2-2s 2S	SunoKato
+ionization	3	1s2-2s 2S	4	1s2 1S	SunoKato
+ionization	4	1s2 1S	5	1s 2S	SunoKato
+ionization	5	1s 2S	6	1S	SunoKato
 excitation	0	2s2-2p2 3P	0	2s2-2p2 1D	SunoKato
 excitation	0	2s2-2p2 3P	0	2s2-2p2 1S	SunoKato
 excitation	0	2s2-2p2 3P	0	2s-2p3 5S	SunoKato
@@ -17,7 +17,7 @@ excitation	0	2s2-2p2 3P	0	2s2-2p-3p 3S	SunoKato
 excitation	0	2s2-2p2 3P	0	2s2-2p-3p 3P	SunoKato
 excitation	0	2s2-2p2 3P	0	2s2-2p-3p 1D	SunoKato
 excitation	0	2s2-2p2 3P	0	2s2-2p-3p 1S	SunoKato
-excitation	0	2s2-2p2 3P	0	2s2-p3 3P	SunoKato
+excitation	0	2s2-2p2 3P	0	2s-2p3 3P	SunoKato
 excitation	0	2s2-2p2 3P	0	2s2-2p-3d 1D	SunoKato
 excitation	0	2s2-2p2 3P	0	2s2-2p-3d 3F	SunoKato
 excitation	0	2s2-2p2 3P	0	2s2-2p-3d 3D	SunoKato
@@ -33,15 +33,15 @@ excitation	0	2s2-2p2 1D	0	2s2-2p-3s 1P	SunoKato
 excitation	1	2s2-2p 2P	1	2s-2p2 4P	SunoKato
 excitation	1	2s2-2p 2P	1	2s-2p2 2D	SunoKato
 excitation	1	2s2-2p 2P	1	2s-2p2 2S	SunoKato
-excitation	1	2s2-2p 2P	1	2s-2s2 2P	SunoKato
+excitation	1	2s2-2p 2P	1	2s-2p2 2P	SunoKato
 excitation	1	2s2-2p 2P	1	2s2-3s 2S	SunoKato
 excitation	1	2s2-2p 2P	1	2s2-3p 2P	SunoKato
 excitation	1	2s2-2p 2P	1	2s2-3d 2D	SunoKato
 excitation	2	2s2 1S	2	2s-2p 3P	SunoKato
 excitation	2	2s2 1S	2	2s-2p 1P	SunoKato
-excitation	2	2s2 1S	2	2s2 3P	SunoKato
+excitation	2	2s2 1S	2	2p2 3P	SunoKato
 excitation	2	2s2 1S	2	2p2 1D	SunoKato
-excitation	2	2s2 1S	2	2s2 1S	SunoKato
+excitation	2	2s2 1S	2	2p2 1S	SunoKato
 excitation	2	2s2 1S	2	2s-3s 3S	SunoKato
 excitation	2	2s2 1S	2	2s-3s 1S	SunoKato
 excitation	2	2s2 1S	2	2s-3p 1P	SunoKato
@@ -59,39 +59,39 @@ excitation	2	2s-2p 3P	2	2s-3s 1D	SunoKato
 excitation	2	2s-2p 1P	2	2p2 3P	SunoKato
 excitation	2	2s-2p 1P	2	2p2 1D	SunoKato
 excitation	2	2s-2p 1P	2	2p2 1S	SunoKato
-excitation	2	2s2 3P	2	2p2 1D	SunoKato
+excitation	2	2p2 3P	2	2p2 1D	SunoKato
 excitation	2	2p2 3P	2	2p2 1S	SunoKato
 excitation	2	2p2 1D	2	2p2 1S	SunoKato
-excitation	3	2s2 2S	3	2p 2P	SunoKato
-excitation	3	2s2 2S	3	3s 2S	SunoKato
-excitation	3	2s2 2S	3	3p 2P	SunoKato
-excitation	3	2s2 2S	3	3d 2D	SunoKato
-excitation	3	2s2 2S	3	4p 2P	SunoKato
-excitation	3	2p 2P	3	3s 2S	SunoKato
-excitation	3	2p 2P	3	3d 2D	SunoKato
-excitation	3	2p 2P	3	4s 2S	SunoKato
+excitation	3	1s2-2s 2S	3	1s2-2p 2P	SunoKato
+excitation	3	1s2-2s 2S	3	1s2-3s 2S	SunoKato
+excitation	3	1s2-2s 2S	3	1s2-3p 2P	SunoKato
+excitation	3	1s2-2s 2S	3	1s2-3d 2D	SunoKato
+excitation	3	1s2-2s 2S	3	1s2-4p 2P	SunoKato
+excitation	3	1s2-2p 2P	3	1s2-3s 2S	SunoKato
+excitation	3	1s2-2p 2P	3	1s2-3d 2D	SunoKato
+excitation	3	1s2-2p 2P	3	1s2-4s 2S	SunoKato
 excitation	4	1s2 1S	4	1s-2s 3S	SunoKato
 excitation	4	1s2 1S	4	1s-2s 1S	SunoKato
 excitation	4	1s2 1S	4	1s-2p 3P	SunoKato
 excitation	4	1s2 1S	4	1s-2p 1P	SunoKato
 excitation	4	1s2 1S	4	1s-3d 3D	SunoKato
 excitation	4	1s2 1S	4	1s-3p 1P	SunoKato
-excitation	4	1s2-2s 3S	4	1s-2s 1S	SunoKato
-excitation	4	1s2-2s 3S	4	1s-2p 3P	SunoKato
-excitation	4	1s2-2s 3S	4	1s-2p 1P	SunoKato
-excitation	4	1s2-2s 3S	4	1s-3p 3P	SunoKato
-excitation	4	1s2-2s 1S	4	1s-2p 3P	SunoKato
-excitation	4	1s2-2s 1S	4	1s-2p 1P	SunoKato
+excitation	4	1s-2s 3S	4	1s-2s 1S	SunoKato
+excitation	4	1s-2s 3S	4	1s-2p 3P	SunoKato
+excitation	4	1s-2s 3S	4	1s-2p 1P	SunoKato
+excitation	4	1s-2s 3S	4	1s-3p 3P	SunoKato
+excitation	4	1s-2s 1S	4	1s-2p 3P	SunoKato
+excitation	4	1s-2s 1S	4	1s-2p 1P	SunoKato
 excitation	4	1s-2p 3P	4	1s-2p 1P	SunoKato
 excitation	4	1s-2p 3P	4	1s-3s 3S	SunoKato
-excitation	5	1s	5	2s	SunoKato
-excitation	5	1s	5	2p	SunoKato
-excitation	5	1s	5	3s 2S	SunoKato
-excitation	5	1s	5	3p 2P	SunoKato
-excitation	5	1s	5	3d 2D	SunoKato
-excitation	5	1s	5	4s 2S	SunoKato
-excitation	5	1s	5	4p 2P	SunoKato
-excitation	5	1s	5	5p	SunoKato
+excitation	5	1s 2S 	5	2s 2S	SunoKato
+excitation	5	1s 2S	5	2p 2P	SunoKato
+excitation	5	1s 2S	5	3s 2S	SunoKato
+excitation	5	1s 2S	5	3p 2P	SunoKato
+excitation	5	1s 2S	5	3d 2D	SunoKato
+excitation	5	1s 2S	5	4s 2S	SunoKato
+excitation	5	1s 2S	5	4p 2P	SunoKato
+excitation	5	1s 2S	5	5p 2P	SunoKato
 rad-rec	1	2s2-2p 2P	0	2s2-2p2 3P	ADAS
 rad-rec	1	2s2-2p 2P	0	2s2-2p2 1D	ADAS
 rad-rec	1	2s2-2p 2P	0	2s2-2p2 1S	ADAS
@@ -210,18 +210,18 @@ rad-rec	5	1s 2S	4	1s-5f 3F	ADAS
 rad-rec	5	1s 2S	4	1s-5f 1F	ADAS
 rad-rec	5	1s 2S	4	1s-5g 3G	ADAS
 rad-rec	5	1s 2S	4	1s-5p 1P	ADAS
-rad-rec	6	BARE	5	1s 2S	ADAS
-rad-rec	6	BARE	5	2s 2S	ADAS
-rad-rec	6	BARE	5	2p 2P	ADAS
-rad-rec	6	BARE	5	3s 2S	ADAS
-rad-rec	6	BARE	5	3p 2P	ADAS
-rad-rec	6	BARE	5	3d 2D	ADAS
-rad-rec	6	BARE	5	4s 2S	ADAS
-rad-rec	6	BARE	5	4p 2P	ADAS
-rad-rec	6	BARE	5	4d 2D	ADAS
-rad-rec	6	BARE	5	4f 2F	ADAS
-rad-rec	6	BARE	5	5s 2S	ADAS
-rad-rec	6	BARE	5	5p 2P	ADAS
-rad-rec	6	BARE	5	5d 2D	ADAS
-rad-rec	6	BARE	5	5f 2F	ADAS
-rad-rec	6	BARE	5	5g 2G	ADAS
+rad-rec	6	1S	5	1s 2S	ADAS
+rad-rec	6	1S	5	2s 2S	ADAS
+rad-rec	6	1S	5	2p 2P	ADAS
+rad-rec	6	1S	5	3s 2S	ADAS
+rad-rec	6	1S	5	3p 2P	ADAS
+rad-rec	6	1S	5	3d 2D	ADAS
+rad-rec	6	1S	5	4s 2S	ADAS
+rad-rec	6	1S	5	4p 2P	ADAS
+rad-rec	6	1S	5	4d 2D	ADAS
+rad-rec	6	1S	5	4f 2F	ADAS
+rad-rec	6	1S	5	5s 2S	ADAS
+rad-rec	6	1S	5	5p 2P	ADAS
+rad-rec	6	1S	5	5d 2D	ADAS
+rad-rec	6	1S	5	5f 2F	ADAS
+rad-rec	6	1S	5	5g 2G	ADAS
