@@ -6,6 +6,7 @@ import sk_plotting_functions as spf
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import transition
+import pandas as pd
 
 
 class Impurity:
@@ -80,8 +81,8 @@ class Impurity:
                                                                          sigma_0=self.skrun.sigma_0,
                                                                          dtype=dtype))
 
-                    if trans_type == 'rad-rec' and input.RAD_REC:
-                        self.radrec_transitions.append(transition.Transition('rad-rec',
+                    if trans_type == 'radrec' and input.RAD_REC:
+                        self.radrec_transitions.append(transition.Transition('radrec',
                                                                              self.longname,
                                                                              from_state,
                                                                              to_state,
@@ -99,6 +100,33 @@ class Impurity:
                                                                          T_norm=self.skrun.T_norm,
                                                                          sigma_0=self.skrun.sigma_0,
                                                                          dtype=dtype))
+
+        if input.SPONT_EM:
+            self.load_spontem_transitions()
+
+    def load_spontem_transitions(self):
+        # Load spontem file data
+        spontem_file = os.path.join(
+            'imp_data', self.longname, 'nist_spontem.txt')
+        spontem_data = pd.read_csv(spontem_file, sep='\t')
+
+        # For each z, loop through all permutations and find matching transitions
+        for z in range(self.num_z):
+            for from_state in self.states:
+                for to_state in self.states:
+                    if (from_state.iz == to_state.iz) and from_state.statename != to_state.statename:
+                        matched_transitions = spontem_data[(spontem_data['iz'] == z) & (spontem_data['LowerstatenameImpZeff'] == to_state.statename) & (
+                            spontem_data['UpperstatenameImpZeff'] == from_state.statename)]
+                        if len(matched_transitions['iz'].values) > 0:
+                            # Add a transition for the matched states
+                            ls_avg_rate = pd.to_numeric(
+                                matched_transitions['rate(s-1)']).mean()
+                            self.spontem_transitions.append(transition.Transition('spontem',
+                                                                                  self.longname,
+                                                                                  from_state,
+                                                                                  to_state,
+                                                                                  t_norm=self.skrun.t_norm,
+                                                                                  spontem_rate=ls_avg_rate))
 
     def get_state(self, iz, statename):
         for state in self.states:
@@ -303,9 +331,21 @@ class Impurity:
                     rate_mat[i][row, col] += K_deex
                     rate_mat_max[i][row, col] += K_deex_max
 
-            # for i,row in enumerate(rate_mat[0]):
+            if input.SPONT_EM:
+                for em_trans in self.spontem_transitions:
 
-                # print(np.sum(np.abs(row)),i,self.states[i].iz,self.states[i].statename)
+                    # Spontaneous emission
+                    beta_spontem = em_trans.spontem_rate
+                    # ...loss
+                    row = em_trans.from_loc
+                    col = em_trans.from_loc
+                    rate_mat[i][row, col] += -beta_spontem
+                    rate_mat_max[i][row, col] += -beta_spontem
+                    # ...gain
+                    row = em_trans.to_loc
+                    col = em_trans.from_loc
+                    rate_mat[i][row, col] += beta_spontem
+                    rate_mat_max[i][row, col] += beta_spontem
 
             op_mat[i] = np.linalg.inv(np.identity(
                 self.tot_states) - input.DELTA_T * rate_mat[i])

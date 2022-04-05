@@ -3,16 +3,16 @@ import os
 from scipy.interpolate import interp1d
 import re
 
-DELTA_T = 1.0e3
+DELTA_T = 1.0e5
 RES_THRESH = 1E-12
-MAX_STEPS = 5e4
+MAX_STEPS = 1e4
 T_SAVE = 1e6
 FRAC_IMP_DENS = 0.01
 COLL_ION_REC = True
 RAD_REC = True
-COLL_EX_DEEX = False
+COLL_EX_DEEX = True
 SPONT_EM = False
-GS_ONLY = True
+GS_ONLY = False
 STATW_W = np.ones(11)
 C_ION_COEFFS = [
     [
@@ -198,7 +198,7 @@ def lmom(l):
 
 def get_adas_statename(line):
     fields = line.split('    ')
-    shell = fields[2][1:].lower().replace(' ', '-')
+    shell = fields[2][1:].lower().replace(' ', '')
     shell = re.sub('[spdfg]1', adas_rm1, shell)
     mom = re.search('\(\d\)\d\(', line)
     s = mom[0][1]

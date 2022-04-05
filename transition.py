@@ -11,7 +11,7 @@ class State:
 
 
 class Transition:
-    def __init__(self, trans_type, imp_name, from_state, to_state, vgrid=None, T_norm=None, sigma_0=None, n_norm=None, t_norm=None, dtype=None):
+    def __init__(self, trans_type, imp_name, from_state, to_state, vgrid=None, T_norm=None, sigma_0=None, n_norm=None, t_norm=None, dtype=None, spontem_rate=None):
         self.trans_type = trans_type
         self.imp_name = imp_name
         self.vgrid = vgrid
@@ -26,10 +26,12 @@ class Transition:
         self.dtype = dtype
         if self.trans_type == 'ionization':
             self.load_iz_cross_section()
-        elif self.trans_type == 'rad-rec':
+        elif self.trans_type == 'radrec':
             self.load_rate_data()
         elif self.trans_type == 'excitation':
             self.load_ex_cross_section()
+        elif self.trans_type == 'spontem':
+            self.spontem_rate = spontem_rate*t_norm
 
     def load_ex_cross_section(self):
 
