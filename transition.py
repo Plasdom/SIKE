@@ -3,11 +3,12 @@ from scipy import interpolate
 
 
 class State:
-    def __init__(self, iz_stage, statename, loc, statw=1):
+    def __init__(self, iz_stage, statename, loc, statw=1, energy=0):
         self.iz = iz_stage
         self.statename = statename
         self.loc = loc
-        self.statw = statw  # TODO: Implement proper statistical weights
+        self.statw = statw
+        self.energy = energy
 
 
 class Transition:

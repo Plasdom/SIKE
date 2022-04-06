@@ -37,10 +37,11 @@ class Impurity:
             for l in lines[1:]:
                 iz = int(l.split('\t')[0])
                 statename = l.split('\t')[1]
-                statw = int(l.split('\t')[-1].strip('\n'))
+                statw = int(l.split('\t')[-2].strip('\n'))
+                energy = float(l.split('\t')[-1].strip('\n'))
                 if iz < self.num_z:
                     self.states.append(
-                        transition.State(iz, statename, i, statw))
+                        transition.State(iz, statename, i, statw, energy))
                     i += 1
         self.tot_states = len(self.states)
 
@@ -51,8 +52,12 @@ class Impurity:
         self.radrec_transitions = []
         self.spontem_transitions = []
 
-        trans_file = os.path.join(
-            'imp_data', self.longname, 'transitions.txt')
+        if input.GS_ONLY_RADREC:
+            trans_file = os.path.join(
+                'imp_data', self.longname, 'transitions_gsradrec.txt')
+        else:
+            trans_file = os.path.join(
+                'imp_data', self.longname, 'transitions.txt')
         with open(trans_file) as f:
             lines = f.readlines()
             for l in lines[1:]:
@@ -303,7 +308,7 @@ class Impurity:
 
                     # Deexcitation
                     eps = ex_trans.thresh / self.skrun.T_norm
-                    statw_ratio = ex_trans.to_state.statw / ex_trans.from_state.statw
+                    statw_ratio = ex_trans.from_state.statw / ex_trans.to_state.statw
                     K_deex = collrate_const * rates.deex_rate(
                         f0[i, :],
                         self.skrun.vgrid/self.skrun.v_th,
@@ -424,13 +429,38 @@ class Impurity:
                 self.Zeff_saha[i] = self.Zeff_saha[i] / \
                     self.skrun.data['DENSITY'][i]
 
-    def plot_Zeff(self):
+    def get_Zavg(self):
+
+        self.Zavg = np.zeros(self.skrun.num_x)
+        self.Zavg_max = np.zeros(self.skrun.num_x)
+        self.Zavg_saha = np.zeros(self.skrun.num_x)
+        dens_tot = np.sum(self.dens, 1)
+        dens_tot_max = np.sum(self.dens_max, 1)
+        dens_tot_saha = np.sum(self.dens_saha, 1)
+
+        for i in range(self.skrun.num_x):
+
+            for k, state in enumerate(self.states):
+                z = state.iz
+                k = state.loc
+                self.Zavg[i] += self.dens[i, k] * float(z)
+                self.Zavg_max[i] += self.dens_max[i, k] * float(z)
+                self.Zavg_saha[i] += self.dens_saha[i, k] * float(z)
+            if dens_tot[i] > 0:
+                self.Zavg[i] = self.Zavg[i] / dens_tot[i]
+            if dens_tot_max[i] > 0:
+                self.Zavg_max[i] = self.Zavg_max[i] / dens_tot_max[i]
+            if dens_tot_saha[i] > 0:
+                self.Zavg_saha[i] = self.Zavg_saha[i] / dens_tot_saha[i]
+
+    def plot_Zeff(self, plot_saha=False):
         self.get_Zeff()
         fig, ax = plt.subplots(1)
         ax.plot(self.skrun.xgrid[:-1], self.Zeff_max[:-1],
                 label='Maxwellian $f_0$', color='black')
-        ax.plot(self.skrun.xgrid[:-1], self.Zeff_saha[:-1], '--',
-                label='Saha equilibrium', color='blue')
+        if plot_saha:
+            ax.plot(self.skrun.xgrid[:-1], self.Zeff_saha[:-1], '--',
+                    label='Saha equilibrium', color='blue')
         ax.plot(self.skrun.xgrid[:-1], self.Zeff[:-1], '--',
                 label='SOL-KiT $f_0$', color='red')
         ax.grid()
@@ -438,6 +468,23 @@ class Impurity:
         ax.set_xlabel('x [m]')
         ax.set_ylabel('$Z_{eff}=\Sigma_i Z^2_i n_{Z}^i / n_e$')
         ax.set_title('$Z_{eff}$ profile, ' + self.longname)
+        # ax.set_xlim([10.4, 11.8])
+
+    def plot_Zavg(self, plot_saha=False):
+        self.get_Zavg()
+        fig, ax = plt.subplots(1)
+        ax.plot(self.skrun.xgrid[:-1], self.Zavg_max[:-1],
+                label='Maxwellian $f_0$', color='black')
+        if plot_saha:
+            ax.plot(self.skrun.xgrid[:-1], self.Zavg_saha[:-1], '--',
+                    label='Saha equilibrium', color='blue')
+        ax.plot(self.skrun.xgrid[:-1], self.Zavg[:-1], '--',
+                label='SOL-KiT $f_0$', color='red')
+        ax.grid()
+        ax.legend()
+        ax.set_xlabel('x [m]')
+        ax.set_ylabel('$Z_{avg}=\Sigma_i Z_i n_{Z}^i / n_Z^{tot}$')
+        ax.set_title('$Z_{avg}$ profile, ' + self.longname)
         # ax.set_xlim([10.4, 11.8])
 
     def plot_dens(self, xaxis='normal', plot_kin=True, plot_max=True, plot_saha=False):
@@ -516,7 +563,37 @@ class Impurity:
 
         return state_dens
 
-    def plot_atomdist(self, z=0, cells=-1):
+    def gnormalise(self, dens, z):
+        norm_dens = dens.copy()
+        i = 0
+        for state in self.states:
+            if state.iz == z:
+                norm_dens[i] = norm_dens[i] / state.statw
+                i += 1
+        return norm_dens
+
+    def get_boltzmann_dist(self, locstate_dens, z, cell, gnormalise):
+        boltz_dens = np.zeros(len(locstate_dens))
+        ex_sum = 0
+        Te = self.skrun.data['TEMPERATURE'][cell] * self.skrun.T_norm
+        n_tot = np.sum(locstate_dens)
+        for state in self.states:
+            if state.iz == z:
+                ex_sum += state.statw * np.exp(-state.energy/Te)
+        i = 0
+        for state in self.states:
+            if state.iz == z:
+                if gnormalise:
+                    boltz_dens[i] = n_tot * \
+                        np.exp(-state.energy/Te) / ex_sum
+                else:
+                    boltz_dens[i] = n_tot * state.statw * \
+                        np.exp(-state.energy/Te) / ex_sum
+                i += 1
+
+        return boltz_dens
+
+    def plot_atomdist(self, z=0, cells=-1, gnormalise=False):
         if isinstance(cells, int):
             cells = [cells]
             cell_pref = ['']
@@ -526,13 +603,19 @@ class Impurity:
                 cell_pref.append('Cell ' + str(cells[i]) + ', ')
 
         fig, ax = plt.subplots(1)
-        allstates_dens = self.get_state_dens(self.dens)
+        allstates_dens = self.get_state_dens(self.dens_max)
         for cell in cells:
             locstate_dens = allstates_dens[z][cell, :]
+            boltz_dens = self.get_boltzmann_dist(
+                locstate_dens, z, cells, gnormalise)
+            if gnormalise:
+                locstate_dens = self.gnormalise(locstate_dens, z)
 
             for i, cell in enumerate(cells):
                 ax.plot(range(len(locstate_dens)), locstate_dens,
-                        label=cell_pref[i] + 'SOL-KiT $f_0$', color='red',  alpha=1.0-0.2*i)
+                        label=cell_pref[i] + 'Maxwellian $f_0$', color='red',  alpha=1.0-0.2*i)
+                ax.plot(range(len(locstate_dens)), boltz_dens, '--',
+                        label=cell_pref[i] + 'Boltzmann distribution', color='blue',  alpha=1.0-0.2*i)
                 # ax.plot(idx, self.dens[cell, min_z:max_z],
                 #         '--', label=cell_pref[i] + 'SOL-KiT $f_0$', color='red', alpha=1.0-0.2*i)
                 # ax.plot(idx, self.dens_saha[cell, min_z:max_z],

@@ -11,8 +11,9 @@ FRAC_IMP_DENS = 0.01
 COLL_ION_REC = True
 RAD_REC = True
 COLL_EX_DEEX = True
-SPONT_EM = False
+SPONT_EM = True
 GS_ONLY = False
+GS_ONLY_RADREC = False
 STATW_W = np.ones(11)
 C_ION_COEFFS = [
     [
@@ -58,7 +59,7 @@ def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
                     float(x) for x in line_data[3:-2]]
                 V_if = float(line_data[-2])
                 fit_eqn = int(line_data[-1])
-
+    V_if = to_state.energy - from_state.energy
     fit_data = {'A': A, 'B': B, 'C': C,
                 'D': D, 'E': E, 'F': F,
                 'P': P, 'Q': Q, 'X_1': X_1,
