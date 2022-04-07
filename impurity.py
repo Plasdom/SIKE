@@ -487,10 +487,20 @@ class Impurity:
         ax.set_title('$Z_{avg}$ profile, ' + self.longname)
         # ax.set_xlim([10.4, 11.8])
 
-    def plot_dens(self, xaxis='normal', plot_kin=True, plot_max=True, plot_saha=False):
+    def plot_dens(self, xaxis='normal', plot_kin=True, plot_max=True, plot_saha=False, normalise_dens=False):
         fig, ax = plt.subplots(1)
         cmap = plt.cm.get_cmap('gist_rainbow')
         z_dens, z_dens_max, z_dens_saha = self.get_z_dens()
+        if normalise_dens:
+            for i in range(self.skrun.num_x):
+                z_dens[i, :] = z_dens[i, :] / np.sum(z_dens[i, :])
+                z_dens_max[i, :] = z_dens_max[i, :] / np.sum(z_dens_max[i, :])
+                z_dens_saha[i, :] = z_dens_saha[i, :] / \
+                    np.sum(z_dens_saha[i, :])
+        else:
+            z_dens = z_dens * self.skrun.n_norm
+            z_dens_max = z_dens_max * self.skrun.n_norm
+            z_dens_saha = z_dens_saha * self.skrun.n_norm
         min_z = 0
         max_z = self.num_z
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(
@@ -506,14 +516,11 @@ class Impurity:
             ax.set_xscale('log')
         for z in range(min_z, max_z):
             if plot_kin:
-                ax.plot(x, z_dens[:-1, z] / np.sum(z_dens[:-1, :], 1),
-                        '--', color=sm.to_rgba(z))
+                ax.plot(x, z_dens[:-1, z], '--', color=sm.to_rgba(z))
             if plot_max:
-                ax.plot(x, z_dens_max[:-1, z] / np.sum(z_dens_max[:-1, :], 1),
-                        color=sm.to_rgba(z))
+                ax.plot(x, z_dens_max[:-1, z], color=sm.to_rgba(z))
             if plot_saha:
-                ax.plot(
-                    x, z_dens_saha[:-1, z] / np.sum(z_dens_saha[:-1, :], 1), '-.', color=sm.to_rgba(z))
+                ax.plot(x, z_dens_saha[:-1, z], '-.', color=sm.to_rgba(z))
             legend_labels.append('$Z=$' + str(z))
             legend_lines.append(Line2D([0], [0], color=sm.to_rgba(z)))
         if plot_max:
@@ -532,7 +539,10 @@ class Impurity:
             legend_labels.append('Saha equilibrium')
         ax.legend(legend_lines, legend_labels)
         ax.grid()
-        ax.set_ylabel('$n_Z / n_Z^{tot}$')
+        if normalise_dens:
+            ax.set_ylabel('$n_Z / n_Z^{tot}$')
+        else:
+            ax.set_ylabel('$n_Z$')
         ax.set_title('$n_Z$ profiles, ' + self.longname)
 
     def get_z_dens(self):
@@ -626,6 +636,186 @@ class Impurity:
         ax.set_xlabel('State')
         ax.set_ylabel('$n_{' + str(z) + ',i' + '}' + ' / n_0$')
         ax.set_title('Atomic state densities, ' + self.longname + '+' + str(z))
+
+    def get_radrec_E(self, radrec_trans):
+        for iz_trans in self.iz_transitions:
+            if iz_trans.from_state.iz == radrec_trans.to_state.iz and iz_trans.to_state.iz == radrec_trans.from_state.iz:
+                eps = iz_trans.thresh - radrec_trans.to_state.energy
+
+        return eps
+
+    def get_radrec_E_rates(self):
+        Te = self.skrun.data['TEMPERATURE']
+        ne = self.skrun.data['DENSITY']
+        radrec_E_rates = np.zeros(self.skrun.num_x)
+        radrec_E_rates_max = np.zeros(self.skrun.num_x)
+
+        # Calculate rad-rec rates
+        for i in range(self.skrun.num_x):
+            if input.RAD_REC:
+                for radrec_trans in self.radrec_transitions:
+                    alpha_radrec = max(radrec_trans.radrec_interp(
+                        Te[i]), 0.0)
+                    eps = self.get_radrec_E(radrec_trans) * spf.el_charge
+                    radrec_E_rates[i] += eps * self.skrun.n_norm * alpha_radrec * ne[i] * \
+                        self.dens[i, radrec_trans.from_loc] / self.skrun.t_norm
+                    radrec_E_rates_max[i] += eps * self.skrun.n_norm * alpha_radrec * ne[i] * \
+                        self.dens_max[i, radrec_trans.from_loc] / \
+                        self.skrun.t_norm
+
+        return radrec_E_rates*1e-6, radrec_E_rates_max*1e-6
+
+    def get_ex_E_rates(self):
+
+        collrate_const = self.skrun.n_norm * self.skrun.v_th * \
+            self.skrun.sigma_0 * self.skrun.t_norm
+
+        Te = self.skrun.data['TEMPERATURE']
+        ne = self.skrun.data['DENSITY']
+        f0 = np.transpose(self.skrun.data['DIST_F'][0])
+        f0 = f0[:, :]
+        f0_max = get_maxwellians(
+            self.skrun.num_x, ne, Te, self.skrun.vgrid, self.skrun.v_th, self.skrun.num_v)
+
+        ex_E_rates = np.zeros(self.skrun.num_x)
+        ex_E_rates_max = np.zeros(self.skrun.num_x)
+
+        # Calculate collisional excitation rates
+        for i in range(self.skrun.num_x):
+            if input.COLL_EX_DEEX:
+                for ex_trans in self.ex_transitions:
+                    K_ex = collrate_const * rates.ex_rate(
+                        f0[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        ex_trans.sigma
+                    )
+                    K_ex_max = collrate_const * rates.ex_rate(
+                        f0_max[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        ex_trans.sigma
+                    )
+                    eps = ex_trans.thresh * spf.el_charge
+                    ex_E_rates[i] += eps * self.skrun.n_norm * K_ex * \
+                        self.dens[i, ex_trans.from_loc] / self.skrun.t_norm
+                    ex_E_rates_max[i] += eps * self.skrun.n_norm * K_ex_max * \
+                        self.dens_max[i, ex_trans.from_loc] / self.skrun.t_norm
+
+        return ex_E_rates*1e-6, ex_E_rates_max*1e-6
+
+    def get_deex_E_rates(self):
+
+        collrate_const = self.skrun.n_norm * self.skrun.v_th * \
+            self.skrun.sigma_0 * self.skrun.t_norm
+
+        Te = self.skrun.data['TEMPERATURE']
+        ne = self.skrun.data['DENSITY']
+        f0 = np.transpose(self.skrun.data['DIST_F'][0])
+        f0 = f0[:, :]
+        f0_max = get_maxwellians(
+            self.skrun.num_x, ne, Te, self.skrun.vgrid, self.skrun.v_th, self.skrun.num_v)
+
+        deex_E_rates = np.zeros(self.skrun.num_x)
+        deex_E_rates_max = np.zeros(self.skrun.num_x)
+
+        # Calculate collisional deexcitation rates
+        for i in range(self.skrun.num_x):
+            if input.COLL_EX_DEEX:
+                for ex_trans in self.ex_transitions:
+                    eps = ex_trans.thresh / self.skrun.T_norm
+                    statw_ratio = ex_trans.from_state.statw / ex_trans.to_state.statw
+                    K_deex = collrate_const * rates.deex_rate(
+                        f0[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        eps,
+                        statw_ratio,
+                        ex_trans.sigma
+                    )
+                    K_deex_max = collrate_const * rates.deex_rate(
+                        f0_max[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        eps,
+                        statw_ratio,
+                        ex_trans.sigma
+                    )
+                    eps = ex_trans.thresh * spf.el_charge
+                    deex_E_rates[i] += eps * self.skrun.n_norm * K_deex * \
+                        self.dens[i, ex_trans.to_loc] / self.skrun.t_norm
+                    deex_E_rates_max[i] += eps * self.skrun.n_norm * K_deex_max * \
+                        self.dens_max[i, ex_trans.to_loc] / \
+                        self.skrun.t_norm
+
+        return deex_E_rates*1e-6, deex_E_rates_max*1e-6
+
+    def get_spontem_E_rates(self):
+        Te = self.skrun.data['TEMPERATURE']
+        ne = self.skrun.data['DENSITY']
+        spontem_E_rates = np.zeros(self.skrun.num_x)
+        spontem_E_rates_max = np.zeros(self.skrun.num_x)
+        # for em_trans in self.spontem_transitions:
+        #     beta_spontem = em_trans.spontem_rate
+        #     print(em_trans.from_state.iz, em_trans.from_state.statename,
+        #           em_trans.to_state.statename, beta_spontem)
+
+        # Calculate spontaneous emission rates
+        for i in range(self.skrun.num_x):
+            if input.SPONT_EM:
+                for em_trans in self.spontem_transitions:
+
+                    beta_spontem = em_trans.spontem_rate
+                    eps = (em_trans.from_state.energy -
+                           em_trans.to_state.energy) * spf.el_charge
+                    spontem_E_rates[i] += eps * self.skrun.n_norm * beta_spontem * \
+                        self.dens[i, em_trans.from_loc] / self.skrun.t_norm
+                    spontem_E_rates_max[i] += eps * self.skrun.n_norm * beta_spontem * \
+                        self.dens_max[i, em_trans.from_loc] / \
+                        self.skrun.t_norm
+
+        return spontem_E_rates*1e-6, spontem_E_rates_max*1e-6
+
+    def plot_radiation(self):
+
+        radrec_E_rates, radrec_E_rates_max = self.get_radrec_E_rates()
+        spontem_E_rates, spontem_E_rates_max = self.get_spontem_E_rates()
+        ex_E_rates, ex_E_rates_max = self.get_ex_E_rates()
+        deex_E_rates, deex_E_rates_max = self.get_deex_E_rates()
+
+        fig, ax = plt.subplots(1)
+
+        ax.plot(self.skrun.xgrid, radrec_E_rates_max, '-',
+                color='blue', label='rad-rec (Max)')
+        ax.plot(self.skrun.xgrid, radrec_E_rates, '--',
+                color='blue', label='rad-rec (SK)')
+        ax.plot(self.skrun.xgrid, spontem_E_rates_max, '-',
+                color='red', label='spont-em (Max)')
+        ax.plot(self.skrun.xgrid, spontem_E_rates, '--',
+                color='red', label='spont-em (SK)')
+        # ax.plot(self.skrun.xgrid, ex_E_rates_max, '-',
+        #         color='green', label='ex (Max)')
+        # ax.plot(self.skrun.xgrid, deex_E_rates_max, '-',
+        #         color='orange', label='deex (Max)')
+        # ax.plot(self.skrun.xgrid, ex_E_rates_max - deex_E_rates_max, '-',
+        #         color='orange', label='deex (Max)')
+        # ax.plot(self.skrun.xgrid, radrec_E_rates_max + spontem_E_rates_max,
+        #         '-', color = 'black', label = 'total (Max)')
+        # ax.plot(self.skrun.xgrid, radrec_E_rates + spontem_E_rates,
+        #         '--', color = 'black', label = 'total (SK)')
+
+        q_radrec = np.sum(self.skrun.dxc * radrec_E_rates)
+        q_radrec_max = np.sum(self.skrun.dxc * radrec_E_rates_max)
+        q_spontem = np.sum(self.skrun.dxc * spontem_E_rates)
+        q_spontem_max = np.sum(self.skrun.dxc * spontem_E_rates_max)
+        print('q_radrec = ', q_radrec)
+        print('q_radrec_max = ', q_radrec_max)
+        print('q_spontem = ', q_spontem)
+        print('q_spontem_max = ', q_spontem_max)
+
+        ax.legend()
+        ax.set_xlabel('x [m]')
+        ax.set_ylabel('Radiatiative power loss [MWm$^{-3}$]')
 
     def plot_Zdist(self, cells=-1):
         if isinstance(cells, int):
