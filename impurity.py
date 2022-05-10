@@ -5,8 +5,10 @@ import os
 import sk_plotting_functions as spf
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from scipy import interpolate
 import transition
 import pandas as pd
+import aurora
 
 
 class Impurity:
@@ -808,6 +810,55 @@ class Impurity:
 
         return spontem_E_rates, spontem_E_rates_max
 
+    def get_ion_rates(self, per_z=False):
+        collrate_const = self.skrun.n_norm * self.skrun.v_th * \
+            self.skrun.sigma_0 * self.skrun.t_norm
+
+        Te = self.skrun.data['TEMPERATURE']
+        ne = self.skrun.data['DENSITY']
+        f0 = np.transpose(self.skrun.data['DIST_F'][0])
+        f0 = f0[:, :]
+        f0_max = get_maxwellians(
+            self.skrun.num_x, ne, Te, self.skrun.vgrid, self.skrun.v_th, self.skrun.num_v)
+        if per_z:
+            ion_rates = np.zeros((self.skrun.num_x, self.num_z))
+            ion_rates_max = np.zeros((self.skrun.num_x, self.num_z))
+        else:
+            ion_rates = np.zeros(self.skrun.num_x)
+            ion_rates_max = np.zeros(self.skrun.num_x)
+
+        # Calculate collisional excitation rates
+        for i in range(self.skrun.num_x):
+            if input.COLL_ION_REC:
+                for iz_trans in self.iz_transitions:
+                    K_ion = collrate_const * rates.ex_rate(
+                        f0[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        iz_trans.sigma
+                    )
+                    K_ion_max = collrate_const * rates.ex_rate(
+                        f0_max[i, :],
+                        self.skrun.vgrid/self.skrun.v_th,
+                        self.skrun.dvc/self.skrun.v_th,
+                        iz_trans.sigma
+                    )
+                    # eps = ex_trans.thresh * spf.el_charge
+                    rate = self.skrun.n_norm * K_ion * \
+                        self.dens[i, iz_trans.from_loc] / self.skrun.t_norm
+                    rate_max = self.skrun.n_norm * K_ion_max * \
+                        self.dens_max[i, iz_trans.from_loc] / \
+                        self.skrun.t_norm
+                    if per_z:
+                        z = iz_trans.from_state.iz
+                        ion_rates[i, z] += rate
+                        ion_rates_max[i, z] += rate_max
+                    else:
+                        ion_rates[i] += rate
+                        ion_rates_max[i] += rate_max
+
+        return ion_rates, ion_rates_max
+
     def get_PLT(self):
         spontem_E_rates, spontem_E_rates_max = self.get_spontem_E_rates(
             per_z=True)
@@ -826,34 +877,98 @@ class Impurity:
             eff_PLT[:] += (PLT[:, z] * z_dens[:, z]) / np.sum(z_dens, 1)
             eff_PLT_max[:] += (PLT_max[:, z] *
                                z_dens_max[:, z]) / np.sum(z_dens, 1)
-            PLT[z_dens[:, z] < 1e-16] = np.nan
-            PLT_max[z_dens_max[:, z] < 1e-16] = np.nan
+            # PLT[z_dens[:, z] < 1e-16] = np.nan
+            # PLT_max[z_dens_max[:, z] < 1e-16] = np.nan
 
         return PLT, PLT_max, eff_PLT, eff_PLT_max
 
-    def plot_PLT(self):
+    def get_adas_PLT(self):
+        if self.name == 'C':
+            adas_plt_file = aurora.adas_file('imp_data/Carbon/plt96_c.dat')
+
+        # Interpolate adas data to skrun profile
+        plt_interp = np.zeros([self.skrun.num_x, self.num_z-1])
+        for z in range(self.num_z-1):
+            adas_file_interp = interpolate.interp2d(
+                adas_plt_file.logNe, adas_plt_file.logT, adas_plt_file.data[z], kind='cubic')
+            for i in range(self.skrun.num_x):
+                log_ne = np.log10(
+                    1e-6 * (self.skrun.data['DENSITY'][i] * self.skrun.n_norm))
+                log_Te = np.log10(
+                    (self.skrun.data['TEMPERATURE'][i] * self.skrun.T_norm))
+                interp_result = adas_file_interp(log_ne, log_Te)
+                plt_interp[i, z] = 1e-6 * \
+                    (10 ** interp_result[0])
+
+        # Caluclate effective PLT
+        z_dens, z_dens_max, _ = self.get_z_dens()
+        adas_eff_plt_max = np.zeros(self.skrun.num_x)
+        adas_eff_plt = np.zeros(self.skrun.num_x)
+        for z in range(self.num_z-1):
+            adas_eff_plt_max[:] += (plt_interp[:, z] *
+                                    z_dens_max[:, z]) / np.sum(z_dens, 1)
+            adas_eff_plt[:] += (plt_interp[:, z] *
+                                z_dens[:, z]) / np.sum(z_dens, 1)
+
+        return plt_interp, adas_eff_plt_max, adas_eff_plt
+
+    def plot_PLT(self, compare_adas=False, plot_sk=True, plot_max=True, plot_stages=False):
         fig, ax = plt.subplots(1)
 
         PLT, PLT_max, eff_PLT, eff_PLT_max = self.get_PLT()
+        if compare_adas:
+            adas_PLT, adas_eff_PLT_max, adas_eff_PLT = self.get_adas_PLT()
 
         colours = ['orange', 'green', 'blue', 'cyan', 'brown', 'pink']
-        for z in range(self.num_z-1):
+        if plot_stages:
+            for z in range(self.num_z-1):
+                if plot_max:
+                    ax.plot(self.skrun.data['TEMPERATURE'] *
+                            self.skrun.T_norm, PLT_max[:, z], color=colours[z], label=self.name + '$^{' + str(z) + '+}$')
+                if plot_sk:
+                    ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, PLT[:, z], '--',
+                            color=colours[z])
+        if plot_sk:
+            ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, eff_PLT[:], '--',
+                    color='black', label='effective PLT (SK)')
+        if plot_max:
+            ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, eff_PLT_max[:], '-',
+                    color='black', label='effective PLT (Max)')
 
-            ax.plot(self.skrun.data['TEMPERATURE'] *
-                    self.skrun.T_norm, PLT_max[:, z], color=colours[z], label=self.name + '$^{' + str(z) + '+}$')
-            ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, PLT[:, z], '--',
-                    color=colours[z])
-        ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, eff_PLT[:], '--',
-                color='black', label='effective PLT (SK)')
-        ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, eff_PLT_max[:], '-',
-                color='black', label='effective PLT (Max)')
+        if compare_adas:
+            if plot_stages:
+                for z in range(self.num_z-1):
+                    if plot_max:
+                        ax.plot(self.skrun.data['TEMPERATURE'] *
+                                self.skrun.T_norm, adas_PLT[:, z], linestyle=(0, (1, 1)), color=colours[z])
+            if plot_sk:
+                ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, adas_eff_PLT[:], '--',
+                        color='grey', label='ADAS effective PLT (SK)')
+            if plot_max:
+                ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, adas_eff_PLT_max[:], linestyle=(0, (1, 1)),
+                        color='grey', label='ADAS effective PLT (Max)')
+
         ax.legend()
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_xlabel('$T_e$ [eV]')
         ax.set_ylabel('Carbon excitation radiation [Wm$^{3}$]')
-        ax.set_ylim([1e-36, None])
+        # ax.set_ylim([1e-36, None])
         # ax.set_xlim([1, 100])
+
+    def get_q_rad(self):
+        radrec_E_rates, radrec_E_rates_max = self.get_radrec_E_rates()
+        spontem_E_rates, spontem_E_rates_max = self.get_spontem_E_rates()
+        q_radrec = np.sum(self.skrun.dxc[::2] * 1e-6*radrec_E_rates[::2])
+        q_radrec_max = np.sum(
+            self.skrun.dxc[::2] * 1e-6*radrec_E_rates_max[::2])
+        q_spontem = np.sum(self.skrun.dxc[::2] * 1e-6*spontem_E_rates[::2])
+        q_spontem_max = np.sum(
+            self.skrun.dxc[::2] * 1e-6*spontem_E_rates_max[::2])
+        q_rad = q_radrec + q_spontem
+        q_rad_max = q_radrec_max + q_spontem_max
+
+        return q_rad, q_rad_max
 
     def plot_radiation(self, log=False):
 
@@ -923,3 +1038,7 @@ def get_maxwellians(num_x, ne, Te, vgrid, v_th, num_v):
     for i in range(num_x):
         f0_max[i, :] = spf.maxwellian(Te[i], ne[i], vgrid)
     return f0_max
+
+
+def interp_2d(x, y, z, xnew, ynew):
+    pass
