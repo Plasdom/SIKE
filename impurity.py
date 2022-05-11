@@ -12,9 +12,10 @@ import aurora
 
 
 class Impurity:
-    def __init__(self, name, skrun):
+    def __init__(self, name, skrun, opts):
         self.name = name
         self.skrun = skrun
+        self.opts = opts
         if self.name == 'C':
             self.num_z = 7
             self.longname = 'Carbon'
@@ -27,7 +28,7 @@ class Impurity:
 
     def load_states(self):
         self.states = []
-        if input.GS_ONLY:
+        if self.opts['GS_ONLY']:
             statedata_file = os.path.join(
                 'imp_data', self.longname, 'states_gsonly.txt')
         else:
@@ -54,7 +55,7 @@ class Impurity:
         self.radrec_transitions = []
         self.spontem_transitions = []
 
-        if input.GS_ONLY_RADREC:
+        if self.opts['GS_ONLY_RADREC']:
             trans_file = os.path.join(
                 'imp_data', self.longname, 'transitions_gsradrec.txt')
         else:
@@ -78,7 +79,7 @@ class Impurity:
 
                     dtype = line_data[5].strip('\n')
 
-                    if trans_type == 'ionization' and input.COLL_ION_REC:
+                    if trans_type == 'ionization' and self.opts['COLL_ION_REC']:
                         self.iz_transitions.append(transition.Transition('ionization',
                                                                          self.longname,
                                                                          from_state,
@@ -88,7 +89,7 @@ class Impurity:
                                                                          sigma_0=self.skrun.sigma_0,
                                                                          dtype=dtype))
 
-                    if trans_type == 'radrec' and input.RAD_REC:
+                    if trans_type == 'radrec' and self.opts['RAD_REC']:
                         self.radrec_transitions.append(transition.Transition('radrec',
                                                                              self.longname,
                                                                              from_state,
@@ -98,7 +99,7 @@ class Impurity:
                                                                              t_norm=self.skrun.t_norm,
                                                                              dtype=dtype))
 
-                    if trans_type == 'excitation' and input.COLL_EX_DEEX:
+                    if trans_type == 'excitation' and self.opts['COLL_EX_DEEX']:
                         self.ex_transitions.append(transition.Transition('excitation',
                                                                          self.longname,
                                                                          from_state,
@@ -108,7 +109,7 @@ class Impurity:
                                                                          sigma_0=self.skrun.sigma_0,
                                                                          dtype=dtype))
 
-        if input.SPONT_EM:
+        if self.opts['SPONT_EM']:
             self.load_spontem_transitions()
 
     def load_spontem_transitions(self):
@@ -149,8 +150,10 @@ class Impurity:
         self.dens = np.zeros((self.skrun.num_x, self.tot_states))
         self.dens_max = np.zeros((self.skrun.num_x, self.tot_states))
         self.dens_saha = np.zeros((self.skrun.num_x, self.tot_states))
-        self.dens[:, 0] = input.FRAC_IMP_DENS * self.skrun.data['DENSITY']
-        self.dens_max[:, 0] = input.FRAC_IMP_DENS * self.skrun.data['DENSITY']
+        self.dens[:, 0] = self.opts['FRAC_IMP_DENS'] * \
+            self.skrun.data['DENSITY']
+        self.dens_max[:, 0] = self.opts['FRAC_IMP_DENS'] * \
+            self.skrun.data['DENSITY']
         self.tmp_dens = np.zeros((self.skrun.num_x, self.tot_states))
 
     def get_saha_eq(self):
@@ -207,7 +210,7 @@ class Impurity:
         # Build kinetic rate matrices
         for i in range(self.skrun.num_x):
 
-            if input.COLL_ION_REC:
+            if self.opts['COLL_ION_REC']:
                 for iz_trans in self.iz_transitions:
 
                     # Ionization
@@ -264,7 +267,7 @@ class Impurity:
                     rate_mat[i][row, col] += K_rec
                     rate_mat_max[i][row, col] += K_rec_max
 
-            if input.RAD_REC:
+            if self.opts['RAD_REC']:
                 for radrec_trans in self.radrec_transitions:
 
                     # Radiative recombination
@@ -281,7 +284,7 @@ class Impurity:
                     rate_mat[i][row, col] += (ne[i] * alpha_radrec)
                     rate_mat_max[i][row, col] += (ne[i] * alpha_radrec)
 
-            if input.COLL_EX_DEEX:
+            if self.opts['COLL_EX_DEEX']:
                 for ex_trans in self.ex_transitions:
 
                     # Excitation
@@ -338,7 +341,7 @@ class Impurity:
                     rate_mat[i][row, col] += K_deex
                     rate_mat_max[i][row, col] += K_deex_max
 
-            if input.SPONT_EM:
+            if self.opts['SPONT_EM']:
                 for em_trans in self.spontem_transitions:
 
                     # Spontaneous emission
@@ -355,9 +358,9 @@ class Impurity:
                     rate_mat_max[i][row, col] += beta_spontem
 
             op_mat[i] = np.linalg.inv(np.identity(
-                self.tot_states) - input.DELTA_T * rate_mat[i])
+                self.tot_states) - self.opts['DELTA_T'] * rate_mat[i])
             op_mat_max[i] = np.linalg.inv(np.identity(
-                self.tot_states) - input.DELTA_T * rate_mat_max[i])
+                self.tot_states) - self.opts['DELTA_T'] * rate_mat_max[i])
 
         self.op_mat = op_mat
         self.rate_mat = rate_mat
@@ -674,7 +677,7 @@ class Impurity:
 
         # Calculate rad-rec rates
         for i in range(self.skrun.num_x):
-            if input.RAD_REC:
+            if self.opts['RAD_REC']:
                 for radrec_trans in self.radrec_transitions:
                     alpha_radrec = max(radrec_trans.radrec_interp(
                         Te[i]), 0.0)
@@ -710,7 +713,7 @@ class Impurity:
 
         # Calculate collisional excitation rates
         for i in range(self.skrun.num_x):
-            if input.COLL_EX_DEEX:
+            if self.opts['COLL_EX_DEEX']:
                 for ex_trans in self.ex_transitions:
                     K_ex = collrate_const * rates.ex_rate(
                         f0[i, :],
@@ -749,7 +752,7 @@ class Impurity:
 
         # Calculate collisional deexcitation rates
         for i in range(self.skrun.num_x):
-            if input.COLL_EX_DEEX:
+            if self.opts['COLL_EX_DEEX']:
                 for ex_trans in self.ex_transitions:
                     eps = ex_trans.thresh / self.skrun.T_norm
                     statw_ratio = ex_trans.from_state.statw / ex_trans.to_state.statw
@@ -779,8 +782,7 @@ class Impurity:
         return deex_E_rates, deex_E_rates_max
 
     def get_spontem_E_rates(self, per_z=False):
-        Te = self.skrun.data['TEMPERATURE']
-        ne = self.skrun.data['DENSITY']
+
         if per_z:
             spontem_E_rates = np.zeros((self.skrun.num_x, self.num_z))
             spontem_E_rates_max = np.zeros((self.skrun.num_x, self.num_z))
@@ -790,7 +792,7 @@ class Impurity:
 
         # Calculate spontaneous emission rates
         for i in range(self.skrun.num_x):
-            if input.SPONT_EM:
+            if self.opts['SPONT_EM']:
                 for em_trans in self.spontem_transitions:
                     beta_spontem = em_trans.spontem_rate
                     eps = (em_trans.from_state.energy -
@@ -809,6 +811,38 @@ class Impurity:
                         spontem_E_rates_max[i] += rate_max
 
         return spontem_E_rates, spontem_E_rates_max
+
+    def get_adas_ex_E_rates(self, per_z=False):
+
+        if per_z:
+            adas_ex_E_rates = np.zeros((self.skrun.num_x, self.num_z))
+            adas_ex_E_rates_max = np.zeros((self.skrun.num_x, self.num_z))
+        else:
+            adas_ex_E_rates = np.zeros(self.skrun.num_x)
+            adas_ex_E_rates_max = np.zeros(self.skrun.num_x)
+
+        adas_plt, adas_eff_plt_max, adas_eff_plt = self.get_adas_PLT()
+
+        # Calculate ADAS excitation radiation rates
+        ne = self.skrun.data['DENSITY']
+        if per_z is False:
+            adas_ex_E_rates[:] = adas_eff_plt * \
+                ne * np.sum(self.dens, 1)
+            adas_ex_E_rates_max[:] = adas_eff_plt_max * \
+                ne * np.sum(self.dens_max, 1)
+        else:
+            z_dens, z_dens_max, _ = self.get_z_dens()
+            for z in range(self.num_z-1):
+                for i in range(self.skrun.num_x):
+                    adas_ex_E_rates[i, z] += adas_plt[i, z] * \
+                        z_dens[i, z] * ne[i]
+                    adas_ex_E_rates[i, z] += adas_plt[i, z] * \
+                        z_dens_max[i, z] * ne[i]
+
+        adas_ex_E_rates *= (self.skrun.n_norm ** 2)
+        adas_ex_E_rates_max *= (self.skrun.n_norm ** 2)
+
+        return adas_ex_E_rates, adas_ex_E_rates_max
 
     def get_ion_rates(self, per_z=False):
         collrate_const = self.skrun.n_norm * self.skrun.v_th * \
@@ -829,7 +863,7 @@ class Impurity:
 
         # Calculate collisional excitation rates
         for i in range(self.skrun.num_x):
-            if input.COLL_ION_REC:
+            if self.opts['COLL_ION_REC']:
                 for iz_trans in self.iz_transitions:
                     K_ion = collrate_const * rates.ex_rate(
                         f0[i, :],
@@ -912,7 +946,7 @@ class Impurity:
 
         return plt_interp, adas_eff_plt_max, adas_eff_plt
 
-    def plot_PLT(self, compare_adas=False, plot_sk=True, plot_max=True, plot_stages=False):
+    def plot_PLT(self, compare_adas=False, plot_eff=True, plot_sk=True, plot_max=True, plot_stages=False):
         fig, ax = plt.subplots(1)
 
         PLT, PLT_max, eff_PLT, eff_PLT_max = self.get_PLT()
@@ -928,10 +962,10 @@ class Impurity:
                 if plot_sk:
                     ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, PLT[:, z], '--',
                             color=colours[z])
-        if plot_sk:
+        if plot_sk and plot_eff:
             ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, eff_PLT[:], '--',
                     color='black', label='effective PLT (SK)')
-        if plot_max:
+        if plot_max and plot_eff:
             ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, eff_PLT_max[:], '-',
                     color='black', label='effective PLT (Max)')
 
@@ -941,10 +975,10 @@ class Impurity:
                     if plot_max:
                         ax.plot(self.skrun.data['TEMPERATURE'] *
                                 self.skrun.T_norm, adas_PLT[:, z], linestyle=(0, (1, 1)), color=colours[z])
-            if plot_sk:
+            if plot_sk and plot_eff:
                 ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, adas_eff_PLT[:], '--',
                         color='grey', label='ADAS effective PLT (SK)')
-            if plot_max:
+            if plot_max and plot_eff:
                 ax.plot(self.skrun.data['TEMPERATURE'] * self.skrun.T_norm, adas_eff_PLT_max[:], linestyle=(0, (1, 1)),
                         color='grey', label='ADAS effective PLT (Max)')
 
@@ -956,19 +990,34 @@ class Impurity:
         # ax.set_ylim([1e-36, None])
         # ax.set_xlim([1, 100])
 
-    def get_q_rad(self):
-        radrec_E_rates, radrec_E_rates_max = self.get_radrec_E_rates()
+    def get_q_rad(self, ex_only=False, compare_adas=False):
+
         spontem_E_rates, spontem_E_rates_max = self.get_spontem_E_rates()
-        q_radrec = np.sum(self.skrun.dxc[::2] * 1e-6*radrec_E_rates[::2])
-        q_radrec_max = np.sum(
-            self.skrun.dxc[::2] * 1e-6*radrec_E_rates_max[::2])
         q_spontem = np.sum(self.skrun.dxc[::2] * 1e-6*spontem_E_rates[::2])
         q_spontem_max = np.sum(
             self.skrun.dxc[::2] * 1e-6*spontem_E_rates_max[::2])
-        q_rad = q_radrec + q_spontem
-        q_rad_max = q_radrec_max + q_spontem_max
 
-        return q_rad, q_rad_max
+        if ex_only is False:
+            radrec_E_rates, radrec_E_rates_max = self.get_radrec_E_rates()
+            q_radrec = np.sum(self.skrun.dxc[::2] * 1e-6*radrec_E_rates[::2])
+            q_radrec_max = np.sum(
+                self.skrun.dxc[::2] * 1e-6*radrec_E_rates_max[::2])
+
+            q_rad = q_radrec + q_spontem
+            q_rad_max = q_radrec_max + q_spontem_max
+
+        else:
+            q_rad = q_spontem
+            q_rad_max = q_spontem_max
+
+        if compare_adas:
+            adas_ex_E_rates, adas_ex_E_rates_max = self.get_adas_ex_E_rates()
+            q_ex_adas = np.sum(self.skrun.dxc[::2] * 1e-6*adas_ex_E_rates[::2])
+            q_ex_adas_max = np.sum(
+                self.skrun.dxc[::2] * 1e-6*adas_ex_E_rates_max[::2])
+            return q_rad, q_rad_max, q_ex_adas, q_ex_adas_max
+        else:
+            return q_rad, q_rad_max
 
     def plot_radiation(self, log=False):
 

@@ -3,17 +3,6 @@ import os
 from scipy.interpolate import interp1d
 import re
 
-DELTA_T = 1.0e5
-RES_THRESH = 1E-12
-MAX_STEPS = 1e4
-T_SAVE = 1e6
-FRAC_IMP_DENS = 0.05
-COLL_ION_REC = True
-RAD_REC = True
-COLL_EX_DEEX = True
-SPONT_EM = True
-GS_ONLY = False
-GS_ONLY_RADREC = False
 STATW_W = np.ones(11)
 C_ION_COEFFS = [
     [
