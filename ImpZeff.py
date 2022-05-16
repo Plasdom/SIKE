@@ -23,7 +23,8 @@ default_opts = {'EVOLVE': True,
                 'COLL_EX_DEEX': True,
                 'SPONT_EM': True,
                 'GS_ONLY': False,
-                'GS_ONLY_RADREC': False}
+                'GS_ONLY_RADREC': False,
+                'THEORECICAL_IZ_CS': 'BurgessChidichimo'}
 
 
 def run(skrun_dir, opts=default_opts):

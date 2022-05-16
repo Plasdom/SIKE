@@ -28,6 +28,26 @@ C_ION_COEFFS = [
 C_ION_COEFFS_I = [[10.6], [24.4], [41.4], [64.5, 285], [392.0], [490.0]]
 
 
+def get_BC_iz_cs(vgrid, T_norm, from_state, to_state):
+    z = from_state.iz
+    I_H = 13.6058 / T_norm
+    a_0 = 5.29177e-11
+    cs = np.zeros(len(vgrid))
+    nu = 0.25 * (np.sqrt((100*z + 91) / (4*z + 3)) - 1)
+    C = 2.3
+
+    for i in range(len(grid)):
+        E_0 = vgrid[i] ** 2
+        for j in range(len(zeta)):
+            x_j = E_0 / I[j]
+            if E_0 > I[j]:
+                w = np.log(x_j) ** (nu / x_j)
+                cs[i] += C * zeta[j] * ((I_H / I[j]) ** 2) * \
+                    (np.log(x_j) / x_j) * w * np.pi * (a_0 ** 2)
+
+    return cs
+
+
 def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
 
     cs_file = os.path.join(
@@ -188,8 +208,9 @@ def lmom(l):
 
 def get_adas_statename(line):
     fields = line.split('    ')
-    shell = fields[2][1:].lower().replace(' ', '')
-    shell = re.sub('[spdfg]1', adas_rm1, shell)
+    # shell = fields[2][1:].lower().replace(' ', '')
+    # shell = re.sub('[spdfg]1', adas_rm1, shell)
+    shell = fields[2][1:].lower().replace(' ', ',')
     mom = re.search('\(\d\)\d\(', line)
     s = mom[0][1]
     l = lmom(mom[0][3])

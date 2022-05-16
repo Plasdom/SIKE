@@ -3,16 +3,27 @@ from scipy import interpolate
 
 
 class State:
-    def __init__(self, iz_stage, statename, loc, statw=1, energy=0):
+    def __init__(self, iz_stage, statename, loc, statw=1, energy=0, I_0=0):
         self.iz = iz_stage
         self.statename = statename
         self.loc = loc
         self.statw = statw
         self.energy = energy
+        self.I_0 = I_0
+        self.get_iz_energy()
+
+    def equal(self, other):
+        if self.iz == other.iz and self.statename == other.statename:
+            return True
+        else:
+            return False
+
+    def get_iz_energy(self):
+        self.iz_energy = self.I_0 - self.energy
 
 
 class Transition:
-    def __init__(self, trans_type, imp_name, from_state, to_state, vgrid=None, T_norm=None, sigma_0=None, n_norm=None, t_norm=None, dtype=None, spontem_rate=None):
+    def __init__(self, trans_type, imp_name, from_state, to_state, vgrid=None, T_norm=None, sigma_0=None, n_norm=None, t_norm=None, dtype=None, spontem_rate=None, opts=None):
         self.trans_type = trans_type
         self.imp_name = imp_name
         self.vgrid = vgrid
@@ -26,7 +37,7 @@ class Transition:
         self.to_loc = to_state.loc
         self.dtype = dtype
         if self.trans_type == 'ionization':
-            self.load_iz_cross_section()
+            self.load_iz_cross_section(opts)
         elif self.trans_type == 'radrec':
             self.load_rate_data()
         elif self.trans_type == 'excitation':
@@ -40,11 +51,16 @@ class Transition:
             self.sigma, self.thresh = input.load_sunokato_ex_sigma(
                 self.vgrid, self.from_state, self.to_state, self.T_norm, self.sigma_0, self.from_state.statw)
 
-    def load_iz_cross_section(self):
+    def load_iz_cross_section(self, opts):
 
         if self.dtype == 'SunoKato':
             self.sigma, self.thresh = input.load_sunokato_iz_sigma(
                 self.vgrid, self.from_state, self.to_state, self.T_norm, self.sigma_0)
+        elif self.dtype == 'Theoretical':
+            if opts['THEORETICAL_IZ_CS'] == 'BurgessChidichimo':
+
+                self.sigma, self.thresh = input.get_BC_iz_cs(
+                    self.vgrid, self.from_state, self.to_state, self.T_norm, self.sigma_0)
 
     def load_rate_data(self):
 
