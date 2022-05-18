@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import scipy
 from scipy.interpolate import interp1d
 import re
 
@@ -28,16 +29,19 @@ C_ION_COEFFS = [
 C_ION_COEFFS_I = [[10.6], [24.4], [41.4], [64.5, 285], [392.0], [490.0]]
 
 
-def get_BC_iz_cs(vgrid, T_norm, from_state, to_state):
+def get_BC_iz_cs(vgrid, T_norm, from_state, to_state, sigma_0):
     z = from_state.iz
-    I_H = 13.6058 / T_norm
+    I_H = 13.6058
     a_0 = 5.29177e-11
     cs = np.zeros(len(vgrid))
     nu = 0.25 * (np.sqrt((100*z + 91) / (4*z + 3)) - 1)
     C = 2.3
 
-    for i in range(len(grid)):
-        E_0 = vgrid[i] ** 2
+    zeta = from_state.shell_occupation
+    I = from_state.shell_iz_energies
+
+    for i in range(len(vgrid)):
+        E_0 = T_norm * vgrid[i] ** 2
         for j in range(len(zeta)):
             x_j = E_0 / I[j]
             if E_0 > I[j]:
@@ -45,7 +49,7 @@ def get_BC_iz_cs(vgrid, T_norm, from_state, to_state):
                 cs[i] += C * zeta[j] * ((I_H / I[j]) ** 2) * \
                     (np.log(x_j) / x_j) * w * np.pi * (a_0 ** 2)
 
-    return cs
+    return cs / sigma_0, I[-1]
 
 
 def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
@@ -56,6 +60,7 @@ def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
         lines = f.readlines()
         for l in lines[1:]:
             line_data = l.split('\t')
+            line_data[-1] = line_data[-1].strip('\n')
             from_iz = int(line_data[0])
             from_statename = line_data[1]
             to_iz = from_iz
@@ -65,9 +70,9 @@ def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
                     to_state.iz == to_iz and \
                     to_state.statename == to_statename:
                 A, B, C, D, E, F, P, Q, X_1 = [
-                    float(x) for x in line_data[3:-2]]
-                V_if = float(line_data[-2])
-                fit_eqn = int(line_data[-1])
+                    float(x) for x in line_data[3:12]]
+                V_if = float(line_data[12])
+                fit_eqn = int(line_data[13])
     V_if = to_state.energy - from_state.energy
     fit_data = {'A': A, 'B': B, 'C': C,
                 'D': D, 'E': E, 'F': F,
@@ -75,15 +80,19 @@ def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
                 'V_if': V_if}
 
     if fit_eqn == 6:
-        sigma = sunokato_ex_fit6(fit_data, vgrid, T_norm, sigma_0, g_i)
+        sigma, coll_strength = sunokato_ex_fit6(
+            fit_data, vgrid, T_norm, sigma_0, g_i)
     elif fit_eqn == 7:
-        sigma = sunokato_ex_fit7(fit_data, vgrid, T_norm, sigma_0, g_i)
+        sigma, coll_strength = sunokato_ex_fit7(
+            fit_data, vgrid, T_norm, sigma_0, g_i)
     elif fit_eqn == 10:
-        sigma = sunokato_ex_fit6(fit_data, vgrid, T_norm, sigma_0, g_i)
+        sigma, coll_strength = sunokato_ex_fit10(
+            fit_data, vgrid, T_norm, sigma_0, g_i)
     elif fit_eqn == 11:
-        sigma = sunokato_ex_fit7(fit_data, vgrid, T_norm, sigma_0, g_i)
+        sigma, coll_strength = sunokato_ex_fit7(
+            fit_data, vgrid, T_norm, sigma_0, g_i)
 
-    return sigma, V_if
+    return sigma, V_if, coll_strength
 
 
 def sunokato_ex_fit6(fit_data, vgrid, T_norm, sigma_0, g_i):
@@ -96,19 +105,23 @@ def sunokato_ex_fit6(fit_data, vgrid, T_norm, sigma_0, g_i):
     V_if = fit_data['V_if']
 
     sigma = np.zeros(len(vgrid))
+    coll_strength = np.zeros(len(vgrid))
     Egrid = vgrid**2 * T_norm
     Xgrid = Egrid / V_if
     for i in range(len(vgrid)):
         X = Xgrid[i]
-        sigma[i] = A + (B / X) + (C / X**2) + (D / X**3) + E * np.log(X)
-        sigma[i] = 1.1969e-15 * sigma[i] / (g_i * X * V_if)
+        coll_strength[i] = A + (B / X) + (C / (X**2)) + \
+            (D / (X**3)) + E * np.log(X)
+        sigma[i] = 1.1969e-15 * coll_strength[i] / (g_i * X * V_if)
 
     # Tidy up and normalise
     sigma[np.where(Egrid < V_if)] = 0.0
+    coll_strength[np.where(Egrid < V_if)] = 0.0
     sigma[np.where(sigma < 0.0)] = 0.0
+    # coll_strength[np.where(coll_strength < 0.0)] = 0.0
     sigma = sigma / (1e4 * sigma_0)
 
-    return sigma
+    return sigma, coll_strength
 
 
 def sunokato_ex_fit7(fit_data, vgrid, T_norm, sigma_0, g_i):
@@ -122,20 +135,82 @@ def sunokato_ex_fit7(fit_data, vgrid, T_norm, sigma_0, g_i):
     V_if = fit_data['V_if']
 
     sigma = np.zeros(len(vgrid))
+    coll_strength = np.zeros(len(vgrid))
     Egrid = vgrid**2 * T_norm
     Xgrid = Egrid / V_if
     for i in range(len(vgrid)):
         X = Xgrid[i]
-        sigma[i] = (A / (X**2)) + (B * np.exp(-F*X)) + (C * np.exp(-2*F*X)
-                                                        ) + (D * np.exp(-3*F*X)) + (E * np.exp(-4*F*X))
-        sigma[i] = 1.1969e-15 * sigma[i] / (g_i * X * V_if)
+        coll_strength[i] = (A / (X**2)) + (B * np.exp(-F*X)) + (C * np.exp(-2*F*X)
+                                                                ) + (D * np.exp(-3*F*X)) + (E * np.exp(-4*F*X))
+        sigma[i] = 1.1969e-15 * coll_strength[i] / (g_i * X * V_if)
 
     # Tidy up and normalise
     sigma[np.where(Egrid < V_if)] = 0.0
+    coll_strength[np.where(Egrid < V_if)] = 0.0
     sigma[np.where(sigma < 0.0)] = 0.0
+    # coll_strength[np.where(coll_strength < 0.0)] = 0.0
     sigma = sigma / (1e4 * sigma_0)
 
-    return sigma
+    return sigma, coll_strength
+
+
+def sunokato_ex_fit10(fit_data, vgrid, T_norm, sigma_0, g_i):
+
+    A = fit_data['A']
+    B = fit_data['B']
+    C = fit_data['C']
+    D = fit_data['D']
+    E = fit_data['E']
+    F = fit_data['F']
+    V_if = fit_data['V_if']
+
+    sigma = np.zeros(len(vgrid))
+    coll_strength = np.zeros(len(vgrid))
+    Egrid = vgrid**2 * T_norm
+    Ygrid = V_if / Egrid
+    for i in range(len(vgrid)):
+        y = Ygrid[i]
+        coll_strength[i] = y * (((A / y) + C) + (0.5 * D * (1 - y)) +
+                                (np.exp(y) * scipy.special.exp1(y)) * (B - (C * y) + (0.5 * D * y * y) + (E/y)))
+        sigma[i] = 1.1969e-15 * coll_strength[i] / (g_i * y * V_if)
+
+    sigma[np.where(Egrid < V_if)] = 0.0
+    coll_strength[np.where(Egrid < V_if)] = 0.0
+    sigma[np.where(sigma < 0.0)] = 0.0
+    # coll_strength[np.where(coll_strength < 0.0)] = 0.0
+    sigma = sigma / (1e4 * sigma_0)
+
+    return sigma, coll_strength
+
+
+def sunokato_ex_fit11(fit_data, vgrid, T_norm, sigma_0, g_i):
+
+    A = fit_data['A']
+    B = fit_data['B']
+    C = fit_data['C']
+    D = fit_data['D']
+    E = fit_data['E']
+    F = fit_data['F']
+    V_if = fit_data['V_if']
+
+    sigma = np.zeros(len(vgrid))
+    coll_strength = np.zeros(len(vgrid))
+    Egrid = vgrid**2 * T_norm
+    Ygrid = V_if / Egrid
+    for i in range(len(vgrid)):
+        y = Ygrid[i]
+        coll_strength[i] = A * y * \
+            (1 - (np.exy(y) * scipy.special.exp1(y) * y)) + (((B * np.exp(-F)) / (F + y)) + ((C * np.exp(-2*F)
+                                                                                              ) / (2*F + y)) + ((D * np.exp(-3*F)) / (3*F + y)) + ((E * np.exp(-4*F)) / (4*F + y))) * y
+        sigma[i] = 1.1969e-15 * coll_strength[i] / (g_i * y * V_if)
+
+    sigma[np.where(Egrid < V_if)] = 0.0
+    coll_strength[np.where(Egrid < V_if)] = 0.0
+    sigma[np.where(sigma < 0.0)] = 0.0
+    # coll_strength[np.where(coll_strength < 0.0)] = 0.0
+    sigma = sigma / (1e4 * sigma_0)
+
+    return sigma, coll_strength
 
 
 def load_sunokato_iz_sigma(vgrid, from_state, to_state, T_norm, sigma_0):

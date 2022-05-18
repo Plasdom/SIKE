@@ -38,16 +38,23 @@ class Impurity:
             lines = f.readlines()
             i = 0
             for l in lines[1:]:
-                iz = int(l.split('\t')[0])
-                statename = l.split('\t')[2]
-                statw = int(l.split('\t')[5].strip('\n'))
-                energy = float(l.split('\t')[6].strip('\n'))
-                I_0 = float(l.split('\t')[7].strip('\n'))
-                if iz < self.num_z:
+                line_data = l.split('\t')
+                line_data[-1] = line_data[-1].strip('\n')
+                iz = int(line_data[0])
+                lower_shells = line_data[1]
+                statename = line_data[2]
+                statw = int(line_data[5])
+                energy = float(line_data[6])
+                I_0 = float(line_data[7])
+                metastable = int(line_data[8])
+                mask = bool(int(line_data[9]))
+                if iz < self.num_z and not mask:
                     self.states.append(
-                        transition.State(iz, statename, i, statw, energy, I_0))
+                        transition.State(iz, lower_shells, statename, i, statw, energy, I_0, metastable))
                     i += 1
         self.tot_states = len(self.states)
+        for state in self.states:
+            state.get_shell_iz_energies(self.states)
 
     def load_transitions(self):
 
@@ -66,6 +73,7 @@ class Impurity:
             lines = f.readlines()
             for l in lines[1:]:
                 line_data = l.split('\t')
+                line_data[-1] = line_data[-1].strip('\n')
                 trans_type = line_data[0]
 
                 from_iz = int(line_data[1])
@@ -111,32 +119,81 @@ class Impurity:
                                                                          sigma_0=self.skrun.sigma_0,
                                                                          dtype=dtype))
 
+        fill_iz_transitions = False
+        if fill_iz_transitions:
+            self.fill_iz_transitions()
+
         if self.opts['SPONT_EM']:
             self.load_spontem_transitions()
+
+    def fill_iz_transitions(self):
+        for z in range(self.num_z-1):
+            to_state = self.get_ground_state(z+1)
+            for from_state in self.states:
+
+                if from_state.metastable and from_state.iz == z:
+
+                    # Check this transition is not already added
+                    trans_found = False
+                    for iz_transition in self.iz_transitions:
+                        if iz_transition.from_state.equals(from_state) and iz_transition.to_state.equals(to_state):
+                            trans_found = True
+                            break
+
+                    # If not, add this theoretical transition
+                    if trans_found is False:
+                        self.iz_transitions.append(transition.Transition('ionization',
+                                                                         self.longname,
+                                                                         from_state,
+                                                                         to_state,
+                                                                         vgrid=self.skrun.vgrid/self.skrun.v_th,
+                                                                         T_norm=self.skrun.T_norm,
+                                                                         sigma_0=self.skrun.sigma_0,
+                                                                         dtype='Theoretical',
+                                                                         opts=self.opts))
 
     def load_spontem_transitions(self):
         # Load spontem file data
         spontem_file = os.path.join(
             'imp_data', self.longname, 'nist_spontem.txt')
-        spontem_data = pd.read_csv(spontem_file, sep='\t')
+        # spontem_data = pd.read_csv(spontem_file, sep='\t')
+        with open(spontem_file) as f:
+            spontem_data = f.readlines()
+        from_statenames = [[] for z in range(self.num_z)]
+        to_statenames = [[] for z in range(self.num_z)]
+        rates = [[] for z in range(self.num_z)]
+        for l in spontem_data[1:]:
+            data = l.split('\t')
+            z = data[0]
+            from_statenames[int(z)].append(data[1])
+            to_statenames[int(z)].append(data[2])
+            rates[int(z)].append(float(data[3].strip('/n')))
 
-        # For each z, loop through all permutations and find matching transitions
+        # For each z, loop through all transitions
         for z in range(self.num_z):
-            for from_state in self.states:
-                for to_state in self.states:
-                    if (from_state.iz == to_state.iz) and from_state.statename != to_state.statename:
-                        matched_transitions = spontem_data[(spontem_data['iz'] == z) & (spontem_data['LowerstatenameImpZeff'] == to_state.statename) & (
-                            spontem_data['UpperstatenameImpZeff'] == from_state.statename)]
-                        if len(matched_transitions['iz'].values) > 0:
-                            # Add a transition for the matched states
-                            ls_avg_rate = pd.to_numeric(
-                                matched_transitions['rate(s-1)']).sum()
-                            self.spontem_transitions.append(transition.Transition('spontem',
-                                                                                  self.longname,
-                                                                                  from_state,
-                                                                                  to_state,
-                                                                                  t_norm=self.skrun.t_norm,
-                                                                                  spontem_rate=ls_avg_rate))
+            for i in range(len(from_statenames[z])):
+
+                from_statename = from_statenames[z][i]
+                to_statename = to_statenames[z][i]
+                rate = rates[z][i]
+
+                # Match from and to states
+                from_state = None
+                to_state = None
+                for state in self.states:
+                    if state.iz == z and state.statename == from_statename:
+                        from_state = state
+                    if state.iz == z and state.statename == to_statename:
+                        to_state = state
+
+                # Create transition object
+                if from_state is not None and to_state is not None:
+                    self.spontem_transitions.append(transition.Transition('spontem',
+                                                                          self.longname,
+                                                                          from_state,
+                                                                          to_state,
+                                                                          t_norm=self.skrun.t_norm,
+                                                                          spontem_rate=rate))
 
     def get_state(self, iz, statename):
         for state in self.states:
@@ -385,7 +442,7 @@ class Impurity:
                     to_state = iz_trans.to_state
                     gs_from = self.get_ground_state(from_state.iz)
                     gs_to = self.get_ground_state(to_state.iz)
-                    if from_state.equal(gs_from) and to_state.equal(gs_to):
+                    if from_state.equals(gs_from) and to_state.equals(gs_to):
 
                         # Ionization
                         K_ion = adas_iz_coeffs[i, from_state.iz] * \
@@ -1054,7 +1111,8 @@ class Impurity:
 
         colours = ['orange', 'green', 'blue', 'cyan', 'brown', 'pink']
         if plot_stages:
-            for z in range(self.num_z-1):
+            # for z in range(self.num_z-1):
+            for z in range(1):
                 if plot_max:
                     ax.plot(self.skrun.data['TEMPERATURE'] *
                             self.skrun.T_norm, PLT_max[:, z], color=colours[z], label=self.name + '$^{' + str(z) + '+}$')
@@ -1070,7 +1128,8 @@ class Impurity:
 
         if compare_adas:
             if plot_stages:
-                for z in range(self.num_z-1):
+                # for z in range(self.num_z-1):
+                for z in range(1):
                     if plot_max:
                         ax.plot(self.skrun.data['TEMPERATURE'] *
                                 self.skrun.T_norm, adas_PLT[:, z], linestyle=(0, (1, 1)), color=colours[z])
