@@ -1063,11 +1063,13 @@ class Impurity:
         if per_z:
             adas_ex_E_rates = np.zeros((self.num_x, self.num_z))
             adas_ex_E_rates_max = np.zeros((self.num_x, self.num_z))
+            adas_ex_E_rates_aib = np.zeros((self.num_x, self.num_z))
         else:
             adas_ex_E_rates = np.zeros(self.num_x)
             adas_ex_E_rates_max = np.zeros(self.num_x)
+            adas_ex_E_rates_aib = np.zeros(self.num_x)
 
-        adas_plt, adas_eff_plt_max, adas_eff_plt = self.get_adas_PLT()
+        adas_plt, adas_eff_plt_max, adas_eff_plt, adas_eff_plt_aib = self.get_adas_PLT()
 
         # Calculate ADAS excitation radiation rates
         ne = self.ne
@@ -1076,19 +1078,25 @@ class Impurity:
                 ne * np.sum(self.dens, 1)
             adas_ex_E_rates_max[:] = adas_eff_plt_max * \
                 ne * np.sum(self.dens_max, 1)
+            adas_ex_E_rates_aib[:] = adas_eff_plt_aib * \
+                ne * np.sum(self.dens_adas, 1)
         else:
             z_dens, z_dens_max, _ = self.get_z_dens()
+            z_dens_aib = self.get_z_dens_adas()
             for z in range(self.num_z-1):
                 for i in range(self.num_x):
                     adas_ex_E_rates[i, z] += adas_plt[i, z] * \
                         z_dens[i, z] * ne[i]
                     adas_ex_E_rates[i, z] += adas_plt[i, z] * \
                         z_dens_max[i, z] * ne[i]
+                    adas_ex_E_rates_aib[i, z] += adas_plt[i, z] * \
+                        z_dens_aib[i, z] * ne[i]
 
         adas_ex_E_rates *= (self.n_norm ** 2)
         adas_ex_E_rates_max *= (self.n_norm ** 2)
+        adas_ex_E_rates_aib *= (self.n_norm ** 2)
 
-        return adas_ex_E_rates, adas_ex_E_rates_max
+        return adas_ex_E_rates, adas_ex_E_rates_max, adas_ex_E_rates_aib
 
     def get_ion_rates(self, per_z=False):
         # Assume ground states only here?
@@ -1218,17 +1226,21 @@ class Impurity:
 
         # Caluclate effective PLT
         z_dens, z_dens_max, _ = self.get_z_dens()
+        z_dens_aib = self.get_z_dens_adas()
         adas_eff_plt_max = np.zeros(self.num_x)
         adas_eff_plt = np.zeros(self.num_x)
+        adas_eff_plt_aib = np.zeros(self.num_x)
         for z in range(self.num_z-1):
             adas_eff_plt_max[:] += (plt_interp[:, z] *
                                     z_dens_max[:, z]) / np.sum(z_dens, 1)
             adas_eff_plt[:] += (plt_interp[:, z] *
                                 z_dens[:, z]) / np.sum(z_dens, 1)
+            adas_eff_plt_aib[:] += (plt_interp[:, z] *
+                                    z_dens_aib[:, z]) / np.sum(z_dens_aib, 1)
 
-        return plt_interp, adas_eff_plt_max, adas_eff_plt
+        return plt_interp, adas_eff_plt_max, adas_eff_plt, adas_eff_plt_aib
 
-    def plot_PLT(self, compare_adas=False, plot_eff=True, plot_sk=True, plot_max=True, plot_stages=False,logx=True):
+    def plot_PLT(self, compare_adas=False, plot_eff=True, plot_sk=True, plot_max=True, plot_stages=False, logx=True):
         fig, ax = plt.subplots(1)
 
         PLT, PLT_max, eff_PLT, eff_PLT_max = self.get_PLT()
@@ -1238,7 +1250,7 @@ class Impurity:
         colours = ['orange', 'green', 'blue', 'cyan', 'brown', 'pink']
         if plot_stages:
             for z in range(self.num_z-1):
-            # for z in range(3):
+                # for z in range(3):
                 if plot_max:
                     ax.plot(self.Te *
                             self.T_norm, PLT_max[:, z], color=colours[z], label=self.name + '$^{' + str(z) + '+}$')
@@ -1255,7 +1267,7 @@ class Impurity:
         if compare_adas:
             if plot_stages:
                 for z in range(self.num_z-1):
-                # for z in range(3):
+                    # for z in range(3):
                     if plot_max:
                         ax.plot(self.Te *
                                 self.T_norm, adas_PLT[:, z], linestyle=(0, (1, 1)), color=colours[z])
@@ -1297,7 +1309,7 @@ class Impurity:
             q_rad_max = q_spontem_max
 
         if compare_adas:
-            adas_ex_E_rates, adas_ex_E_rates_max = self.get_adas_ex_E_rates()
+            adas_ex_E_rates, adas_ex_E_rates_max, _ = self.get_adas_ex_E_rates()
             q_ex_adas = np.sum(self.dxc[::2] * 1e-6*adas_ex_E_rates[::2])
             q_ex_adas_max = np.sum(
                 self.dxc[::2] * 1e-6*adas_ex_E_rates_max[::2])
@@ -1305,21 +1317,38 @@ class Impurity:
         else:
             return q_rad, q_rad_max
 
-    def plot_radiation(self, log=False):
+    def plot_radiation(self, logy=False, xaxis='x', compare_adas=False, plot_sk=True, plot_max=True):
 
         radrec_E_rates, radrec_E_rates_max = self.get_radrec_E_rates()
         spontem_E_rates, spontem_E_rates_max = self.get_spontem_E_rates()
+        if compare_adas:
+            adas_ex_E_rates, adas_ex_E_rates_max, adas_ex_E_rates_aib = self.get_adas_ex_E_rates()
 
         fig, ax = plt.subplots(1)
 
-        ax.plot(self.xgrid, 1e-6*radrec_E_rates_max, '-',
-                color='blue', label='rad-rec (Max)')
-        ax.plot(self.xgrid, 1e-6*radrec_E_rates, '--',
-                color='blue', label='rad-rec (SK)')
-        ax.plot(self.xgrid, 1e-6*spontem_E_rates_max, '-',
-                color='red', label='spont-em (Max)')
-        ax.plot(self.xgrid, 1e-6*spontem_E_rates, '--',
-                color='red', label='spont-em (SK)')
+        if xaxis == 'x':
+            x = self.xgrid
+        elif xaxis == 'Te':
+            x = self.Te * self.T_norm
+
+        if compare_adas:
+            ax.plot(x, 1e-6*adas_ex_E_rates, linestyle='dotted',
+                    color='red', label='spont-em (SK iz balance)')
+            ax.plot(x, 1e-6*adas_ex_E_rates_max, linestyle=(0, (5, 10)),
+                    color='red', label='spont-em (Max iz balance)')
+            ax.plot(x, 1e-6*adas_ex_E_rates_aib, '-.',
+                    color='grey', label='spont-em (ADAS iz balance)')
+        if plot_sk:
+            ax.plot(x, 1e-6*radrec_E_rates, '--',
+                    color='blue', label='rad-rec (SK)')
+            ax.plot(x, 1e-6*spontem_E_rates, '--',
+                    color='red', label='spont-em (SK)')
+        if plot_max:
+            ax.plot(x, 1e-6*radrec_E_rates_max, '-',
+                    color='blue', label='rad-rec (Max)')
+
+            ax.plot(x, 1e-6*spontem_E_rates_max, '-',
+                    color='red', label='spont-em (Max)')
 
         q_radrec = np.sum(self.dxc[::2] * 1e-6*radrec_E_rates[::2])
         q_radrec_max = np.sum(
@@ -1335,7 +1364,7 @@ class Impurity:
 
         ax.legend()
         ax.set_xlabel('x [m]')
-        if log:
+        if logy:
             ax.set_yscale('log')
         ax.set_ylabel('Radiatiative power loss [MWm$^{-3}$]')
 
