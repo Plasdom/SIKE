@@ -43,13 +43,12 @@ class Transition:
         if self.dtype == 'SunoKato':
             self.sigma, self.thresh = input.load_sunokato_iz_sigma(
                 self.vgrid, self.from_state, self.to_state, self.T_norm, self.sigma_0)
-        elif self.dtype == 'Theoretical':
-            if opts['THEORETICAL_IZ_CS'] == 'BurgessChidichimo':
-                self.sigma, self.thresh = input.get_BC_iz_cs(
-                    self.vgrid, self.T_norm, self.from_state, self.to_state, self.sigma_0)
-            elif opts['THEORETICAL_IZ_CS'] == 'Lotz':
-                self.sigma, self.thresh = input.get_lotz_iz_cs(
-                    self.vgrid, self.T_norm, self.from_state, self.sigma_0)
+        elif self.dtype == 'Lotz':
+            self.sigma, self.thresh = input.get_lotz_iz_cs(
+                self.vgrid, self.T_norm, self.from_state, self.sigma_0)
+        elif self.dtype == 'BurgessChidichimo':
+            self.sigma, self.thresh = input.get_BC_iz_cs(
+                self.vgrid, self.T_norm, self.from_state, self.to_state, self.sigma_0)
 
     def load_rate_data(self):
 
@@ -59,17 +58,20 @@ class Transition:
         self.radrec_interp = interpolate.interp1d(
             self.radrec_Te, self.radrec_rate, fill_value='extrapolate')
 
-    def plot_cs(self, ax=None, form='cross_section', units='m2', logx=False, logy=False):
+    def plot_cs(self, ax=None, form='cross_section', units='cm2', logx=False, logy=False):
         if ax is None:
             fig, ax = plt.subplots(1)
+            ax.set_xlabel('E [eV]')
         if form == 'collision_strength':
             ax.set_xscale('log')
+            ax.set_ylabel('Collision strength')
             label = str(self.from_state.iz) + '+  ' + self.from_state.statename + \
                 ' -> ' + \
                 '+ ' + self.to_state.statename + ''
             ax.plot((self.vgrid ** 2 * self.T_norm) / self.thresh,
                     self.coll_strength, label=label)
         elif form == 'cross_section':
+            ax.set_ylabel('Cross-section [' + units + ']')
             if logx:
                 ax.set_xscale('log')
             if logy:
@@ -80,6 +82,8 @@ class Transition:
                 '+ (' + self.to_state.statename + ')'
             if units == 'm2':
                 y = self.sigma * self.sigma_0
+            elif units == 'cm2':
+                y = self.sigma * self.sigma_0 * 1e4
             elif units == 'bohr':
                 a_0 = 5.29177e-11
                 y = self.sigma * self.sigma_0 / (a_0 * a_0)

@@ -296,32 +296,30 @@ def load_sunokato_iz_sigma(vgrid, from_state, to_state, T_norm, sigma_0):
                 coeffs = [float(x) for x in line_data[5:-1]]
                 coeffs_I = float(line_data[4])
                 try:
-                    thresh = float(line_data[-1])
+                    thresh = float(line_data[-1].strip('\n'))
                 except:
                     pass
                 sigma += sunokato_iz_fit(coeffs_I, coeffs,
-                                         vgrid, T_norm, sigma_0, thresh)
+                                         vgrid, T_norm, sigma_0, coeffs_I)
 
     return sigma, thresh
 
 
 def sunokato_iz_fit(I, coeffs, vgrid, T_norm, sigma_0, thresh):
+
+    Egrid = vgrid**2 * T_norm
+
     sigma = np.zeros(len(vgrid))
     A_1 = coeffs[0]
     for i in range(len(vgrid)):
-        v = vgrid[i]
-        E = T_norm * (v ** 2)
+        E = Egrid[i]
 
         sigma[i] += (1e-13 / (I * E)) * (A_1 * np.log(E / I))
         for k in range(1, len(coeffs)):
             A_k = coeffs[k]
             sigma[i] += (1e-13 / (I * E)) * (A_k * (1.0 - (I / E)) ** k)
 
-    for i in range(len(vgrid)):
-        E = vgrid[i]**2 * T_norm
-        if E > thresh:
-            sigma[:i] = 0.0
-            break
+    sigma[np.where(Egrid < thresh)] = 0.0
 
     return sigma / (1e4 * sigma_0)
 

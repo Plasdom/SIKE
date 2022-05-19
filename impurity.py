@@ -85,6 +85,7 @@ class Impurity:
 
         self.v_th = np.sqrt(2 * self.T_norm * spf.el_charge / spf.el_mass)
         self.vgrid *= self.v_th
+        self.dvc *= self.v_th
         gamma_ee_0 = spf.el_charge ** 4 / \
             (4 * np.pi * (spf.el_mass * spf.epsilon_0) ** 2)
         gamma_ei_0 = z * gamma_ee_0
@@ -222,7 +223,7 @@ class Impurity:
                                                                          vgrid=self.vgrid/self.v_th,
                                                                          T_norm=self.T_norm,
                                                                          sigma_0=self.sigma_0,
-                                                                         dtype='Theoretical',
+                                                                         dtype='Lotz',
                                                                          opts=self.opts))
 
     def load_spontem_transitions(self):
@@ -687,6 +688,7 @@ class Impurity:
             ax.set_xlabel('x [m]')
         elif xaxis == 'Te':
             x = self.Te[:-1] * self.T_norm
+            ax.set_xlabel('Te [eV]')
         elif xaxis == 'distance_from_sheath':
             x = self.xgrid[-1] - self.xgrid[:-1]
             ax.set_xlabel('Distance from sheath [m]')
@@ -1089,15 +1091,10 @@ class Impurity:
         return adas_ex_E_rates, adas_ex_E_rates_max
 
     def get_ion_rates(self, per_z=False):
+        # Assume ground states only here?
         collrate_const = self.n_norm * self.v_th * \
             self.sigma_0 * self.t_norm
 
-        # Te = self.Te
-        # ne = self.ne
-        # f0 = np.transpose(self.data['DIST_F'][0])
-        # f0 = f0[:, :]
-        # f0_max = get_maxwellians(
-        #     self.num_x, ne, Te, self.vgrid, self.v_th, self.num_v)
         if per_z:
             ion_rates = np.zeros((self.num_x, self.num_z))
             ion_rates_max = np.zeros((self.num_x, self.num_z))
@@ -1109,33 +1106,59 @@ class Impurity:
         for i in range(self.num_x):
             if self.opts['COLL_ION_REC']:
                 for iz_trans in self.iz_transitions:
-                    K_ion = collrate_const * rates.ex_rate(
+                    K_ion = collrate_const * rates.ion_rate(
                         self.f0[i, :],
                         self.vgrid/self.v_th,
                         self.dvc/self.v_th,
                         iz_trans.sigma
                     )
-                    K_ion_max = collrate_const * rates.ex_rate(
+                    K_ion_max = collrate_const * rates.ion_rate(
                         self.f0_max[i, :],
                         self.vgrid/self.v_th,
                         self.dvc/self.v_th,
                         iz_trans.sigma
                     )
-                    # eps = ex_trans.thresh * spf.el_charge
-                    rate = self.n_norm * K_ion * \
-                        self.dens[i, iz_trans.from_loc] / self.t_norm
-                    rate_max = self.n_norm * K_ion_max * \
-                        self.dens_max[i, iz_trans.from_loc] / \
-                        self.t_norm
+                    rate = K_ion / self.ne[i]
+                    rate_max = K_ion_max / self.ne[i]
                     if per_z:
                         z = iz_trans.from_state.iz
                         ion_rates[i, z] += rate
                         ion_rates_max[i, z] += rate_max
                     else:
-                        ion_rates[i] += rate
-                        ion_rates_max[i] += rate_max
+                        dens_ratio = self.dens[i, z] / np.sum(self.dens[i, :])
+                        dens_ratio_max = self.dens[i,
+                                                   z] / np.sum(self.dens[i, :])
+                        ion_rates[i] += rate * dens_ratio
+                        ion_rates_max[i] += rate_max(dens_ratio_max)
+
+        # Denormalise
+        ion_rates /= (self.t_norm * self.n_norm)
+        ion_rates_max /= (self.t_norm * self.n_norm)
 
         return ion_rates, ion_rates_max
+
+    def get_ion_rates_adas(self, per_z=True):
+        # Assume ground states only here
+        if per_z:
+            ion_rates = np.zeros((self.num_x, self.num_z))
+        else:
+            ion_rates = np.zeros(self.num_x)
+
+        # Calculate collisional excitation rates
+        adas_iz_coeffs = self.get_adas_iz_coeffs()
+        for i in range(self.num_x):
+            if self.opts['COLL_ION_REC']:
+                for iz_trans in self.iz_transitions:
+                    K_ion = adas_iz_coeffs[i, iz_trans.from_state.iz]
+                    if per_z:
+                        rate = K_ion
+                        z = iz_trans.from_state.iz
+                        ion_rates[i, z] += rate
+                    else:
+                        rate = K_ion * self.dens[i, iz_trans.from_loc]
+                        ion_rates[i] += rate / np.sum(self.dens[i, :])
+
+        return ion_rates
 
     def get_PLT(self):
         spontem_E_rates, spontem_E_rates_max = self.get_spontem_E_rates(
@@ -1205,7 +1228,7 @@ class Impurity:
 
         return plt_interp, adas_eff_plt_max, adas_eff_plt
 
-    def plot_PLT(self, compare_adas=False, plot_eff=True, plot_sk=True, plot_max=True, plot_stages=False):
+    def plot_PLT(self, compare_adas=False, plot_eff=True, plot_sk=True, plot_max=True, plot_stages=False,logx=True):
         fig, ax = plt.subplots(1)
 
         PLT, PLT_max, eff_PLT, eff_PLT_max = self.get_PLT()
@@ -1214,8 +1237,8 @@ class Impurity:
 
         colours = ['orange', 'green', 'blue', 'cyan', 'brown', 'pink']
         if plot_stages:
-            # for z in range(3,self.num_z-1):
-            for z in range(3):
+            for z in range(self.num_z-1):
+            # for z in range(3):
                 if plot_max:
                     ax.plot(self.Te *
                             self.T_norm, PLT_max[:, z], color=colours[z], label=self.name + '$^{' + str(z) + '+}$')
@@ -1231,8 +1254,8 @@ class Impurity:
 
         if compare_adas:
             if plot_stages:
-                # for z in range(3,self.num_z-1):
-                for z in range(3):
+                for z in range(self.num_z-1):
+                # for z in range(3):
                     if plot_max:
                         ax.plot(self.Te *
                                 self.T_norm, adas_PLT[:, z], linestyle=(0, (1, 1)), color=colours[z])
@@ -1244,7 +1267,8 @@ class Impurity:
                         color='grey', label='ADAS effective PLT (Max iz balance)')
 
         ax.legend()
-        ax.set_xscale('log')
+        if logx:
+            ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_xlabel('$T_e$ [eV]')
         ax.set_ylabel('Carbon excitation radiation [Wm$^{3}$]')
@@ -1356,7 +1380,7 @@ def interpolate_adf11_data(adas_file, Te, ne, num_z):
     interp_data = np.zeros([num_x, num_z-1])
     for z in range(num_z-1):
         adas_file_interp = interpolate.interp2d(
-            adas_file.logNe, adas_file.logT, adas_file.data[z], kind='cubic')
+            adas_file.logNe, adas_file.logT, adas_file.data[z], kind='linear')
         for i in range(num_x):
             log_ne = np.log10(1e-6 * ne[i])
             log_Te = np.log10(Te[i])
