@@ -29,7 +29,7 @@ C_ION_COEFFS = [
 C_ION_COEFFS_I = [[10.6], [24.4], [41.4], [64.5, 285], [392.0], [490.0]]
 
 
-def get_BC_iz_cs(vgrid, T_norm, from_state, to_state, sigma_0):
+def get_lotz_iz_cs(vgrid, T_norm, from_state, sigma_0):
     z = from_state.iz
     I_H = 13.6058
     a_0 = 5.29177e-11
@@ -45,11 +45,73 @@ def get_BC_iz_cs(vgrid, T_norm, from_state, to_state, sigma_0):
         for j in range(len(zeta)):
             x_j = E_0 / I[j]
             if E_0 > I[j]:
+                cs[i] += 4.5e-14 * zeta[j] * np.log(x_j) / (E_0 * I[j])
+
+    return cs / sigma_0, I[-1]
+
+
+def get_BC_iz_cs(vgrid, T_norm, from_state, to_state, sigma_0):
+    z = from_state.iz
+    I_H = 13.6058
+    a_0 = 5.29177e-11
+    cs = np.zeros(len(vgrid))
+    nu = 0.25 * (np.sqrt((100*z + 91) / (4*z + 3)) - 1)
+    C = 2.3
+
+    zeta = from_state.shell_occupation
+    I = from_state.shell_iz_energies
+
+    for i in range(len(vgrid)):
+        E_0 = T_norm * vgrid[i] ** 2
+        for j in range(len(zeta)):
+            x_j = E_0 / I[j]
+            if x_j <= 0.0:
+                print('hey')
+            if E_0 > I[j]:
                 w = np.log(x_j) ** (nu / x_j)
                 cs[i] += C * zeta[j] * ((I_H / I[j]) ** 2) * \
                     (np.log(x_j) / x_j) * w * np.pi * (a_0 ** 2)
 
-    return cs / sigma_0, I[-1]
+    return cs / sigma_0, I[0]
+
+
+def load_nifs_ex_sigma(vgrid, from_state, to_state, sigma_0, T_norm, extrapolate=True):
+    # Note: Care should be taken when extrapolating from NIFS data. Check with a given transition beforehand.
+
+    nifs_file = os.path.join(
+        'imp_data', 'Carbon', 'nifs_ex_cs.txt')
+
+    Egrid = vgrid ** 2 * T_norm
+
+    # Get the NIFS energy and cross-section data
+    with open(nifs_file) as f:
+        lines = f.readlines()
+        for i, line in enumerate(lines[4::4]):
+            iz, from_statename, to_statename, I_0 = line.split('\t')
+            if from_state.statename == from_statename and to_state.statename == to_statename and from_state.iz == int(iz):
+                nifs_Egrid = np.array([float(v)
+                                      for v in lines[4+4*i+1].split('\t')])
+                nifs_sigma = np.array([float(v)
+                                      for v in lines[4+4*i+2].split('\t')])
+                break
+
+    # Interpolate to the SOL-KiT energy grid
+    if extrapolate:
+        f = scipy.interpolate.interp1d(nifs_Egrid, np.log(
+            nifs_sigma), fill_value="extrapolate", bounds_error=False, kind='cubic')
+        log_sigma = f(Egrid)
+        sigma = np.exp(log_sigma)
+    else:
+        f = scipy.interpolate.interp1d(
+            nifs_Egrid, nifs_sigma, fill_value=0.0, bounds_error=False, kind='cubic')
+        sigma = f(Egrid)
+    # Compute collision strength and tidy
+    sigma = sigma * 1e-4
+    coll_strength = sigma * (from_state.statw * Egrid) / 1.1969e-15
+    sigma = sigma / sigma_0
+    sigma[np.where(Egrid < float(I_0))] = 0.0
+
+    return sigma, float(I_0), coll_strength
 
 
 def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
@@ -293,6 +355,69 @@ def get_adas_statename(line):
         return s + l
     else:
         return shell + ' ' + s + l
+
+
+def load_adas_iz_rates(imp_name, from_state, to_state, T_norm, n_norm, t_norm):
+    adas_file = get_adas_file('radrec', imp_name, from_state.iz)
+    with open(adas_file) as f:
+        lines = f.readlines()
+
+    # Get parent and child states
+    started_to = False
+    for i, l in enumerate(lines):
+        if 'PARENT TERM INDEXING' in l:
+            from_start = i+4
+        if 'LS RESOLVED TERM INDEXING' in l:
+            from_end = i-1
+            started_to = True
+            to_start = i+4
+        if started_to:
+            if l == ' \n' or l == '\n':
+                to_end = i
+                break
+    from_states = []
+    to_states = []
+    for l in lines[from_start:from_end]:
+        from_states.append(get_adas_statename(l))
+    for l in lines[to_start:to_end]:
+        to_states.append(get_adas_statename(l))
+
+    # Get Te index
+    for i, l in enumerate(lines):
+        if 'INDX TE=' in l and 'PRTI=' in lines[i-2]:
+            Te = np.array([float(T.replace('D', 'E')) for T in l.split()[2:]])
+            break
+    K2eV = 11603.247217
+    Te = Te / (K2eV * T_norm)  # Convert to eV and normalise
+
+    # Get transitions
+    started_trans = False
+    from_trans = []
+    to_trans = []
+    for i, l in enumerate(lines):
+        if i > 4:
+            if 'INDX TE=' in l and 'PRTI=' in lines[i-2]:
+                started_trans = True
+                from_trans.append(i+2)
+            if started_trans:
+                if l == ' \n' or l == '\n':
+                    to_trans.append(i)
+                    started_trans = False
+    searching = True
+    for i, from_idx in enumerate(from_trans):
+        to_idx = to_trans[i]
+        parent_idx = i
+        if searching:
+            for l in lines[from_idx:to_idx]:
+                child_idx = int(l.split()[0]) - 1
+                if from_states[parent_idx] == from_state.statename and to_states[child_idx] == to_state.statename:
+                    rates = np.array([float(r.replace('D', 'E'))
+                                     for r in l.split()[1:]])
+                    searching = False
+                    break
+    rates = rates * t_norm * n_norm * 1e-6  # Normalise
+
+    return rates, Te
 
 
 def load_adas_radrec_rates(imp_name, from_state, to_state, T_norm, n_norm, t_norm):

@@ -27,15 +27,15 @@ default_opts = {'EVOLVE': True,
                 'THEORECICAL_IZ_CS': 'BurgessChidichimo'}
 
 
-def run(skrun_dir, opts=default_opts):
+def run(skrun=None, Te=None, ne=None, opts=default_opts):
 
-    # Load the SOL-KiT run
-    skrun = spf.SKRun(skrun_dir)
-    ne = skrun.data['DENSITY']
     # Load the tungsten cross-sections and interpolate onto the SOL-KiT velocity grid
     species = {}
     for imp in opts['MODELLED SPECIES']:
-        species[imp] = Impurity(imp, skrun, opts)
+        if skrun is not None:
+            species[imp] = Impurity(imp, opts, skrun=skrun)
+        elif Te is not None and ne is not None:
+            species[imp] = Impurity(imp, opts, Te=Te, ne=ne)
 
     # Build the rate matrices
     for imp in opts['MODELLED SPECIES']:
