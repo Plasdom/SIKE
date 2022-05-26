@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 
 
 class State:
-    def __init__(self, iz_stage, lower_shells, statename, loc, statw=1, energy=0, I_0=0, metastable=0):
+    def __init__(self, nuc_chg, iz_stage, lower_shells, statename, loc, statw=1, energy=0, I_0=0, metastable=0):
+        self.nuc_chg = nuc_chg
         self.iz = iz_stage
         if lower_shells != '0':
             self.lower_shells = lower_shells
@@ -54,7 +55,7 @@ class State:
         shell_iz_energies = np.zeros(len(self.shells))
         shell_iz_energies[-1] = self.iz_energy
         for i in range(len(self.shells)-1):
-            missing_e = int(np.sum(self.shell_occupation[i+1:]))
+            missing_e = int(np.sum(self.shell_occupation[i+1:])) + self.iz
             for state in states:
                 if state.iz == missing_e:
                     shell_iz_energies[i] = state.iz_energy

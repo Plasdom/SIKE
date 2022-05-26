@@ -9,13 +9,12 @@ from impurity import Impurity
 from numba import jit
 import pickle
 
-TEMP_FAC = 1.0
 default_opts = {'EVOLVE': True,
                 'SAVE': False,
                 'MODELLED SPECIES': ['C'],
                 'DELTA_T': 1.0e5,
-                'RES_THRESH': 1e-12,
-                'MAX_STEPS': 1e4,
+                'RES_THRESH': 1e-5,
+                'MAX_STEPS': 1e3,
                 'T_SAVE': 1e6,
                 'FRAC_IMP_DENS': 0.05,
                 'COLL_ION_REC': True,
@@ -24,26 +23,30 @@ default_opts = {'EVOLVE': True,
                 'SPONT_EM': True,
                 'GS_ONLY': False,
                 'GS_ONLY_RADREC': False,
-                'THEORECICAL_IZ_CS': 'BurgessChidichimo'}
+                'COMPARE_ADAS': True}
 
 
-def run(skrun=None, Te=None, ne=None, opts=default_opts):
+def run(sktrun=None, sk_timestep=-1, Te=None, ne=None, opts=default_opts):
 
     # Load the tungsten cross-sections and interpolate onto the SOL-KiT velocity grid
+    print('\nInitialising...')
     species = {}
     for imp in opts['MODELLED SPECIES']:
-        if skrun is not None:
-            species[imp] = Impurity(imp, opts, skrun=skrun)
+        if sktrun is not None:
+            species[imp] = Impurity(
+                imp, opts, sktrun=sktrun, sk_timestep=sk_timestep)
         elif Te is not None and ne is not None:
             species[imp] = Impurity(imp, opts, Te=Te, ne=ne)
 
     # Build the rate matrices
+    print('Building rate matrices...')
     for imp in opts['MODELLED SPECIES']:
         species[imp].build_rate_matrices()
         if opts['COLL_ION_REC']:
             species[imp].get_saha_eq()
 
     # Calculate densities
+    print('Solving state densities...')
     res = 1.0
     step = 0
     if opts['EVOLVE']:
@@ -66,8 +69,20 @@ def run(skrun=None, Te=None, ne=None, opts=default_opts):
         for imp in opts['MODELLED SPECIES']:
             species[imp].solve()
 
+    # Do some tidying up
+    for imp in opts['MODELLED SPECIES']:
+        del species[imp].tmp_dens
+        del species[imp].op_mat
+        del species[imp].op_mat_max
+        del species[imp].rate_mat
+        del species[imp].rate_mat_max
+        if opts['COMPARE_ADAS']:
+            del species[imp].op_mat_adas
+
     # Print converged output
     if opts['SAVE']:
+
+        # Save pickle
         with open(opts['SAVE_PATH'] + '.pickle', 'wb') as f:
             pickle.dump(species, f)
     else:

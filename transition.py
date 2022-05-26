@@ -61,25 +61,27 @@ class Transition:
     def plot_cs(self, ax=None, form='cross_section', units='cm2', logx=False, logy=False):
         if ax is None:
             fig, ax = plt.subplots(1)
-            ax.set_xlabel('E [eV]')
-        if form == 'collision_strength':
+        if logx:
             ax.set_xscale('log')
+        if logy:
+            ax.set_yscale('log')
+
+        label = str(self.from_state.iz) + '+  ' + self.from_state.statename + \
+            ' -> ' + str(self.to_state.iz) + \
+            '+ ' + self.to_state.statename + ''
+
+        if form == 'collision_strength':
+            ax.set_xlabel(r'E  / $\varepsilon$')
             ax.set_ylabel('Collision strength')
-            label = str(self.from_state.iz) + '+  ' + self.from_state.statename + \
-                ' -> ' + \
-                '+ ' + self.to_state.statename + ''
+
             ax.plot((self.vgrid ** 2 * self.T_norm) / self.thresh,
                     self.coll_strength, label=label)
+
         elif form == 'cross_section':
+            ax.set_xlabel('E [eV]')
             ax.set_ylabel('Cross-section [' + units + ']')
-            if logx:
-                ax.set_xscale('log')
-            if logy:
-                ax.set_yscale('log')
+
             ax.axvline(self.thresh, linestyle='--', color='grey')
-            label = str(self.from_state.iz) + '+  (' + self.from_state.statename + \
-                ') -> ' + str(self.to_state.iz) + \
-                '+ (' + self.to_state.statename + ')'
             if units == 'm2':
                 y = self.sigma * self.sigma_0
             elif units == 'cm2':
