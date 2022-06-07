@@ -1,6 +1,6 @@
 from lib2to3.pgen2.token import STAR
 import matplotlib.pyplot as plt
-import sk_plotting_functions as spf
+import sk_plotting_functions as spf  # TODO: Remove spf dependency?
 import input
 import rates
 import output
@@ -12,6 +12,7 @@ import pickle
 default_opts = {'EVOLVE': True,
                 'SAVE': False,
                 'MODELLED SPECIES': ['C'],
+                'MODELLED_STATES': 'all',
                 'DELTA_T': 1.0e5,
                 'RES_THRESH': 1e-5,
                 'MAX_STEPS': 1e3,
@@ -21,8 +22,6 @@ default_opts = {'EVOLVE': True,
                 'RAD_REC': True,
                 'COLL_EX_DEEX': True,
                 'SPONT_EM': True,
-                'GS_ONLY': False,
-                'GS_ONLY_RADREC': False,
                 'COMPARE_ADAS': True}
 
 
