@@ -65,7 +65,7 @@ class Impurity:
 
         # Define normalisation
         self.T_norm = 10.0
-        self.n_norm = 1.0e+19
+        self.n_norm = 1.0e+20
         z = 1
         self.sigma_0 = 8.797355066696007e-21
 
@@ -175,7 +175,7 @@ class Impurity:
 
                     dtype = line_data[5].strip('\n')
 
-                    if trans_type == 'ionization' and self.opts['COLL_ION_REC']:
+                    if trans_type == 'ionization' and self.opts['COLL_ION_REC'] and dtype != 'IGNORE':
                         self.iz_transitions.append(transition.Transition('ionization',
                                                                          self.longname,
                                                                          from_state,
@@ -527,6 +527,7 @@ class Impurity:
         self.rate_mat_max = rate_mat_max
         if self.opts['COMPARE_ADAS']:
             self.op_mat_adas = op_mat_adas
+            self.rate_mat_adas = rate_mat_adas
 
     def solve(self):
         for i in range(self.num_x):
@@ -546,6 +547,17 @@ class Impurity:
             loc_mat_inv = np.linalg.inv(loc_mat)
             dens = loc_mat_inv.dot(rhs)
             self.dens_max[i, :] = dens.copy()
+
+        if self.opts['COMPARE_ADAS']:
+            for i in range(self.num_x):
+
+                loc_mat = self.rate_mat_adas[i]
+                loc_mat[-1, :] = 1.0
+                rhs = np.zeros(self.tot_states)
+                rhs[-1] = np.sum(self.dens_adas[i, :])
+                loc_mat_inv = np.linalg.inv(loc_mat)
+                dens = loc_mat_inv.dot(rhs)
+                self.dens_adas[i, :] = dens.copy()
 
     def evolve(self):
 
@@ -674,7 +686,7 @@ class Impurity:
                 label='Maxwellian $f_0$', color='black')
         if plot_saha:
             ax.plot(x, self.Zavg_saha[:-1], '--',
-                    label='Saha equilibrium', color='blue')
+                    label='Saha equilibrium', color='green')
         if plot_sk:
             ax.plot(x, self.Zavg[:-1], '--',
                     label='SOL-KiT $f_0$', color='red')

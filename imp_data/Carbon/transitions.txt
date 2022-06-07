@@ -1,10 +1,86 @@
 type	from_iz	from_state	to_iz	to_state	source
 ionization	0	2s2,2p2 3P	1	2s2,2p1 2P	SunoKato
+ionization	0	2s2,2p2 1D	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p2 1S	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s1,2p3 5S	1	2s1,2p2 4P	BurgessChidichimo
+ionization	0	2s1,2p3 5S	1	2s1,2p2 2D	BurgessChidichimo
+ionization	0	2s1,2p3 5S	1	2s1,2p2 2S	BurgessChidichimo
+ionization	0	2s1,2p3 5S	1	2s1,2p2 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3s1 3P	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3s1 1P	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s1,2p3 3D	1	2s1,2p2 4P	BurgessChidichimo
+ionization	0	2s1,2p3 3D	1	2s1,2p2 2S	BurgessChidichimo
+ionization	0	2s1,2p3 3D	1	2s1,2p2 2S	BurgessChidichimo
+ionization	0	2s1,2p3 3D	1	2s1,2p2 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3p1 1P	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3p1 3D	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3p1 3S	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3p1 3P	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3p1 1D	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3p1 1S	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s1,2p3 3P	1	2s1,2p2 4P	BurgessChidichimo
+ionization	0	2s1,2p3 3P	1	2s1,2p2 2D	BurgessChidichimo
+ionization	0	2s1,2p3 3P	1	2s1,2p2 2S	BurgessChidichimo
+ionization	0	2s1,2p3 3P	1	2s1,2p2 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3d1 1D	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3d1 3F	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3d1 3D	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3d1 1F	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s2,2p1,3d1 3P	1	2s2,2p1 2P	BurgessChidichimo
+ionization	0	2s1,2p3 1D	1	2s1,2p2 4P	BurgessChidichimo
+ionization	0	2s1,2p3 1D	1	2s1,2p2 2D	BurgessChidichimo
+ionization	0	2s1,2p3 1D	1	2s1,2p2 2S	BurgessChidichimo
+ionization	0	2s1,2p3 1D	1	2s1,2p2 2P	BurgessChidichimo
+ionization	0	2s1,2p3 3S	1	2s1,2p2 4P	BurgessChidichimo
+ionization	0	2s1,2p3 3S	1	2s1,2p2 2D	BurgessChidichimo
+ionization	0	2s1,2p3 3S	1	2s1,2p2 2S	BurgessChidichimo
+ionization	0	2s1,2p3 3S	1	2s1,2p2 2P	BurgessChidichimo
+ionization	0	2s1,2p3 1P	1	2s1,2p2 4P	BurgessChidichimo
+ionization	0	2s1,2p3 1P	1	2s1,2p2 2D	BurgessChidichimo
+ionization	0	2s1,2p3 1P	1	2s1,2p2 2S	BurgessChidichimo
+ionization	0	2s1,2p3 1P	1	2s1,2p2 2P	BurgessChidichimo
 ionization	1	2s2,2p1 2P	2	2s2 1S	SunoKato
+ionization	1	2s1,2p2 4P	2	2s1,2p1 3P	BurgessChidichimo
+ionization	1	2s1,2p2 4P	2	2s1,2p1 1P	BurgessChidichimo
+ionization	1	2s1,2p2 2D	2	2s1,2p1 3P	BurgessChidichimo
+ionization	1	2s1,2p2 2D	2	2s1,2p1 1P	BurgessChidichimo
+ionization	1	2s1,2p2 2S	2	2s1,2p1 3P	BurgessChidichimo
+ionization	1	2s1,2p2 2S	2	2s1,2p1 1P	BurgessChidichimo
+ionization	1	2s1,2p2 2P	2	2s1,2p1 3P	BurgessChidichimo
+ionization	1	2s1,2p2 2P	2	2s1,2p1 1P	BurgessChidichimo
+ionization	1	2s2,3s1 2S	2	2s2 1S	BurgessChidichimo
+ionization	1	2s2,3p1 2P	2	2s2 1S	BurgessChidichimo
+ionization	1	2s2,3d1 2D	2	2s2 1S	BurgessChidichimo
 ionization	2	2s2 1S	3	1s2,2s1 2S	SunoKato
+ionization	2	2s1,2p1 3P	3	1s2,2s1 2S	IGNORE
+ionization	2	2s1,2p1 1P	3	1s2,2s1 2S	IGNORE
+ionization	2	2p2 3P	3	1s2,2p1 2P	IGNORE
+ionization	2	2p2 1D	3	1s2,2p1 2P	IGNORE
+ionization	2	2p2 1S	3	1s2,2p1 2P	IGNORE
+ionization	2	2s1,3s1 3S	3	1s2,2s1 2S	IGNORE
+ionization	2	2s1,3s1 1S	3	1s2,2s1 2S	IGNORE
+ionization	2	2s1,3p1 1P	3	1s2,2s1 2S	IGNORE
+ionization	2	2s1,3p1 3P	3	1s2,2s1 2S	IGNORE
+ionization	2	2s1,3d1 3D	3	1s2,2s1 2S	IGNORE
+ionization	2	2s1,3d1 1D	3	1s2,2s1 2S	IGNORE
+ionization	2	2s1,3s1 1D	3	1s2,2s1 2S	IGNORE
 ionization	3	1s2,2s1 2S	4	1s2 1S	SunoKato
+ionization	3	1s2,2p1 2P	4	1s2 1S	BurgessChidichimo
+ionization	3	1s2,3s1 2S	4	1s2 1S	BurgessChidichimo
+ionization	3	1s2,3p1 2P	4	1s2 1S	BurgessChidichimo
+ionization	3	1s2,3d1 2D	4	1s2 1S	BurgessChidichimo
+ionization	3	1s2,4p1 2P	4	1s2 1S	BurgessChidichimo
+ionization	3	1s2,4p1 2S	4	1s2 1S	BurgessChidichimo
 ionization	4	1s2 1S	5	1s1 2S	SunoKato
 ionization	5	1s1 2S	6	1S	SunoKato
+ionization	5	2s1 2S	6	1S	IGNORE
+ionization	5	2p1 2P	6	1S	IGNORE
+ionization	5	3s1 2S	6	1S	IGNORE
+ionization	5	3p1 2P	6	1S	IGNORE
+ionization	5	3d1 2D	6	1S	IGNORE
+ionization	5	4s1 2S	6	1S	IGNORE
+ionization	5	4p1 2P	6	1S	IGNORE
+ionization	5	5p1 2P	6	1S	IGNORE
 radrec	1	2s2,2p1 2P	0	2s2,2p2 3P	ADAS
 radrec	1	2s2,2p1 2P	0	2s2,2p2 1D	ADAS
 radrec	1	2s2,2p1 2P	0	2s2,2p2 1S	ADAS
