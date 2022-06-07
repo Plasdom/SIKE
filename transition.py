@@ -45,7 +45,7 @@ class Transition:
                 self.vgrid, self.from_state, self.to_state, self.T_norm, self.sigma_0)
         elif self.dtype == 'Lotz':
             self.sigma, self.thresh = input.get_lotz_iz_cs(
-                self.vgrid, self.T_norm, self.from_state, self.sigma_0)
+                self.vgrid, self.T_norm, self.from_state, self.to_state, self.sigma_0)
         elif self.dtype == 'BurgessChidichimo':
             self.sigma, self.thresh = input.get_BC_iz_cs(
                 self.vgrid, self.T_norm, self.from_state, self.to_state, self.sigma_0)

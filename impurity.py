@@ -104,12 +104,8 @@ class Impurity:
 
     def load_states(self):
         self.states = []
-        if self.opts['GS_ONLY']:
-            statedata_file = os.path.join(
-                'imp_data', self.longname, 'states_gsonly.txt')
-        else:
-            statedata_file = os.path.join(
-                'imp_data', self.longname, 'states.txt')
+        statedata_file = os.path.join(
+            'imp_data', self.longname, 'states.txt')
         with open(statedata_file) as f:
             lines = f.readlines()
             i = 0
@@ -125,9 +121,28 @@ class Impurity:
                 metastable = int(line_data[8])
                 mask = bool(int(line_data[9]))
                 if iz < self.num_z and not mask:
-                    self.states.append(
-                        atomic_state.State(self.nuc_chg, iz, lower_shells, statename, i, statw, energy, I_0, metastable))
-                    i += 1
+
+                    if self.opts['MODELLED_STATES'] == 'ground':
+                        if energy == 0.0:
+                            self.states.append(
+                                atomic_state.State(self.nuc_chg, iz, lower_shells, statename, i, statw, energy, I_0, metastable))
+                            i += 1
+
+                    elif self.opts['MODELLED_STATES'] == 'metastable':
+                        if energy == 0.0:
+                            self.states.append(
+                                atomic_state.State(self.nuc_chg, iz, lower_shells, statename, i, statw, energy, I_0, metastable))
+                            i += 1
+                        elif metastable == 1:
+                            self.states.append(
+                                atomic_state.State(self.nuc_chg, iz, lower_shells, statename, i, statw, energy, I_0, metastable))
+                            i += 1
+
+                    elif self.opts['MODELLED_STATES'] == 'all':
+                        self.states.append(
+                            atomic_state.State(self.nuc_chg, iz, lower_shells, statename, i, statw, energy, I_0, metastable))
+                        i += 1
+
         self.tot_states = len(self.states)
         for state in self.states:
             state.get_shell_iz_energies(self.states)
@@ -139,12 +154,8 @@ class Impurity:
         self.radrec_transitions = []
         self.spontem_transitions = []
 
-        if self.opts['GS_ONLY_RADREC']:
-            trans_file = os.path.join(
-                'imp_data', self.longname, 'transitions_gsradrec.txt')
-        else:
-            trans_file = os.path.join(
-                'imp_data', self.longname, 'transitions.txt')
+        trans_file = os.path.join(
+            'imp_data', self.longname, 'transitions.txt')
         with open(trans_file) as f:
             lines = f.readlines()
             for l in lines[1:]:
@@ -195,39 +206,8 @@ class Impurity:
                                                                          sigma_0=self.sigma_0,
                                                                          dtype=dtype))
 
-        fill_iz_transitions = False
-        if fill_iz_transitions:
-            self.fill_iz_transitions()
-
         if self.opts['SPONT_EM']:
             self.load_spontem_transitions()
-
-    def fill_iz_transitions(self):
-        for z in range(self.num_z-1):
-            to_state = self.get_ground_state(z+1)
-            for from_state in self.states:
-
-                # if from_state.metastable and from_state.iz == z:
-                if from_state.iz == z:
-
-                    # Check this transition is not already added
-                    trans_found = False
-                    for iz_transition in self.iz_transitions:
-                        if iz_transition.from_state.equals(from_state) and iz_transition.to_state.equals(to_state):
-                            trans_found = True
-                            break
-
-                    # If not, add this theoretical transition
-                    if trans_found is False:
-                        self.iz_transitions.append(transition.Transition('ionization',
-                                                                         self.longname,
-                                                                         from_state,
-                                                                         to_state,
-                                                                         vgrid=self.vgrid/self.v_th,
-                                                                         T_norm=self.T_norm,
-                                                                         sigma_0=self.sigma_0,
-                                                                         dtype='BurgessChidichimo',
-                                                                         opts=self.opts))
 
     def load_spontem_transitions(self):
         # Load spontem file data
@@ -1538,7 +1518,7 @@ class Impurity:
             ax.set_yscale('log')
         ax.set_ylabel('Radiatiative power loss [MWm$^{-3}$]')
 
-    def plot_Zdist(self, cells=-1):
+    def plot_Zdist(self, cells=-1, plot_saha=False):
         if isinstance(cells, int):
             cells = [cells]
             cell_pref = ['']
@@ -1551,13 +1531,15 @@ class Impurity:
         min_z = 0
         max_z = self.num_z
         zs = [i for i in range(min_z, max_z)]
+        z_dens, z_dens_max, z_dens_saha = self.get_z_dens()
         for i, cell in enumerate(cells):
-            ax.plot(zs, self.dens_max[cell, min_z:max_z],
+            ax.plot(zs, z_dens_max[cell, min_z:max_z],
                     label=cell_pref[i] + 'Maxwellian $f_0$', color='black', alpha=1.0-0.2*i)
-            ax.plot(zs, self.dens[cell, min_z:max_z],
+            ax.plot(zs, z_dens[cell, min_z:max_z],
                     '--', label=cell_pref[i] + 'SOL-KiT $f_0$', color='red', alpha=1.0-0.2*i)
-            ax.plot(zs, self.dens_saha[cell, min_z:max_z],
-                    '--', label=cell_pref[i] + 'Saha equilibrium', color='blue', alpha=1.0-0.2*i)
+            if plot_saha:
+                ax.plot(zs, z_dens_saha[cell, min_z:max_z],
+                        '--', label=cell_pref[i] + 'Saha equilibrium', color='blue', alpha=1.0-0.2*i)
         ax.grid()
         ax.legend()
         ax.set_yscale('log')

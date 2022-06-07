@@ -29,7 +29,7 @@ C_ION_COEFFS = [
 C_ION_COEFFS_I = [[10.6], [24.4], [41.4], [64.5, 285], [392.0], [490.0]]
 
 
-def get_lotz_iz_cs(vgrid, T_norm, from_state, sigma_0):
+def get_lotz_iz_cs(vgrid, T_norm, from_state, to_state, sigma_0):
     z = from_state.iz
     I_H = 13.6058
     a_0 = 5.29177e-11
@@ -39,18 +39,22 @@ def get_lotz_iz_cs(vgrid, T_norm, from_state, sigma_0):
 
     zeta = from_state.shell_occupation
     I = from_state.shell_iz_energies
+    E_f = to_state.energy
 
     for i in range(len(vgrid)):
         E_0 = T_norm * vgrid[i] ** 2
-        for j in range(len(zeta)):
-            x_j = E_0 / I[j]
-            if E_0 > I[j]:
-                cs[i] += 4.5e-18 * zeta[j] * np.log(x_j) / (E_0 * I[j])
+        # for j in range(len(zeta)):
+        for j in range(len(zeta)-1, len(zeta)):
+            I_j = I[j] + E_f
+            x_j = E_0 / I_j
+            if E_0 > I_j:
+                cs[i] += 4.5e-18 * zeta[j] * np.log(x_j) / (E_0 * I_j)
 
-    return cs / sigma_0, I[-1]
+    return cs / sigma_0, I[-1] + E_f
 
 
 def get_BC_iz_cs(vgrid, T_norm, from_state, to_state, sigma_0):
+    # Note
     z = from_state.iz
     I_H = 13.6058
     a_0 = 5.29177e-11
@@ -60,19 +64,22 @@ def get_BC_iz_cs(vgrid, T_norm, from_state, to_state, sigma_0):
 
     zeta = from_state.shell_occupation
     I = from_state.shell_iz_energies
+    E_f = to_state.energy
 
     for i in range(len(vgrid)):
         E_0 = T_norm * vgrid[i] ** 2
+        # for j in range(len(zeta)):
         for j in range(len(zeta)-1, len(zeta)):
-            x_j = E_0 / I[j]
+            I_j = I[j] + E_f
+            x_j = E_0 / I_j
             if x_j <= 0.0:
                 print('hey')
-            if E_0 > I[j]:
+            if E_0 > I_j:
                 w = np.log(x_j) ** (nu / x_j)
-                cs[i] += C * zeta[j] * ((I_H / I[j]) ** 2) * \
+                cs[i] += C * zeta[j] * ((I_H / I_j) ** 2) * \
                     (np.log(x_j) / x_j) * w * np.pi * (a_0 ** 2)
 
-    return cs / sigma_0, I[-1]
+    return cs / sigma_0, I[-1] + E_f
 
 
 def load_nifs_ex_sigma(vgrid, from_state, to_state, sigma_0, T_norm, extrapolate=True):
