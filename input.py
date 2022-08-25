@@ -338,21 +338,35 @@ def adas_rm1(a):
 def lmom(l):
     if l == '0':
         return 'S'
-    if l == '1':
+    elif l == '1':
         return 'P'
-    if l == '2':
+    elif l == '2':
         return 'D'
-    if l == '3':
+    elif l == '3':
         return 'F'
-    if l == '4':
+    elif l == '4':
         return 'G'
+    elif l == '5':
+        return 'H'
+    elif l == '6':
+        return 'I'
+    elif l == '7':
+        return 'J'
+    elif l == '8':
+        return 'K'
+    elif l == '9':
+        return 'L'
+    elif l == '10':
+        return 'M'
+    elif l == '11':
+        return 'N'
+    elif l == '12':
+        return 'O'
 
 
 def get_adas_statename(line):
-    fields = line.split('    ')
-    # shell = fields[2][1:].lower().replace(' ', '')
-    # shell = re.sub('[spdfg]1', adas_rm1, shell)
-    shell = fields[2][1:].lower().replace(' ', ',')
+    shell_re = re.findall('([123456789][SPDFGHIJKLMNOP][123456789])', line)
+    shell = (','.join(shell_re)).lower()
     mom = re.search('\(\d\)\d\(', line)
     s = mom[0][1]
     l = lmom(mom[0][3])
@@ -450,11 +464,33 @@ def load_adas_radrec_rates(imp_name, from_state, to_state, T_norm, n_norm, t_nor
     for l in lines[to_start:to_end]:
         to_states.append(get_adas_statename(l))
 
-    # Get Te index
+    # Find the number of lines over which index / data points are written
     for i, l in enumerate(lines):
         if 'INDX TE=' in l and 'PRTI=' in lines[i-2]:
-            Te = np.array([float(T.replace('D', 'E')) for T in l.split()[2:]])
+            idx_line = i
             break
+    for i, l in enumerate(lines[idx_line:]):
+        if l == '\n' or l == ' \n':
+            idx_end = i + idx_line
+            break
+    block = ''.join(lines[idx_line:idx_end])
+    ch_idx_re = re.findall('( \d+ )', block)
+    num_ch = len(ch_idx_re)
+    lines_per_entry = int((idx_end - idx_line - 2) / num_ch)
+
+    # Get Te index
+    # for i, l in enumerate(lines):
+    #     if 'INDX TE=' in l and 'PRTI=' in lines[i-2]:
+    #         Te = np.array([float(T.replace('D', 'E')) for T in l.split()[2:]])
+    #         break
+    for i, l in enumerate(lines):
+        if 'INDX TE=' in l and 'PRTI=' in lines[i-2]:
+            # TODO: What happens if the index is over 3 lines? Need to see an example for format
+            T_idx_lines = ' '.join(lines[i:i+lines_per_entry])
+            T_idx_re = re.findall('(\d.\d+[ED][+-]\d+)', T_idx_lines)
+            Te = np.array([float(T.replace('D', 'E')) for T in T_idx_re])
+            break
+
     K2eV = 11603.247217
     Te = Te / (K2eV * T_norm)  # Convert to eV and normalise
 
@@ -476,21 +512,28 @@ def load_adas_radrec_rates(imp_name, from_state, to_state, T_norm, n_norm, t_nor
         to_idx = to_trans[i]
         parent_idx = i
         if searching:
-            for l in lines[from_idx:to_idx]:
+            for j, l in enumerate(lines[from_idx:to_idx:lines_per_entry]):
                 child_idx = int(l.split()[0]) - 1
                 if from_states[parent_idx] == from_state.statename and to_states[child_idx] == to_state.statename:
+                    rate_data = (' '.join(lines[from_idx + j *
+                                                lines_per_entry:from_idx + (j+1)*lines_per_entry])).split()
                     rates = np.array([float(r.replace('D', 'E'))
-                                     for r in l.split()[1:]])
+                                     for r in rate_data[1:]])
                     searching = False
                     break
-    rates = rates * t_norm * n_norm * 1e-6  # Normalise
+    try:
+        rates = rates * t_norm * n_norm * 1e-6  # Normalise
+    except:
+        print('hey')
 
     return rates, Te
 
 
 def get_adas_file(trans_type, imp_name, z):
     pref = os.path.join(os.path.dirname(__file__), 'imp_data', imp_name)
+
     if trans_type == 'radrec':
+
         if imp_name == 'Carbon':
             if z == 1:
                 adas_file = os.path.join(pref, 'rrc93#b_c1ls.dat')
@@ -504,6 +547,29 @@ def get_adas_file(trans_type, imp_name, z):
                 adas_file = os.path.join(pref, 'rrc96#h_c5ls.dat')
             elif z == 6:
                 adas_file = os.path.join(pref, 'rrc93##_c6ls.dat')
+
+        elif imp_name == 'Neon':
+            if z == 1:
+                adas_file = os.path.join(pref, 'nrb05#f_ne1ls.dat')
+            elif z == 2:
+                adas_file = os.path.join(pref, 'nrb05#o_ne2ls.dat')
+            elif z == 3:
+                adas_file = os.path.join(pref, 'nrb05#n_ne3ls.dat')
+            elif z == 4:
+                adas_file = os.path.join(pref, 'nrb05#c_ne4ls.dat')
+            elif z == 5:
+                adas_file = os.path.join(pref, 'nrb05#b_ne5ls.dat')
+            elif z == 6:
+                adas_file = os.path.join(pref, 'nrb05#be_ne6ls.dat')
+            elif z == 7:
+                adas_file = os.path.join(pref, 'nrb05#li_ne7ls.dat')
+            elif z == 8:
+                adas_file = os.path.join(pref, 'nrb05#he_ne8ls.dat')
+            elif z == 9:
+                adas_file = os.path.join(pref, 'nrb05#h_ne9ls.dat')
+            elif z == 10:
+                adas_file = os.path.join(pref, 'nrb05##_ne10ls.dat')
+
     return adas_file
 
 

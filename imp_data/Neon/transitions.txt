@@ -1,0 +1,21 @@
+type	from_iz	from_state	to_iz	to_state	source
+ionization	0	2s2,2p6 1S	1	2s2,2p5 2P	Lotz
+ionization	1	2s2,2p5 2P	2	2s2,2p4 3P	Lotz
+ionization	2	2s2,2p4 3P	3	2s2,2p3 4S	Lotz
+ionization	3	2s2,2p3 4S	4	2s2,2p2 3P	Lotz
+ionization	4	2s2,2p2 3P	5	2s2,2p1 2P	Lotz
+ionization	5	2s2,2p1 2P	6	2s2 1S	Lotz
+ionization	6	2s2 1S	7	2s1 2S	Lotz
+ionization	7	2s1 2S	8	1s2 1S	Lotz
+ionization	8	1s2 1S	9	1s1 2S	Lotz
+ionization	9	1s1 2S	10	1S	Lotz
+radrec	1	2s2,2p5 2P	0	2s2,2p6 1S	ADAS
+radrec	2	2s2,2p4 3P	1	2s2,2p5 2P	ADAS
+radrec	3	2s2,2p3 4S	2	2s2,2p4 3P	ADAS
+radrec	4	2s2,2p2 3P	3	2s2,2p3 4S	ADAS
+radrec	5	2s2,2p1 2P	4	2s2,2p2 3P	ADAS
+radrec	6	2s2 1S	5	2s2,2p1 2P	ADAS
+radrec	7	2s1 2S	6	2s2 1S	ADAS
+radrec	8	1s2 1S	7	2s1 2S	ADAS
+radrec	9	1s1 2S	8	1s2 1S	ADAS
+radrec	10	1S	9	1s1 2S	ADAS

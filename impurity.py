@@ -28,6 +28,10 @@ class Impurity:
             self.nuc_chg = 74
             self.num_z = 11
             self.longname = 'Tungsten'
+        elif self.name == 'Ne':
+            self.nuc_chg = 10
+            self.num_z = 11
+            self.longname = 'Neon'
         self.load_states()
         self.load_transitions()
         self.init_dens()
@@ -675,7 +679,7 @@ class Impurity:
         ax.set_title('$Z_{eff}$ profile, ' + self.longname)
         # ax.set_xlim([10.4, 11.8])
 
-    def plot_Zavg(self, xaxis='Te', logx=False, plot_saha=False, plot_sk=True, compare_adas=False):
+    def plot_Zavg(self, xaxis='Te', logx=False, plot_saha=False, plot_kin=True, compare_adas=False):
         self.get_Zavg()
         fig, ax = plt.subplots(1)
         if xaxis == 'x':
@@ -694,7 +698,7 @@ class Impurity:
         if plot_saha:
             ax.plot(x, self.Zavg_saha[:-1], '--',
                     label='Saha equilibrium', color='green')
-        if plot_sk:
+        if plot_kin:
             ax.plot(x, self.Zavg[:-1], '--',
                     label='SOL-KiT $f_0$', color='red')
         if compare_adas and self.opts['COMPARE_ADAS']:
@@ -1319,11 +1323,15 @@ class Impurity:
             adas_iz_file = aurora.adas_file(os.path.join(
                 os.path.dirname(__file__), 'imp_data/Carbon/scd96_c.dat'))
 
-            # Interpolate adas data to sktrun profile
-            Te = self.Te * self.T_norm
-            ne = self.ne * self.n_norm
-            adas_iz_interp = interpolate_adf11_data(
-                adas_iz_file, Te, ne, self.num_z)
+        elif self.name == 'Ne':
+            adas_iz_file = aurora.adas_file(os.path.join(
+                os.path.dirname(__file__), 'imp_data/Neon/scd96_ne.dat'))
+
+        # Interpolate adas data to sktrun profile
+        Te = self.Te * self.T_norm
+        ne = self.ne * self.n_norm
+        adas_iz_interp = interpolate_adf11_data(
+            adas_iz_file, Te, ne, self.num_z)
 
         return adas_iz_interp
 
@@ -1332,11 +1340,15 @@ class Impurity:
             adas_rec_file = aurora.adas_file(os.path.join(
                 os.path.dirname(__file__), 'imp_data/Carbon/acd96_c.dat'))
 
-            # Interpolate adas data to sktrun profile
-            Te = self.Te * self.T_norm
-            ne = self.ne * self.n_norm
-            adas_rec_interp = interpolate_adf11_data(
-                adas_rec_file, Te, ne, self.num_z)
+        elif self.name == 'Ne':
+            adas_rec_file = aurora.adas_file(os.path.join(
+                os.path.dirname(__file__), 'imp_data/Neon/acd96_ne.dat'))
+
+        # Interpolate adas data to sktrun profile
+        Te = self.Te * self.T_norm
+        ne = self.ne * self.n_norm
+        adas_rec_interp = interpolate_adf11_data(
+            adas_rec_file, Te, ne, self.num_z)
 
         return adas_rec_interp
 
@@ -1344,6 +1356,9 @@ class Impurity:
         if self.name == 'C':
             adas_plt_file = aurora.adas_file(os.path.join(
                 os.path.dirname(__file__), 'imp_data/Carbon/plt96_c.dat'))
+        elif self.name == 'Ne':
+            adas_plt_file = aurora.adas_file(os.path.join(
+                os.path.dirname(__file__), 'imp_data/Neon/plt96_ne.dat'))
 
         # Interpolate adas data to sktrun profile
         Te = self.Te * self.T_norm
@@ -1366,7 +1381,7 @@ class Impurity:
 
         return plt_interp, adas_eff_plt_max, adas_eff_plt, adas_eff_plt_aib
 
-    def plot_ion_rates(self, logx=True, plot_sk=True, plot_max=True, compare_adas=False, savepath=None):
+    def plot_ion_rates(self, logx=True, plot_kin=True, plot_max=True, compare_adas=False, savepath=None):
 
         colours = ['orange', 'green', 'blue', 'cyan', 'brown', 'pink']
         legend_lines = []
@@ -1387,7 +1402,7 @@ class Impurity:
                 'C$^{' + str(i) + r'+}\rightarrow$ C$^{' + str(i+1) + '+}$')
             legend_lines.append(
                 Line2D([0], [0], linestyle='-', color=colours[i]))
-            if plot_sk:
+            if plot_kin:
                 ax.plot(self.Te*self.T_norm, 1e6 *
                         ion_rates[:, i], '--', color=colours[i])
             if plot_max:
@@ -1401,7 +1416,7 @@ class Impurity:
             legend_labels.append('Maxwellian')
             legend_lines.append(
                 Line2D([0], [0], linestyle='-', color='black'))
-        if plot_sk:
+        if plot_kin:
             legend_labels.append('Kinetic')
             legend_lines.append(
                 Line2D([0], [0], linestyle='--', color='black'))
@@ -1438,7 +1453,7 @@ class Impurity:
         ax.set_ylabel(
             'Recombination (three-body) rate coefficient [cm$^{3}$s$^{-1}$]')
 
-    def plot_PLT(self, xaxis='Te', compare_adas=False, plot_eff=True, plot_sk=True, plot_max=True, plot_stages=False, logx=True):
+    def plot_PLT(self, xaxis='Te', compare_adas=False, plot_eff=True, plot_kin=True, plot_max=True, plot_stages=False, logx=True):
         fig, ax = plt.subplots(1)
         if xaxis == 'Te':
             x = self.Te * self.T_norm
@@ -1456,10 +1471,10 @@ class Impurity:
                 if plot_max:
                     ax.plot(x, PLT_max[:, z], color=colours[z],
                             label=self.name + '$^{' + str(z) + '+}$')
-                if plot_sk:
+                if plot_kin:
                     ax.plot(x, PLT[:, z], '--',
                             color=colours[z])
-        if plot_sk and plot_eff:
+        if plot_kin and plot_eff:
             ax.plot(x, eff_PLT[:], '--',
                     color='black', label='Effective excitation radiation per ion (SOL-KiT $f_0$)')
         if plot_max and plot_eff:
@@ -1476,7 +1491,7 @@ class Impurity:
                         else:
                             ax.plot(x, adas_PLT[:, z], linestyle=(
                                 0, (1, 1)), color=colours[z])
-            if plot_sk and plot_eff:
+            if plot_kin and plot_eff:
                 ax.plot(x, adas_eff_PLT[:], '--',
                         color='grey', label='ADAS effective PLT (SK iz balance)')
             if plot_max and plot_eff:
@@ -1523,7 +1538,7 @@ class Impurity:
         else:
             return q_rad, q_rad_max
 
-    def plot_radiation(self, logy=False, xaxis='x', compare_adas=False, plot_sk=True, plot_max=True):
+    def plot_radiation(self, logy=False, xaxis='x', compare_adas=False, plot_kin=True, plot_max=True):
 
         radrec_E_rates, radrec_E_rates_max = self.get_radrec_E_rates()
         spontem_E_rates, spontem_E_rates_max = self.get_spontem_E_rates()
@@ -1539,12 +1554,12 @@ class Impurity:
 
         if compare_adas:
             ax.plot(x, 1e-6*adas_ex_E_rates, linestyle='dotted',
-                    color='red', label='spont-em (SK iz balance)')
+                    color='red', label='ADAS spont-em (SK iz balance)')
             ax.plot(x, 1e-6*adas_ex_E_rates_max, linestyle=(0, (5, 10)),
-                    color='red', label='spont-em (Max iz balance)')
+                    color='red', label='ADAS spont-em (Max iz balance)')
             ax.plot(x, 1e-6*adas_ex_E_rates_aib, '-.',
-                    color='grey', label='spont-em (ADAS iz balance)')
-        if plot_sk:
+                    color='grey', label='ADAS spont-em (ADAS iz balance)')
+        if plot_kin:
             # ax.plot(x, 1e-6*radrec_E_rates, '--',
             #         color='blue', label='Rad-rec (SOL-KiT $f_0$)')
             ax.plot(x, 1e-6*(spontem_E_rates+radrec_E_rates), '--',
