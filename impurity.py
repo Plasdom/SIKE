@@ -13,13 +13,13 @@ import atomic_state
 
 
 class Impurity:
-    def __init__(self, name, opts, sktrun=None, sk_timestep=-1, Te=None, ne=None):
+    def __init__(self, name, opts, sktrun=None, sk_timestep=-1, Te=None, ne=None, xgrid=None, dxc=None):
         self.name = name
         self.opts = opts
         if sktrun is not None:
             self.load_from_solkit(sktrun, sk_timestep)
         elif Te is not None and ne is not None:
-            self.load_from_arrays(Te, ne)
+            self.load_from_arrays(Te, ne, xgrid, dxc)
         if self.name == 'C':
             self.nuc_chg = 6
             self.num_z = 7
@@ -58,16 +58,17 @@ class Impurity:
         self.f0_max = get_maxwellians(
             self.num_x, self.ne, self.Te, self.vgrid, self.v_th, self.num_v)
 
-    def load_from_arrays(self, Te, ne):
-        # Load in plasma profile
-        self.Te = Te
-        self.ne = ne
+    def load_from_arrays(self, Te, ne, xgrid=None, dxc=None):
 
         # Define normalisation
         self.T_norm = 10.0
         self.n_norm = 1.0e+20
         z = 1
         self.sigma_0 = 8.797355066696007e-21
+
+        # Load in plasma profile
+        self.Te = Te / self.T_norm
+        self.ne = ne / self.n_norm
 
         # Generate grids and norms
         self.num_v = 80
@@ -81,10 +82,16 @@ class Impurity:
             self.dvc[i] = vgrid_mult * self.dvc[i-1]
             self.vgrid[i] = self.vgrid[i-1] + 0.5*(self.dvc[i-1]+self.dvc[i])
 
-        self.num_x = len(Te)
-        length = 10
-        self.xgrid = np.linspace(0, length, self.num_x)
-        self.dxc = np.array([length / self.num_x for _ in range(self.num_x)])
+        if xgrid is None:
+            self.num_x = len(Te)
+            length = 10
+            self.xgrid = np.linspace(0, length, self.num_x)
+            self.dxc = np.array(
+                [length / self.num_x for _ in range(self.num_x)])
+        else:
+            self.num_x = len(xgrid)
+            self.xgrid = xgrid
+            self.dxc = dxc
 
         self.v_th = np.sqrt(2 * self.T_norm * spf.el_charge / spf.el_mass)
         self.vgrid *= self.v_th
@@ -104,8 +111,8 @@ class Impurity:
 
     def load_states(self):
         self.states = []
-        statedata_file = os.path.join(
-            'imp_data', self.longname, 'states.txt')
+        statedata_file = os.path.join(os.path.dirname(__file__),
+                                      'imp_data', self.longname, 'states.txt')
         with open(statedata_file) as f:
             lines = f.readlines()
             i = 0
@@ -154,8 +161,8 @@ class Impurity:
         self.radrec_transitions = []
         self.spontem_transitions = []
 
-        trans_file = os.path.join(
-            'imp_data', self.longname, 'transitions.txt')
+        trans_file = os.path.join(os.path.dirname(__file__),
+                                  'imp_data', self.longname, 'transitions.txt')
         with open(trans_file) as f:
             lines = f.readlines()
             for l in lines[1:]:
@@ -211,8 +218,8 @@ class Impurity:
 
     def load_spontem_transitions(self):
         # Load spontem file data
-        spontem_file = os.path.join(
-            'imp_data', self.longname, 'nist_spontem.txt')
+        spontem_file = os.path.join(os.path.dirname(__file__),
+                                    'imp_data', self.longname, 'nist_spontem.txt')
         # spontem_data = pd.read_csv(spontem_file, sep='\t')
         with open(spontem_file) as f:
             spontem_data = f.readlines()
@@ -968,13 +975,17 @@ class Impurity:
                         radrec_E_rates_max[i] += rate_max
         return radrec_E_rates, radrec_E_rates_max
 
-    def get_ex_E_rates(self):
+    def get_ex_E_rates(self, per_z=False):
 
         collrate_const = self.n_norm * self.v_th * \
             self.sigma_0 * self.t_norm
 
-        ex_E_rates = np.zeros(self.num_x)
-        ex_E_rates_max = np.zeros(self.num_x)
+        if per_z:
+            ex_E_rates = np.zeros((self.num_x, self.num_z))
+            ex_E_rates_max = np.zeros((self.num_x, self.num_z))
+        else:
+            ex_E_rates = np.zeros(self.num_x)
+            ex_E_rates_max = np.zeros(self.num_x)
 
         # Calculate collisional excitation rates
         for i in range(self.num_x):
@@ -993,20 +1004,31 @@ class Impurity:
                         ex_trans.sigma
                     )
                     eps = ex_trans.thresh * spf.el_charge
-                    ex_E_rates[i] += eps * self.n_norm * K_ex * \
-                        self.dens[i, ex_trans.from_loc] / self.t_norm
-                    ex_E_rates_max[i] += eps * self.n_norm * K_ex_max * \
-                        self.dens_max[i, ex_trans.from_loc] / self.t_norm
+                    if per_z:
+                        z = ex_trans.from_state.iz
+                        ex_E_rates[i, z] += eps * self.n_norm * K_ex * \
+                            self.dens[i, ex_trans.from_loc] / self.t_norm
+                        ex_E_rates_max[i, z] += eps * self.n_norm * K_ex_max * \
+                            self.dens_max[i, ex_trans.from_loc] / self.t_norm
+                    else:
+                        ex_E_rates[i] += eps * self.n_norm * K_ex * \
+                            self.dens[i, ex_trans.from_loc] / self.t_norm
+                        ex_E_rates_max[i] += eps * self.n_norm * K_ex_max * \
+                            self.dens_max[i, ex_trans.from_loc] / self.t_norm
 
         return ex_E_rates, ex_E_rates_max
 
-    def get_deex_E_rates(self):
+    def get_deex_E_rates(self, per_z=False):
 
         collrate_const = self.n_norm * self.v_th * \
             self.sigma_0 * self.t_norm
 
-        deex_E_rates = np.zeros(self.num_x)
-        deex_E_rates_max = np.zeros(self.num_x)
+        if per_z:
+            deex_E_rates = np.zeros((self.num_x, self.num_z))
+            deex_E_rates_max = np.zeros((self.num_x, self.num_z))
+        else:
+            deex_E_rates = np.zeros(self.num_x)
+            deex_E_rates_max = np.zeros(self.num_x)
 
         # Calculate collisional deexcitation rates
         for i in range(self.num_x):
@@ -1031,11 +1053,19 @@ class Impurity:
                         ex_trans.sigma
                     )
                     eps = ex_trans.thresh * spf.el_charge
-                    deex_E_rates[i] += eps * self.n_norm * K_deex * \
-                        self.dens[i, ex_trans.to_loc] / self.t_norm
-                    deex_E_rates_max[i] += eps * self.n_norm * K_deex_max * \
-                        self.dens_max[i, ex_trans.to_loc] / \
-                        self.t_norm
+                    if per_z:
+                        z = ex_trans.from_state.iz
+                        deex_E_rates[i, z] += eps * self.n_norm * K_deex * \
+                            self.dens[i, ex_trans.to_loc] / self.t_norm
+                        deex_E_rates_max[i, z] += eps * self.n_norm * K_deex_max * \
+                            self.dens_max[i, ex_trans.to_loc] / \
+                            self.t_norm
+                    else:
+                        deex_E_rates[i] += eps * self.n_norm * K_deex * \
+                            self.dens[i, ex_trans.to_loc] / self.t_norm
+                        deex_E_rates_max[i] += eps * self.n_norm * K_deex_max * \
+                            self.dens_max[i, ex_trans.to_loc] / \
+                            self.t_norm
 
         return deex_E_rates, deex_E_rates_max
 
@@ -1286,7 +1316,8 @@ class Impurity:
 
     def get_adas_iz_coeffs(self):
         if self.name == 'C':
-            adas_iz_file = aurora.adas_file('imp_data/Carbon/scd96_c.dat')
+            adas_iz_file = aurora.adas_file(os.path.join(
+                os.path.dirname(__file__), 'imp_data/Carbon/scd96_c.dat'))
 
             # Interpolate adas data to sktrun profile
             Te = self.Te * self.T_norm
@@ -1298,7 +1329,8 @@ class Impurity:
 
     def get_adas_rec_coeffs(self):
         if self.name == 'C':
-            adas_rec_file = aurora.adas_file('imp_data/Carbon/acd96_c.dat')
+            adas_rec_file = aurora.adas_file(os.path.join(
+                os.path.dirname(__file__), 'imp_data/Carbon/acd96_c.dat'))
 
             # Interpolate adas data to sktrun profile
             Te = self.Te * self.T_norm
@@ -1310,7 +1342,8 @@ class Impurity:
 
     def get_adas_PLT(self):
         if self.name == 'C':
-            adas_plt_file = aurora.adas_file('imp_data/Carbon/plt96_c.dat')
+            adas_plt_file = aurora.adas_file(os.path.join(
+                os.path.dirname(__file__), 'imp_data/Carbon/plt96_c.dat'))
 
         # Interpolate adas data to sktrun profile
         Te = self.Te * self.T_norm
@@ -1333,7 +1366,7 @@ class Impurity:
 
         return plt_interp, adas_eff_plt_max, adas_eff_plt, adas_eff_plt_aib
 
-    def plot_ion_rates(self, logx=True, plot_sk=True, plot_max=True, compare_adas=False):
+    def plot_ion_rates(self, logx=True, plot_sk=True, plot_max=True, compare_adas=False, savepath=None):
 
         colours = ['orange', 'green', 'blue', 'cyan', 'brown', 'pink']
         legend_lines = []
@@ -1342,7 +1375,8 @@ class Impurity:
         ion_rates, ion_rates_max = self.get_ion_rates(per_z=True)
         if compare_adas:
             ion_rates_adas = self.get_ion_rates_adas(per_z=True)
-        fig, ax = plt.subplots(1)
+        # fig, ax = plt.subplots(1)
+        fig, ax = plt.subplots(1, figsize=(4, 3.5))
         ax.set_yscale('log')
         if logx:
             ax.set_xscale('log')
@@ -1364,17 +1398,23 @@ class Impurity:
                         ion_rates_adas[:, i], '--', color=colours[i])
 
         if plot_max:
-            legend_labels.append('Maxwellian rate')
+            legend_labels.append('Maxwellian')
             legend_lines.append(
                 Line2D([0], [0], linestyle='-', color='black'))
         if plot_sk:
-            legend_labels.append('Kinetic rate')
+            legend_labels.append('Kinetic')
             legend_lines.append(
                 Line2D([0], [0], linestyle='--', color='black'))
 
-        ax.legend(legend_lines, legend_labels, loc='lower right')
-        ax.set_xlabel('$T_e$ [eV]')
-        ax.set_ylabel('Ionization rate coefficient [cm$^{3}$s$^{-1}$]')
+        # ax.legend(legend_lines, legend_labels, loc='lower right')
+        ax.legend(legend_lines, legend_labels, bbox_to_anchor=(0.6, 0.65))
+        ax.set_xlabel('$T_e$ [eV]', size=14)
+        ax.set_ylim([1e-32, 1e-7])
+        # ax.set_ylabel('Ionization rate coefficient [cm$^{3}$s$^{-1}$]',size=14)
+        ax.set_ylabel('Rate coefficient [cm$^{3}$s$^{-1}$]', size=14)
+        fig.tight_layout(pad=2.0)
+        if savepath is not None:
+            fig.savefig(savepath)
 
     def plot_rec_rates(self, compare_adas=False):
 
@@ -1413,7 +1453,6 @@ class Impurity:
         colours = ['orange', 'green', 'blue', 'cyan', 'brown', 'pink']
         if plot_stages:
             for z in range(self.num_z-1):
-                # for z in range(3):
                 if plot_max:
                     ax.plot(x, PLT_max[:, z], color=colours[z],
                             label=self.name + '$^{' + str(z) + '+}$')
@@ -1430,18 +1469,23 @@ class Impurity:
         if compare_adas:
             if plot_stages:
                 for z in range(self.num_z-1):
-                    # for z in range(3):
                     if plot_max:
-                        ax.plot(x, adas_PLT[:, z], linestyle=(
-                            0, (1, 1)), color=colours[z])
+                        if z == 0:
+                            ax.plot(x, adas_PLT[:, z], linestyle=(
+                                0, (1, 1)), color=colours[z], label='ADAS')
+                        else:
+                            ax.plot(x, adas_PLT[:, z], linestyle=(
+                                0, (1, 1)), color=colours[z])
             if plot_sk and plot_eff:
                 ax.plot(x, adas_eff_PLT[:], '--',
                         color='grey', label='ADAS effective PLT (SK iz balance)')
             if plot_max and plot_eff:
                 ax.plot(x, adas_eff_PLT_max[:], linestyle=(0, (1, 1)),
                         color='grey', label='ADAS effective PLT (Max iz balance)')
-
-        ax.legend(loc='lower left', framealpha=0.1)
+        if plot_eff:
+            ax.legend(loc='lower left', framealpha=0.1)
+        else:
+            ax.legend(loc='lower left')
         if logx:
             ax.set_xscale('log')
         ax.set_yscale('log')

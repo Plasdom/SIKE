@@ -25,7 +25,12 @@ default_opts = {'EVOLVE': True,
                 'COMPARE_ADAS': True}
 
 
-def run(sktrun=None, sk_timestep=-1, Te=None, ne=None, opts=default_opts):
+def run(sktrun=None, sk_timestep=-1, Te=None, ne=None, xgrid=None, dxc=None, opts=default_opts):
+
+    # Fill unspecified options
+    for option in default_opts:
+        if option not in list(opts.keys()):
+            opts[option] = default_opts[option]
 
     # Load the tungsten cross-sections and interpolate onto the SOL-KiT velocity grid
     print('\nInitialising...')
@@ -35,7 +40,8 @@ def run(sktrun=None, sk_timestep=-1, Te=None, ne=None, opts=default_opts):
             species[imp] = Impurity(
                 imp, opts, sktrun=sktrun, sk_timestep=sk_timestep)
         elif Te is not None and ne is not None:
-            species[imp] = Impurity(imp, opts, Te=Te, ne=ne)
+            species[imp] = Impurity(
+                imp, opts, Te=Te, ne=ne, xgrid=xgrid, dxc=dxc)
 
     # Build the rate matrices
     print('Building rate matrices...')

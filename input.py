@@ -85,8 +85,8 @@ def get_BC_iz_cs(vgrid, T_norm, from_state, to_state, sigma_0):
 def load_nifs_ex_sigma(vgrid, from_state, to_state, sigma_0, T_norm, extrapolate=True):
     # Note: Care should be taken when extrapolating from NIFS data. Check with a given transition beforehand.
 
-    nifs_file = os.path.join(
-        'imp_data', 'Carbon', 'nifs_ex_cs.txt')
+    nifs_file = os.path.join(os.path.dirname(__file__),
+                             'imp_data', 'Carbon', 'nifs_ex_cs.txt')
 
     Egrid = vgrid ** 2 * T_norm
 
@@ -123,8 +123,8 @@ def load_nifs_ex_sigma(vgrid, from_state, to_state, sigma_0, T_norm, extrapolate
 
 def load_sunokato_ex_sigma(vgrid, from_state, to_state, T_norm, sigma_0, g_i):
 
-    cs_file = os.path.join(
-        'imp_data', 'Carbon', 'sunokato_ex_cs.txt')
+    cs_file = os.path.join(os.path.dirname(__file__),
+                           'imp_data', 'Carbon', 'sunokato_ex_cs.txt')
     with open(cs_file) as f:
         lines = f.readlines()
         for l in lines[1:]:
@@ -286,8 +286,8 @@ def load_sunokato_iz_sigma(vgrid, from_state, to_state, T_norm, sigma_0):
 
     sigma = np.zeros(len(vgrid))
 
-    cs_file = os.path.join(
-        'imp_data', 'Carbon', 'sunokato_iz_cs.txt')
+    cs_file = os.path.join(os.path.dirname(__file__),
+                           'imp_data', 'Carbon', 'sunokato_iz_cs.txt')
     with open(cs_file) as f:
         lines = f.readlines()
         for l in lines[1:]:
@@ -489,7 +489,7 @@ def load_adas_radrec_rates(imp_name, from_state, to_state, T_norm, n_norm, t_nor
 
 
 def get_adas_file(trans_type, imp_name, z):
-    pref = os.path.join('imp_data', imp_name)
+    pref = os.path.join(os.path.dirname(__file__), 'imp_data', imp_name)
     if trans_type == 'radrec':
         if imp_name == 'Carbon':
             if z == 1:
