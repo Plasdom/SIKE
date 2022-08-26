@@ -487,8 +487,8 @@ def load_adas_radrec_rates(imp_name, from_state, to_state, T_norm, n_norm, t_nor
         if 'INDX TE=' in l and 'PRTI=' in lines[i-2]:
             # TODO: What happens if the index is over 3 lines? Need to see an example for format
             T_idx_lines = ' '.join(lines[i:i+lines_per_entry])
-            T_idx_re = re.findall('(\d.\d+[ED][+-]\d+)', T_idx_lines)
-            Te = np.array([float(T.replace('D', 'E')) for T in T_idx_re])
+            T_idx_matches = re.findall('(\d.\d+[ED][+-]\d+)', T_idx_lines)
+            Te = np.array([float(T.replace('D', 'E')) for T in T_idx_matches])
             break
 
     K2eV = 11603.247217

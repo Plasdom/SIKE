@@ -22,7 +22,8 @@ default_opts = {'EVOLVE': True,
                 'RAD_REC': True,
                 'COLL_EX_DEEX': True,
                 'SPONT_EM': True,
-                'COMPARE_ADAS': True}
+                'COMPARE_ADAS': True,
+                'FIXED_FRACTION_INIT': True}
 
 
 def run(sktrun=None, sk_timestep=-1, Te=None, ne=None, xgrid=None, dxc=None, opts=default_opts):

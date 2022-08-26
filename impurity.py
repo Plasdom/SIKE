@@ -34,7 +34,10 @@ class Impurity:
             self.longname = 'Neon'
         self.load_states()
         self.load_transitions()
-        self.init_dens()
+        if opts['FIXED_FRACTION_INIT']:
+            self.init_dens(fixed_fraction_init=True)
+        else:
+            self.init_dens(fixed_fraction_init=False)
 
     def load_from_solkit(self, sktrun, sk_timestep):
         # Load in plasma profile
@@ -273,20 +276,29 @@ class Impurity:
             if state.iz == z:
                 return state
 
-    def init_dens(self):
+    def init_dens(self, fixed_fraction_init=True):
         self.dens = np.zeros((self.num_x, self.tot_states))
         self.dens_max = np.zeros((self.num_x, self.tot_states))
         self.dens_saha = np.zeros((self.num_x, self.tot_states))
-        self.dens[:, 0] = self.opts['FRAC_IMP_DENS'] * \
-            self.ne
-        self.dens_max[:, 0] = self.opts['FRAC_IMP_DENS'] * \
-            self.ne
-        self.tmp_dens = np.zeros((self.num_x, self.tot_states))
-
-        if self.opts['COMPARE_ADAS']:
-            self.dens_adas = np.zeros((self.num_x, self.tot_states))
-            self.dens_adas[:, 0] = self.opts['FRAC_IMP_DENS'] * \
+        if fixed_fraction_init:
+            self.dens[:, 0] = self.opts['FRAC_IMP_DENS'] * \
                 self.ne
+            self.dens_max[:, 0] = self.opts['FRAC_IMP_DENS'] * \
+                self.ne
+            self.tmp_dens = np.zeros((self.num_x, self.tot_states))
+
+            if self.opts['COMPARE_ADAS']:
+                self.dens_adas = np.zeros((self.num_x, self.tot_states))
+                self.dens_adas[:, 0] = self.opts['FRAC_IMP_DENS'] * \
+                    self.ne
+        else:
+            self.dens[:, 0] = 1e18 / self.n_norm
+            self.dens_max[:, 0] = 1e18 / self.n_norm
+            self.tmp_dens = np.zeros((self.num_x, self.tot_states))
+
+            if self.opts['COMPARE_ADAS']:
+                self.dens_adas = np.zeros((self.num_x, self.tot_states))
+                self.dens_adas[:, 0] = 1e18 / self.n_norm
 
     def get_saha_eq(self):
 
@@ -336,9 +348,14 @@ class Impurity:
         tbrec_norm = self.n_norm * np.sqrt((spf.planck_h ** 2) / (2 * np.pi *
                                                                   spf.el_mass * self.T_norm * spf.el_charge)) ** 3
 
-        # Build kinetic rate matrices
+        # Get adas rate coefficients
+        if self.opts['COMPARE_ADAS']:
+            adas_iz_coeffs = self.get_adas_iz_coeffs()
+            adas_rec_coeffs = self.get_adas_rec_coeffs()
+        
+        # Build all rate matrices
         for i in range(self.num_x):
-
+            print(' {:.1f}%'.format(100*float(i/self.num_x)),end='\r')
             if self.opts['COLL_ION_REC']:
                 for iz_trans in self.iz_transitions:
 
@@ -492,10 +509,8 @@ class Impurity:
                 self.tot_states) - self.opts['DELTA_T'] * rate_mat_max[i])
 
             if self.opts['COMPARE_ADAS']:
-
+                
                 # Ionization and recombination
-                adas_iz_coeffs = self.get_adas_iz_coeffs()
-                adas_rec_coeffs = self.get_adas_rec_coeffs()
                 for iz_trans in self.iz_transitions:
 
                     # Check that transition is ground state to ground state
