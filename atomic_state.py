@@ -1,64 +1,44 @@
-import input
 from scipy import interpolate
 import numpy as np
 import re
 import matplotlib.pyplot as plt
 
 
-class State:
-    def __init__(self, nuc_chg, iz_stage, lower_shells, statename, loc, statw=1, energy=0, I_0=0, metastable=0):
-        self.nuc_chg = nuc_chg
-        self.iz = iz_stage
-        if lower_shells != '0':
-            self.lower_shells = lower_shells
+class State2:
+    def __init__(self, id, dict):
+        self.id = id
+        self.nuc_chg = dict['nuc_chg']
+        self.num_el = dict['num_el']
+        self.Z = self.nuc_chg - self.num_el
+        self.config = dict['config']
+        if 'config_full' in dict.keys():
+            self.config_full = dict['config_full']
+        self.energy = dict['energy']
+        self.n = dict['n']
+        self.l = dict['l']
+        if 'j' in dict.keys():
+            self.j = dict['j']
         else:
-            self.lower_shells = None
-        self.statename = statename
-        self.loc = loc
-        self.statw = statw
-        self.energy = energy
-        self.I_0 = I_0
-        self.metastable = bool(metastable)
-        self.get_iz_energy()
-        self.get_shells()
-        self.get_shell_occupation()
+            self.j = None
+        self.stat_weight = dict['stat_weight']
+        self.metastable = True
 
     def equals(self, other):
-        if self.iz == other.iz and self.statename == other.statename:
-            return True
+        """Check for equality between two State objects
+
+        Args:
+            other (State): Other state
+
+        Returns:
+            boolean: True is states are equal
+        """
+        if self.nuc_chg == other.nuc_chg and self.num_el == other.num_el and self.config == other.config:
+            if self.j is not None:
+                if self.j == other.j:
+                    return True
+                else:
+                    return False
+            else:
+                return True
         else:
             return False
-
-    def get_iz_energy(self):
-        self.iz_energy = self.I_0 - self.energy
-
-    def get_shell_occupation(self):
-
-        shell_occupation = np.zeros(len(self.shells))
-        for i, shell in enumerate(self.shells):
-            rm = re.search('[spdfghijklmno]', shell)
-            if rm is not None:
-                shell_occupation[i] = int(shell[rm.start()+1:])
-
-        self.shell_occupation = shell_occupation
-
-    def get_shells(self):
-        if self.lower_shells is not None:
-            full_structure = self.lower_shells + ',' + self.statename
-        else:
-            full_structure = self.statename
-        shells = full_structure.split(',')
-        shells[-1] = (shells[-1].split(' '))[0]
-        self.shells = shells
-
-    def get_shell_iz_energies(self, states):
-        shell_iz_energies = np.zeros(len(self.shells))
-        shell_iz_energies[-1] = self.iz_energy
-        for i in range(len(self.shells)-1):
-            missing_e = int(np.sum(self.shell_occupation[i+1:])) + self.iz
-            for state in states:
-                if state.iz == missing_e:
-                    shell_iz_energies[i] = state.iz_energy
-                    break
-
-        self.shell_iz_energies = shell_iz_energies
