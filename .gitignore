@@ -35,3 +35,4 @@ imp_data/Argon/Ar01_LANLdata/dwilev.Ar01
 imp_data/Argon/Ar01_LANLdata/eielev.Ar01
 imp_data/Argon/Ar01_LANLdata/ionlev.Ar01
 imp_data/Argon/Ar01_LANLdata/struct.Ar01
+legacy/*
