@@ -46,8 +46,22 @@ SIKE expects the isotropic part of an electron velocity distibution function in 
 ```python
 import numpy as np 
 
-def bimaxwellian(T1, T2, n1, n2):
+def bimaxwellian(T1, T2, n1, n2, vgrid):
+    f = (n1 * (np.pi * T1) ** (-3/2) * np.exp(-(vgrid**2) / T1)) + \
+        (n2 * (np.pi * T2) ** (-3/2) * np.exp(-(vgrid**2) / T2))
+    return f
 
+num_v = 100
+num_x = 50
+
+fe = np.zeros([num_v, num_x])
+T_hot = 100                      # Constant hot tail profile (eV)
+T_bulk = np.linspace(1,10,num_x) # Bulk temperature profile (eV)
+n = 1e19 * np.ones(num_x)        # Constant total density profile (m^-3)
+hot_frac = 0.1                   # Hot tail is 10% of total density
+
+for i in range(num_x):
+    fe[:,i] = bimaxwellian(T_hot[i], T_bulk[i], hot_frac*n[i], (1-hot_frac)*n[i])
 ```
 
 ### Compute densities
