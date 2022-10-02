@@ -35,7 +35,7 @@ import SIKE
 temp = np.linspace(1,10,50) # Temperature profile in eV
 dens = 1e19 * np.ones(50)   # Density profile in m^-3
 
-r = SIKE.SIKERun(Te=Te, ne=ne)
+r = SIKE.SIKERun(Te=temp, ne=dens)
 r.run()
 ```
 
