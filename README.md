@@ -54,7 +54,7 @@ def bimaxwellian(T1, T2, n1, n2, vgrid):
 num_v = 100
 num_x = 50
 
-v_th = 1.87e6                    # Thermal velocity of electrons at 10eV
+v_th = 1.87e6                    # Thermal velocity (m/s) of electrons at 10eV
 vgrid = v_th * np.geomspace(0.025,12,num_v)
 
 fe = np.zeros([num_v, num_x])
