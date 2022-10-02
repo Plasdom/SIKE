@@ -46,7 +46,7 @@ The levels json file is expected to contain a list of dictionaries which describ
         "nuc_chg": 6,           # Nuclear charge of the element
         "num_el": 6,            # Number of electrons in this level
         "config": "2p2",        # Electronic configuration of valence electrons
-        "energy": -1025.00152,  # Energy of this level relative to some highest-energy state (for the FAC data provided this is the bare nucleus)
+        "energy": -1025.00152,  # Energy of this level (in eV) relative to some highest-energy state (for the FAC data provided this is the bare nucleus)
         "n": 2,                 # Principal quantum number of the level
         "l": 1,                 # Orbital angular momentum quantum number
         "j": 3.5,               # Total angular momentum quantum number (only expected in j-resolved levels file)
@@ -73,7 +73,7 @@ The transitions json file contains all transitions between atomic levels which a
         "element": "C",         # The element to which this transition belongs
         "from_id": 1427,        # The unique ID of the initial state
         "to_id": 1478,          # The unique ID of the final state
-        "delta_E": 7.6545,      # The difference in energy between initial and final states
+        "delta_E": 7.6545,      # The difference in energy (in eV) between initial and final states
         "sigma": [
             # The cross-section (in cm^2) for the given collisional process, evaluated at each point on "E_grid"
             ...
