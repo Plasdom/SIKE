@@ -57,12 +57,12 @@ num_x = 50
 v_th = 1.87e6                    # Thermal velocity (m/s) of electrons at 10eV
 vgrid = v_th * np.geomspace(0.025,12,num_v)
 
-fe = np.zeros([num_v, num_x])
 T_hot = 100                      # Constant hot tail profile (eV)
 T_bulk = np.linspace(1,10,num_x) # Bulk temperature profile (eV)
 n = 1e19 * np.ones(num_x)        # Constant total density profile (m^-3)
 hot_frac = 0.1                   # Hot tail is 10% of total density
 
+fe = np.zeros([num_v, num_x])
 for i in range(num_x):
     fe[:,i] = bimaxwellian(T_hot[i], T_bulk[i], hot_frac*n[i], (1-hot_frac)*n[i])
 ```
