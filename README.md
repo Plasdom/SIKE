@@ -5,7 +5,7 @@ SIKE (**S**crape-off layer **I**mpurities with **K**inetic **E**lectrons) solves
 d.power19@imperial.ac.uk
 
 ## Dependencies
-SIKE is written in python 3 and does not require installation. The following modules are used, which can be installed with a package manager such as pip or conda:
+SIKE is written in python 3 and does not require building. The following modules are used, which can be installed with a package manager such as pip or conda:
 - numpy
 - scipy
 - numba
