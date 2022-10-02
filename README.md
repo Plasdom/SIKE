@@ -1,6 +1,6 @@
 # SIKE
 
-SIKE (**S**crape-off layer **I**mpurities with **K**inetic **E**lectrons) solves the density evolution equations for a given set of impurity atomic states. The provided atomic data is generated using [FAC](https://github.com/flexible-atomic-code/fac), but data from any source can be used provided it is formatted correctly (this format is described below). Atomic states are resolved in n, l and (optionally) j. The background plasma electrons are fixed. 
+SIKE (**S**crape-off layer **I**mpurities with **K**inetic **E**lectrons) solves the density evolution equations for a given set of impurity atomic states amongst a fixed background plasma. The provided atomic data is generated using [FAC](https://github.com/flexible-atomic-code/fac), but data from any source can be used provided it is formatted correctly (this format is described below). Atomic states are resolved in n, l and (optionally) j.
 
 d.power19@imperial.ac.uk
 
