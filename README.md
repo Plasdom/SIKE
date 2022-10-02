@@ -13,7 +13,7 @@ SIKE is written in python 3 and does not require installation. The following mod
 - mpi4py
 - petsc4py
 
-For petsc4py, you can either install using your package manager or build alongside a local petsc installation. To do this:
+For petsc4py, you can either install using your package manager or [build alongside a local petsc installation](https://petsc.org/release/install/). To do this:
 1. Install cython python package
 2. Configure petsc with `--with-petsc4py=1`
 3. Build petsc
