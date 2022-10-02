@@ -17,7 +17,16 @@ For petsc4py, you can either install using your package manager or build alongsi
 1. Install cython python package
 2. Configure petsc with `--with-petsc4py=1`
 3. Build petsc
-4. Add $PETSC_DIR/$PETSC_ARCH/lib to PYTHONPATH environment variable
+4. Add `$PETSC_DIR/$PETSC_ARCH/lib` to `PYTHONPATH` environment variable
+
+## Getting started
+...
+
+## Options
+...
+
+## Numerics 
+...
 
 ## Atomic data format
 
