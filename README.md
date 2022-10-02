@@ -38,7 +38,7 @@ where SYMBOL is the chemical symbol of the impurity species and "j" specifies wh
 
 ### Levels file
 The levels json file is expected to contain a list of dictionaries which describe each atomic level being modelled. Below is an example showing expected fields in a j-resolved levels file for carbon (the level shown is that of the ground state).
-```
+```json
 [
     {
         "id": 0,                # A unique ID for the level
@@ -60,8 +60,7 @@ The levels json file is expected to contain a list of dictionaries which describ
 ### Transitions file
 The transitions json file contains all transitions between atomic levels which are to be modelled. Below is an example showing the expected fields.
 
-```
-
+```json
     {
         "E_grid": [
             # The energy grid (in eV) on which collisional cross-sections are evaluated
