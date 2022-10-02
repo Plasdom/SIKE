@@ -90,6 +90,6 @@ The transitions json file contains all transitions between atomic levels which a
     # All other transitions go here
     ...
 ```
-Possible transition types are "ionization", "excitation", "radiative recombination", "emission" and "autoionization". Of these, ionization, excitation and radiative recombination should include a "sigma" field, while autionization and emission should include a "rate" field. 
+Possible transition types are "ionization", "excitation", "radiative recombination", "emission" and "autoionization". Of these, ionization, excitation and radiative recombination should include a "sigma" field, while autoionization and emission should include a "rate" field. 
 
 For ionization and excitation, SIKE will automatically handle the inverse processes of three-body recombination and collisional de-excitation. 
