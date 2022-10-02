@@ -32,8 +32,8 @@ The second method is required to model non-LTE plasmas.
 import numpy as np
 import SIKE
 
-Te = np.linspace(1,10,50) # Temperature profile in eV
-ne = 1e19 * np.ones(50)   # Density profile in m^-3
+temp = np.linspace(1,10,50) # Temperature profile in eV
+dens = 1e19 * np.ones(50)   # Density profile in m^-3
 
 r = SIKE.SIKERun(Te=Te, ne=ne)
 r.run()
