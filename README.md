@@ -34,12 +34,29 @@ import SIKE
 
 temp = np.linspace(1,10,50) # Temperature profile in eV
 dens = 1e19 * np.ones(50)   # Density profile in m^-3
+elements = ['Li']
 
-r = SIKE.SIKERun(Te=temp, ne=dens)
-r.run()
+r = SIKE.SIKERun(Te=temp, ne=dens, opts={"modelled_impurities": elements})
 ```
 
 ### Initialise from electron distribution functions
+
+SIKE expects the isotropic part of an electron velocity distibution function in units of m^-6 s^-3. The format should be a 2D numpy array indexed by velocity, then spatial location. As an example we generate a series of bimaxwellian distributions.
+
+```python
+import numpy as np 
+
+def bimaxwellian(T1, T2, n1, n2):
+
+```
+
+### Compute densities
+
+Now simply run 
+```python
+r.run()
+```
+The rate matrix will be constructed and the state densities will be evolved until equilbrium is reached. 
 
 ## Options
 ...
