@@ -20,7 +20,26 @@ For petsc4py, you can either install using your package manager or build alongsi
 4. Add `$PETSC_DIR/$PETSC_ARCH/lib` to `PYTHONPATH` environment variable
 
 ## Getting started
-...
+There are two ways of initialising SIKE:
+1. With temperature and density profiles, assuming Maxwellian electrons.
+2. With electron distribution functions and a velocity grid. 
+
+The second method is required to model non-LTE plasmas. 
+
+### Initialise from temperature and density profiles
+
+```python
+import numpy as np
+import SIKE
+
+Te = np.linspace(1,10,50) # Temperature profile in eV
+ne = 1e19 * np.ones(50)   # Density profile in m^-3
+
+r = SIKE.SIKERun(Te=Te, ne=ne)
+r.run()
+```
+
+### Initialise from electron distribution functions
 
 ## Options
 ...
