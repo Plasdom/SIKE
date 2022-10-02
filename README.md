@@ -28,7 +28,7 @@ Two json files are expected for a given element to be modelled:
 where SYMBOL is the chemical symbol of the impurity species and "j" specifies whether atomic levels are nl-resolved or j-resolved. For example, j-resolved data for lithium would be contained in files called "Li_levels_nlj.json" and "Li_transitions_nl.json" in the atom_data/Lithium local directory.
 
 ### Levels file
-The levels file is expected to contain a list of dictionaries which describe each atomic level being modelled. Below is an example showing expected fields in a j-resolved levels file for carbon (the level shown is that of the ground state ) 
+The levels json file is expected to contain a list of dictionaries which describe each atomic level being modelled. Below is an example showing expected fields in a j-resolved levels file for carbon (the level shown is that of the ground state).
 ```
 [
     {
@@ -49,7 +49,7 @@ The levels file is expected to contain a list of dictionaries which describe eac
 ```
 
 ### Transitions file
-The transitions file contains all transitions between atomic levels which are to be modelled. Below is an example showing the expected fields.
+The transitions json file contains all transitions between atomic levels which are to be modelled. Below is an example showing the expected fields.
 
 ```
 
