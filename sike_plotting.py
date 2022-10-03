@@ -99,6 +99,9 @@ def plot_PLTs(r, el, effective = True, kinetic = True, maxwellian = True, xaxis=
     ax.set_ylabel('Excitation radiation per ion [Wm$^3$]')
     ax.legend()
     ax.grid()
+    ylims = ax.get_ylim()
+    ylim_low = max(ylims[0],1e-40)
+    ax.set_ylim([ylim_low,None])
     ax.set_title('Cooling curves: ' + el)
     if logx:
         ax.set_xscale('log')
