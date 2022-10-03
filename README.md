@@ -33,7 +33,7 @@ sys.path.insert(1, 'path/to/SIKE/')
 ```
 ...to any python scripts which use SIKE. 
 
-### 1. Initialise from temperature and density profiles
+### Option 1 - initialise from temperature and density profiles
 
 ```python
 import numpy as np
@@ -46,7 +46,7 @@ elements = ['Li']
 r = SIKE.SIKERun(Te=temp, ne=dens, opts={"modelled_impurities": elements})
 ```
 
-### 2. Initialise from electron distribution functions
+### Option 2 - initialise from electron distribution functions
 
 SIKE expects the isotropic part of an electron velocity distibution function in units of $m^{-6} s^{-3}$. The format should be a 2D numpy array indexed by velocity, then spatial location. As an example we generate a series of bi-Maxwellian distributions, $f(v) = f_{Max}^{cold} + f_{Max}^{hot}$ with a Maxwellian distribution at $T$ and $n$ given by $f_{Max}(v) = n (\frac{m_e}{2 \pi k T})^{3/2} e^{-m_ev^2/kT}$.
 
@@ -104,7 +104,6 @@ mpirun -n 4 python3 sike_parallel.py
 SIKE will determine the local spatial region for each processor and solve the corresponding matrix equation. Equilibrium densities will need to be gathered after execution of SIKE. Below is an idea of what would go in sike_parallel.py.
 
 ```python
-
 import sys
 sys.path.insert(1, 'path/to/SIKE')
 import SIKE
