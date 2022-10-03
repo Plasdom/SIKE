@@ -95,6 +95,14 @@ plot_Zavg(r,'Li',logx=True)
 ## Numerics 
 ...
 
+## Running in parallel
+
+SIKE uses mpi4py to support parallel execution. Parallelisation is performed in the x-direction. To use this feature, simply run a script which calls SIKE with mpirun or mpiexec.
+```
+mpirun -n 4 python3 sike_script.py
+``` 
+SIKE will determine the local spatial region for each processor and solve the corresponding matrix equation.
+
 ## Atomic data format
 
 Two json files are expected for a given element to be modelled:
