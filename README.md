@@ -26,6 +26,13 @@ There are two ways of initialising SIKE:
 
 The second method is required to model non-LTE plasmas. 
 
+If you do not want to work in the same directory as the SIKE source files, you can add 
+```python
+import sys
+sys.path.insert(1, 'path/to/SIKE/')
+```
+...to any python scripts which use SIKE. 
+
 ### Initialise from temperature and density profiles
 
 ```python
@@ -57,16 +64,16 @@ num_x = 50
 T_hot = 100 * np.ones(num_x)     # Constant hot tail profile (eV)
 T_bulk = np.linspace(1,10,num_x) # Bulk temperature profile (eV)
 n_tot = 1e19 * np.ones(num_x)    # Constant total density profile (m^-3)
-hot_frac = 0.1                   # Hot tail is 10% of total density
+hot_frac = 0.01                  # Hot tail is 1% of total density
 
-fe, vgrid = SIKE_tools.get_bimaxwellians(hot_frac * n_tot, (1 - hot_frac) * n_tot, T_hot, T_bulk, normalised=False)
+vgrid = SIKE_tools.default_vgrid
+fe = SIKE_tools.get_bimaxwellians(hot_frac * n_tot, (1 - hot_frac) * n_tot, T_hot, T_bulk, vgrid, normalised=False)
 
 elements = ['Li']
 
 r = SIKE.SIKERun(fe=fe, vgrid=vgrid, opts={"modelled_impurities": elements,
                                            "kinetic_electrons": True,
                                            "maxwellian_electrons": False})
-
 ```
 
 ### Compute densities
