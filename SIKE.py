@@ -109,7 +109,7 @@ class SIKERun(object):
         if xgrid is not None:
             self.xgrid = xgrid.copy()
         else:
-            raise ValueError('Must specify an x-grid')
+            self.xgrid = None
 
         if fe is not None and vgrid is not None:
             self.fe = fe.copy()
@@ -135,7 +135,9 @@ class SIKERun(object):
 
     def init_from_dist(self):
 
-        self.num_x = len(self.xgrid)
+        self.num_x = len(self.Te)
+        if self.xgrid is None:
+            self.xgrid = np.linspace(0,1,self.num_x)
         self.num_v = len(self.vgrid)
         self.generate_grid_widths()
         
@@ -172,7 +174,9 @@ class SIKERun(object):
         self.opts['maxwellian_electrons'] = True
 
         self.vgrid = tools.default_vgrid.copy()
-        self.num_x = len(self.xgrid)
+        self.num_x = len(self.fe[0,:])
+        if self.xgrid is None:
+            self.xgrid = np.linspace(0,1,self.num_x)
         self.num_v = len(self.vgrid)
         self.generate_grid_widths()
         
