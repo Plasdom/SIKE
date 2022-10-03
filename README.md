@@ -97,11 +97,51 @@ plot_Zavg(r,'Li',logx=True)
 
 ## Running in parallel
 
-SIKE uses mpi4py to support parallel execution. Parallelisation is performed in the x-direction. To use this feature, simply run a script which calls SIKE with mpirun or mpiexec.
+SIKE uses mpi4py and petsc4py to support parallel execution. Parallelisation is performed in the x-direction. To use this feature, simply run a script which calls SIKE with mpirun or mpiexec.
 ```
-mpirun -n 4 python3 sike_script.py
+mpirun -n 4 python3 sike_parallel.py
 ``` 
-SIKE will determine the local spatial region for each processor and solve the corresponding matrix equation.
+SIKE will determine the local spatial region for each processor and solve the corresponding matrix equation. Equilibrium densities will need to be gathered after execution of SIKE. Below is an idea of what would go in sike_parallel.py.
+
+```python
+
+import sys
+sys.path.insert(1, 'path/to/SIKE')
+import SIKE
+from petsc4py import PETSc 
+import petsc4py
+
+# Initialise petsc
+petsc4py.init()
+
+# Set up and execute SIKE run
+r = SIKE.SIKERun(...)
+r.run()
+
+# Get parallel execution information
+comm = PETSc.COMM_WORLD.tompi4py()
+rank = comm.Get_rank()
+size = comm.Get_size()
+
+# Confirm that SIKE suceeded in computing densities on all processors
+run_succeeded = int(r.success)
+all_runs_succeeded = comm.gather(run_succeeded,root=0)
+proceed = None
+if rank == 0:
+    if sum(all_runs_succeeded) == size:
+        proceed = True
+    else:
+        proceed = False
+proceed = comm.bcast(proceed,root=0)
+
+# Gather densities
+if proceed:
+    dens = r.impurities[el].dens.tolist()
+    all_dens = comm.gather(dens,root=0)
+    
+    if rank == 0:
+        all_dens = [d for loc_dens in all_dens for d in loc_dens]
+```
 
 ## Atomic data format
 
