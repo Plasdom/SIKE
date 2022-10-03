@@ -1,5 +1,5 @@
 import numpy as np
-import tools
+import SIKE_tools
 
 
 def get_Zavg(dens, states, num_x):
@@ -66,7 +66,7 @@ def get_cooling_curves(run, element, kinetic=True):
 
         cooling_curves[:, Z] /= (Z_dens[:, Z] * run.ne)
 
-    cooling_curves *= tools.el_charge * run.T_norm / (run.t_norm * run.n_norm)
+    cooling_curves *= SIKE_tools.el_charge * run.T_norm / (run.t_norm * run.n_norm)
 
     eff_cooling_curve = np.zeros(run.num_x)
     for Z in range(num_Z):

@@ -1,4 +1,4 @@
-import tools
+import SIKE_tools
 import numpy as np
 from impurity import Impurity
 import matrix_utils
@@ -9,6 +9,7 @@ import petsc4py
 
 default_opts = {'modelled_impurities': ['C'],
                 'delta_t': 1.0e-6,
+                'evolve': True,
                 'kinetic_electrons': False,
                 'maxwellian_electrons': True,
                 'dndt_thresh': 1e-5,
@@ -135,7 +136,7 @@ class SIKERun(object):
 
     def init_from_dist(self):
 
-        self.num_x = len(self.Te)
+        self.num_x = len(self.fe[0,:])
         if self.xgrid is None:
             self.xgrid = np.linspace(0,1,self.num_x)
         self.num_v = len(self.vgrid)
@@ -152,9 +153,9 @@ class SIKERun(object):
         self.loc_num_x = self.max_x - self.min_x
 
         # Generate temperature and density profiles
-        self.ne = np.array([tools.density_moment(
+        self.ne = np.array([SIKE_tools.density_moment(
             self.fe[:, i], self.vgrid, self.dvc) for i in range(self.num_x)])
-        self.Te = np.array([tools.temperature_moment(
+        self.Te = np.array([SIKE_tools.temperature_moment(
             self.fe[:, i], self.vgrid, self.dvc, normalised=False) for i in range(self.num_x)])
 
         # Generate normalisation constants and normalise everything
@@ -166,15 +167,15 @@ class SIKERun(object):
 
         # Generate Maxwellians if required
         if self.opts['maxwellian_electrons']:
-            self.fe_Max = tools.get_maxwellians(self.ne, self.Te, self.vgrid)
+            self.fe_Max = SIKE_tools.get_maxwellians(self.ne, self.Te, self.vgrid)
 
     def init_from_profiles(self):
 
         self.opts['kinetic_electrons'] = False
         self.opts['maxwellian_electrons'] = True
 
-        self.vgrid = tools.default_vgrid.copy()
-        self.num_x = len(self.fe[0,:])
+        self.vgrid = SIKE_tools.default_vgrid.copy()
+        self.num_x = len(self.Te)
         if self.xgrid is None:
             self.xgrid = np.linspace(0,1,self.num_x)
         self.num_v = len(self.vgrid)
@@ -198,7 +199,7 @@ class SIKERun(object):
         self.Egrid = self. T_norm * self.vgrid ** 2
 
         # Generature Maxwellians
-        self.fe_Max = tools.get_maxwellians(self.ne, self.Te, self.vgrid)
+        self.fe_Max = SIKE_tools.get_maxwellians(self.ne, self.Te, self.vgrid)
 
     def init_norms(self):
 
@@ -207,22 +208,22 @@ class SIKERun(object):
         self.T_norm = np.mean(self.Te)  # eV
         self.n_norm = np.mean(self.ne)  # m^-3
         self.v_th = np.sqrt(
-            2 * self.T_norm * tools.el_charge / tools.el_mass)  # m/s
+            2 * self.T_norm * SIKE_tools.el_charge / SIKE_tools.el_mass)  # m/s
 
         Z = 1
-        gamma_ee_0 = tools.el_charge ** 4 / \
-            (4 * np.pi * (tools.el_mass * tools.epsilon_0) ** 2)
+        gamma_ee_0 = SIKE_tools.el_charge ** 4 / \
+            (4 * np.pi * (SIKE_tools.el_mass * SIKE_tools.epsilon_0) ** 2)
         gamma_ei_0 = Z ** 2 * gamma_ee_0
         self.t_norm = self.v_th ** 3 / \
             (gamma_ei_0 * self.n_norm *
-             tools.lambda_ei(1.0, 1.0, self.T_norm, self.n_norm, Z)/Z)  # s
+             SIKE_tools.lambda_ei(1.0, 1.0, self.T_norm, self.n_norm, Z)/Z)  # s
         self.x_norm = self.v_th * self.t_norm  # m
         self.sigma_0 = 8.797355066696007e-21  # m^2
         self.collrate_const = self.n_norm * self.v_th * \
             self.sigma_0 * self.t_norm
         self.tbrec_norm = self.n_norm * \
-            np.sqrt((tools.planck_h ** 2) / (2 * np.pi *
-                    tools.el_mass * self.T_norm * tools.el_charge)) ** 3
+            np.sqrt((SIKE_tools.planck_h ** 2) / (2 * np.pi *
+                    SIKE_tools.el_mass * self.T_norm * SIKE_tools.el_charge)) ** 3
 
     def apply_normalisation(self):
         # Apply normalisation

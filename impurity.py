@@ -237,7 +237,7 @@ class Impurity:
         for i, state in enumerate(self.states):
             # if rank == 0:
             #     print('  {:.1f}%'.format(100*i/self.tot_states), end='\r')
-            associated_transitions = tools.get_associated_transitions(
+            associated_transitions = SIKE_tools.get_associated_transitions(
                 state.id, from_ids, to_ids)
             if len(associated_transitions) == 0:
                 if rank == 0:
