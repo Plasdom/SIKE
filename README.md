@@ -35,6 +35,8 @@ sys.path.insert(1, 'path/to/SIKE/')
 
 ### Option 1 - initialise from temperature and density profiles
 
+Create numpy arrays for temperature and density and pass to SIKE. 
+
 ```python
 import numpy as np
 import SIKE
