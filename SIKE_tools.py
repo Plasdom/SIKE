@@ -61,7 +61,7 @@ def lambda_ei(n, T, T_0, n_0, Z_0):
 
 
 @jit(nopython=True)
-def maxwellian(T, n, vgrid=None):
+def maxwellian(T, n, vgrid):
     """Return a normalised (to n_0 / v_th,0 ** 3) Maxwellian electron distribution (isotropic, as function of velocity magnitude).
 
     Args:
@@ -72,31 +72,62 @@ def maxwellian(T, n, vgrid=None):
     Returns:
         np.array(num_v): numpy array of Maxwellian
     """
-    if vgrid is None:
-        velocities = np.arange(0.00001, 10, 1. / 1000.)
-    else:
-        velocities = vgrid
 
-    f = [0.0 for i in range(len(velocities))]
-    for i, v in enumerate(velocities):
+    f = [0.0 for i in range(len(vgrid))]
+    for i, v in enumerate(vgrid):
         f[i] = (n * (np.pi * T) ** (-3/2) * np.exp(-(v**2) / T))
+    f = np.array(f)
+
+    return f
+
+@jit(nopython=True)
+def bimaxwellian(T1, n1, T2, n2, vgrid):
+    """Return a normalised (to n_0 / v_th,0 ** 3) Maxwellian electron distribution (isotropic, as function of velocity magnitude).
+
+    Args:
+        T1 (float): First population electron temperature
+        n1 (float): First population electron density
+        T2 (float): Second population electron temperature
+        n2 (float): Second population electron density
+        vgrid (np.array, optional): Velocity grid on which to define Maxwellian distribution
+
+    Returns:
+        np.array(num_v): numpy array of Maxwellian
+    """
+
+    f = [0.0 for i in range(len(vgrid))]
+    for i, v in enumerate(vgrid):
+        f[i] = (n1 * (np.pi * T1) ** (-3/2) * np.exp(-(v**2) / T1)) + \
+        (n2 * (np.pi * T2) ** (-3/2) * np.exp(-(v**2) / T2))
     f = np.array(f)
 
     return f
 
 
 @jit(nopython=True)
-def get_maxwellians(ne, Te, vgrid):
+def get_maxwellians(ne, Te, vgrid=None, normalised=True):
     """Return an array of Maxwellian electron distributions with the given densities and temperatures.
 
     Args:
         ne (np.array): Normalised electron densities
         Te (np.array): Normalised electron temperatures
-        vgrid (np.array): Normalised velcotiy grid on which to calculate Maxwellians
+        vgrid (np.array): Normalised velocity grid on which to calculate Maxwellians
 
     Returns:
         np.array(num_v, num_x): 2d numpy array of Maxwellians at each location in x
     """
+    
+    if normalised is False:
+        T_norm = 10
+        n_norm = 1e19
+        v_th = np.sqrt(2 * el_charge * T_norm / el_mass)
+        ne /= n_norm
+        Te /= T_norm
+    
+    if vgrid is None:
+        vgrid = np.geomspace(0.025,12,100)
+    elif vgrid is not None and normalised is False:
+        vgrid /= v_th
 
     f0_max = [[0.0 for i in range(len(ne))]
               for j in range(len(vgrid))]
@@ -105,7 +136,56 @@ def get_maxwellians(ne, Te, vgrid):
         for j in range(len(vgrid)):
             f0_max[j][i] = f0_max_loc[j]
     f0_max = np.array(f0_max)
+    
+    if normalised is False:
+        f0_bimax *= n_norm / v_th ** 3
+    
     return f0_max
+
+@jit(nopython=True)
+def get_bimaxwellians(n1, n2, T1, T2, vgrid=None, normalised=True):
+    """Return an array of bi-Maxwellian electron distributions with the given densities and temperatures.
+
+    Args:
+        T1 (np.ndarray): First population electron temperatures
+        n1 (np.ndarray): First population electron densities
+        T2 (np.ndarray): Second population electron temperatures
+        n2 (np.ndarray): Second population electron densities
+        vgrid (np.array): Velocity grid on which to calculate bi-Maxwellians
+        normalised (bool): 
+
+    Returns:
+        np.array(num_v, num_x): 2d numpy array of Maxwellians at each location in x
+    """
+    
+    if normalised is False:
+        T_norm = 10
+        n_norm = 1e19
+        v_th = np.sqrt(2 * el_charge * T_norm / el_mass)
+        n1 /= n_norm; n2 /= n_norm
+        T1 /= T_norm; T2 /= T_norm
+    
+    if vgrid is None:
+        no_vgrid_given = True
+        vgrid = np.geomspace(0.025,12,100)
+    elif vgrid is not None and normalised is False:
+        vgrid /= v_th
+
+    f0_bimax = [[0.0 for i in range(len(ne))]
+              for j in range(len(vgrid))]
+    for i in range(len(ne)):
+        f0_bimax_loc = bimaxwellian(T1[i], n1[i], T2[i], n2[i], vgrid)
+        for j in range(len(vgrid)):
+            f0_bimax[j][i] = f0_bimax_loc[j]
+    f0_bimax = np.array(f0_bimax)
+    
+    if normalised is False:
+        f0_bimax *= n_norm / v_th ** 3
+        
+    if no_vgrid_given:
+        return f0_bimax, vgrid
+    else:
+        return f0_bimax
 
 
 @jit(nopython=True)
