@@ -41,7 +41,7 @@ r = SIKE.SIKERun(Te=temp, ne=dens, opts={"modelled_impurities": elements})
 
 ### Initialise from electron distribution functions
 
-SIKE expects the isotropic part of an electron velocity distibution function in units of m^-6 s^-3. The format should be a 2D numpy array indexed by velocity, then spatial location. As an example we generate a series of bimaxwellian distributions, with a local bulk temperature and a hot tail at 100eV:
+SIKE expects the isotropic part of an electron velocity distibution function in units of $m^{-6} s^{-3}$. The format should be a 2D numpy array indexed by velocity, then spatial location. As an example we generate a series of bimaxwellian distributions, with a local bulk temperature and a hot tail at 100eV:
 
 ```python
 import numpy as np 
