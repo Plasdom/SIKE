@@ -41,30 +41,32 @@ r = SIKE.SIKERun(Te=temp, ne=dens, opts={"modelled_impurities": elements})
 
 ### Initialise from electron distribution functions
 
-SIKE expects the isotropic part of an electron velocity distibution function in units of $m^{-6} s^{-3}$. The format should be a 2D numpy array indexed by velocity, then spatial location. As an example we generate a series of bimaxwellian distributions, with a local bulk temperature and a hot tail at 100eV:
+SIKE expects the isotropic part of an electron velocity distibution function in units of $m^{-6} s^{-3}$. The format should be a 2D numpy array indexed by velocity, then spatial location. As an example we generate a series of bi-Maxwellian distributions,
+$$
+f(v) = f_{Max}^{cold} + f_{Max}^{hot}
+$$
+
+with a Maxwellian distribution at $T$ and $n$ given by $f_{Max}(v) = n (\frac{m_e}{2 \pi k T})^{3/2} e^{-m_ev^2/kT}$
 
 ```python
-import numpy as np 
+import numpy as np
+import SIKE
+import SIKE_tools
 
-def bimaxwellian(T1, T2, n1, n2, vgrid):
-    f = (n1 * (np.pi * T1) ** (-3/2) * np.exp(-(vgrid**2) / T1)) + \
-        (n2 * (np.pi * T2) ** (-3/2) * np.exp(-(vgrid**2) / T2))
-    return f
-
-num_v = 100
 num_x = 50
-
-v_th = 1.87e6                    # Thermal velocity (m/s) of electrons at 10eV
-vgrid = v_th * np.geomspace(0.025,12,num_v)
-
-T_hot = 100                      # Constant hot tail profile (eV)
+T_hot = 100 * np.ones(num_x)     # Constant hot tail profile (eV)
 T_bulk = np.linspace(1,10,num_x) # Bulk temperature profile (eV)
-n = 1e19 * np.ones(num_x)        # Constant total density profile (m^-3)
+n_tot = 1e19 * np.ones(num_x)    # Constant total density profile (m^-3)
 hot_frac = 0.1                   # Hot tail is 10% of total density
 
-fe = np.zeros([num_v, num_x])
-for i in range(num_x):
-    fe[:,i] = bimaxwellian(T_hot[i], T_bulk[i], hot_frac*n[i], (1-hot_frac)*n[i])
+fe, vgrid = SIKE_tools.get_bimaxwellians(hot_frac * n_tot, (1 - hot_frac) * n_tot, T_hot, T_bulk, normalised=False)
+
+elements = ['Li']
+
+r = SIKE.SIKERun(fe=fe, vgrid=vgrid, opts={"modelled_impurities": elements,
+                                           "kinetic_electrons": True,
+                                           "maxwellian_electrons": False})
+
 ```
 
 ### Compute densities
