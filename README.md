@@ -33,7 +33,7 @@ sys.path.insert(1, 'path/to/SIKE/')
 ```
 ...to any python scripts which use SIKE. 
 
-### Initialise from temperature and density profiles
+### 1. Initialise from temperature and density profiles
 
 ```python
 import numpy as np
@@ -46,20 +46,20 @@ elements = ['Li']
 r = SIKE.SIKERun(Te=temp, ne=dens, opts={"modelled_impurities": elements})
 ```
 
-### Initialise from electron distribution functions
+### 2. Initialise from electron distribution functions
 
-SIKE expects the isotropic part of an electron velocity distibution function in units of $m^{-6} s^{-3}$. The format should be a 2D numpy array indexed by velocity, then spatial location. As an example we generate a series of bi-Maxwellian distributions, $f(v) = f_{Max}^{cold} + f_{Max}^{hot}$ with a Maxwellian distribution at $T$ and $n$ given by $f_{Max}(v) = n (\frac{m_e}{2 \pi k T})^{3/2} e^{-m_ev^2/kT}$
+SIKE expects the isotropic part of an electron velocity distibution function in units of $m^{-6} s^{-3}$. The format should be a 2D numpy array indexed by velocity, then spatial location. As an example we generate a series of bi-Maxwellian distributions, $f(v) = f_{Max}^{cold} + f_{Max}^{hot}$ with a Maxwellian distribution at $T$ and $n$ given by $f_{Max}(v) = n (\frac{m_e}{2 \pi k T})^{3/2} e^{-m_ev^2/kT}$.
 
 ```python
 import numpy as np
 import SIKE
 import SIKE_tools
 
-num_x = 50
-T_hot = 100 * np.ones(num_x)     # Constant hot tail profile (eV)
-T_bulk = np.linspace(1,10,num_x) # Bulk temperature profile (eV)
-n_tot = 1e19 * np.ones(num_x)    # Constant total density profile (m^-3)
-hot_frac = 0.01                  # Hot tail is 1% of total density
+num_x = 100
+T_hot = 100 * np.ones(num_x)        # Constant hot tail profile (eV)
+T_bulk = np.geomspace(0.1,50,num_x) # Bulk temperature profile (eV)
+n_tot = 1e19 * np.ones(num_x)       # Constant total density profile (m^-3)
+hot_frac = 0.001                    # Hot tail is 0.1% of total density
 
 vgrid = SIKE_tools.default_vgrid
 fe = SIKE_tools.get_bimaxwellians(hot_frac * n_tot, (1 - hot_frac) * n_tot, T_hot, T_bulk, vgrid, normalised=False)
@@ -68,16 +68,26 @@ elements = ['Li']
 
 r = SIKE.SIKERun(fe=fe, vgrid=vgrid, opts={"modelled_impurities": elements,
                                            "kinetic_electrons": True,
-                                           "maxwellian_electrons": False})
+                                           "maxwellian_electrons": True})
 ```
 
-### Compute densities
+### Compute densities and investigate results
 
 Now simply run 
 ```python
 r.run()
 ```
 The rate matrix will be constructed and the state densities will be evolved until equilbrium is reached. 
+
+The equilibrium densities are stored in `r.dens_Max` and `r.dens`, for densities obtained with Maxwellian and non-Maxwellian background electrons respectively. The module `SIKE_plotting` provides a number of functions to plot the results. For example, to plot the average ionization of the bi-Maxwellian example above:
+
+```python
+from SIKE_plotting import *
+
+plot_Zavg(r,'Li',logx=True)
+```
+
+![image info](./demo/Li_demo_Zavg.png)
 
 ## Options
 ...

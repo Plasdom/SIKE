@@ -5,7 +5,7 @@ from post_processing import *
 """A number of useful plotting functions for SIKERun objects.
 """
 
-def plot_Zavg(r, el, kinetic=True, maxwellian=True, xaxis='Te'):
+def plot_Zavg(r, el, kinetic=True, maxwellian=True, xaxis='Te', logx=False):
     """Plot the average ionization profile
 
     Args:
@@ -22,16 +22,18 @@ def plot_Zavg(r, el, kinetic=True, maxwellian=True, xaxis='Te'):
     
     fig,ax = plt.subplots(1)
     if kinetic:
-        ax.plot(x,Zavg_kin, '--', color='black',label='FAC (kin)')
+        ax.plot(x,Zavg_kin, '--', color='black',label='Kinetic')
     if maxwellian:
-        ax.plot(x,Zavg_Max, color='black', label='FAC (Max)')
+        ax.plot(x,Zavg_Max, color='black', label='Maxwellian')
     ax.legend()
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Average ionization')
     ax.set_title('Average ionization: ' +el )
     ax.grid()
+    if logx:
+        ax.set_xscale('log')
     
-def plot_Z_dens(r, el, kinetic = True, maxwellian = True, xaxis='Te'):
+def plot_Z_dens(r, el, kinetic = True, maxwellian = True, xaxis='Te', logx=False):
     """Plot the density profiles of each ionization stage
 
     Args:
@@ -53,15 +55,17 @@ def plot_Z_dens(r, el, kinetic = True, maxwellian = True, xaxis='Te'):
             ax.plot(x, Z_dens_Max[:,Z]*r.n_norm, color=l.get_color(), label=el + '$^{' + str(Z) + '+}$')
         if maxwellian:
             ax.plot(x, Z_dens_kin[:,Z]*r.n_norm, '--', color=l.get_color())
-    ax.plot([],[],color='black', label='FAC (Max)')
-    ax.plot([],[],'--',color='black', label='FAC (kin)')
+    ax.plot([],[],color='black', label='Maxwellian')
+    ax.plot([],[],'--',color='black', label='Kinetic')
     ax.legend()
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Density [m$^{-3}$]')
     ax.set_title('Density profiles per ionization stage: ' + el)
     ax.grid()
+    if logx:
+        ax.set_xscale('log')
 
-def plot_PLTs(r, el, effective = True, kinetic = True, maxwellian = True, xaxis='Te'):
+def plot_PLTs(r, el, effective = True, kinetic = True, maxwellian = True, xaxis='Te', logx=False):
     """Plot profiles of line emission (i.e. excitation radiation) coefficients per ion
 
     Args:
@@ -87,18 +91,19 @@ def plot_PLTs(r, el, effective = True, kinetic = True, maxwellian = True, xaxis=
             ax.plot(x,PLT_Max[:,Z],color=l.get_color(),label=el + '$^{' + str(Z) + '+}$')
     if effective:
         if kinetic:
-            ax.plot(x,PLT_kin_eff,'--',color='black', label='FAC (kin)')
+            ax.plot(x,PLT_kin_eff,'--',color='black', label='Maxwellian')
         if maxwellian:
-            ax.plot(x,PLT_Max_eff,'-',color='black', label='FAC (Max)')
+            ax.plot(x,PLT_Max_eff,'-',color='black', label='Kinetic')
     ax.set_yscale('log')
-    # ax.set_xscale('log')
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Excitation radiation per ion [Wm$^3$]')
     ax.legend()
     ax.grid()
     ax.set_title('Cooling curves: ' + el)
+    if logx:
+        ax.set_xscale('log')
     
-def plot_rad_profile(r, el, kinetic = True, maxwellian = True, xaxis='x'):
+def plot_rad_profile(r, el, kinetic = True, maxwellian = True, xaxis='x', logx=False):
     """Plot the radiative emission profile (currently only contributions from spontaneous emission are included)
 
     Args:
@@ -120,14 +125,16 @@ def plot_rad_profile(r, el, kinetic = True, maxwellian = True, xaxis='x'):
     
     fig,ax = plt.subplots(1)
     if kinetic:
-        ax.plot(x,Q_rad_kin,'--',color='black', label='FAC (kin)')
+        ax.plot(x,Q_rad_kin,'--',color='black', label='Kinetic')
     if maxwellian:
-        ax.plot(x,Q_rad_Max,color='black',label='FAC (Max)')
+        ax.plot(x,Q_rad_Max,color='black',label='Maxwellian')
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Excitation radiation [Wm$^{-3}$]')
     ax.legend()
     ax.grid()
     ax.set_title('Total line radiation profiles: ' + el)
+    if logx:
+        ax.set_xscale('log')
     
 def get_xaxis(r,xaxis):
     """Return an array to use on x-axis of a plot

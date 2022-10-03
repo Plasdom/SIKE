@@ -8,12 +8,12 @@ from petsc4py import PETSc
 import petsc4py
 
 default_opts = {'modelled_impurities': ['C'],
-                'delta_t': 1.0e-6,
+                'delta_t': 1.0e-4,
                 'evolve': True,
                 'kinetic_electrons': False,
                 'maxwellian_electrons': True,
-                'dndt_thresh': 1e-5,
-                'max_steps': 1e3,
+                'dndt_thresh': 1e-8,
+                'max_steps': 1000,
                 'frac_imp_dens': 0.05,
                 'resolve_j': False,
                 'ionization': True,
