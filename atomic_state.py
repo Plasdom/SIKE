@@ -4,7 +4,7 @@ import re
 import matplotlib.pyplot as plt
 
 
-class State2:
+class State:
     def __init__(self, id, dict):
         self.id = id
         self.nuc_chg = dict['nuc_chg']

@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from transition import *
-from atomic_state import State2
+from atomic_state import State
 import json
 from mpi4py import MPI
 import math
@@ -87,7 +87,7 @@ class Impurity:
             levels_dict = json.load(f)
             self.states = [None] * len(levels_dict)
             for i, level_dict in enumerate(levels_dict):
-                self.states[i] = State2(i, level_dict)
+                self.states[i] = State(i, level_dict)
 
         # Keep only user-specified states
         if opts['state_ids'] is not None:

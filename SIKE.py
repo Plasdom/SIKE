@@ -7,25 +7,25 @@ from mpi4py import MPI
 from petsc4py import PETSc 
 import petsc4py
 
-default_opts = {'modelled_impurities': ['C'],
-                'delta_t': 1.0e-4,
+default_opts = {'modelled_impurities': ['Li'],
+                'delta_t': 1.0e-3,
                 'evolve': True,
                 'kinetic_electrons': False,
                 'maxwellian_electrons': True,
-                'dndt_thresh': 1e-8,
+                'dndt_thresh': 1e-5,
                 'max_steps': 1000,
                 'frac_imp_dens': 0.05,
-                'resolve_j': False,
+                'resolve_j': True,
                 'ionization': True,
                 'radiative recombination': True,
                 'excitation': True,
                 'emission': True,
-                'autoionization': False,
+                'autoionization': True,
                 'fixed_fraction_init': True,
                 'state_ids': None,
                 'ksp_solver': 'ibcgs',
                 'ksp_pc': 'bjacobi',
-                'ksp_tol': 1e-12}
+                'ksp_tol': 1e-15}
 
 
 class SIKERun(object):
@@ -206,7 +206,7 @@ class SIKERun(object):
         # self.T_norm = 10.0
         # self.n_norm = 5e19
         self.T_norm = np.mean(self.Te)  # eV
-        self.n_norm = np.mean(self.ne)  # m^-3
+        self.n_norm = np.mean(self.ne) * self.opts['frac_imp_dens']  # m^-3
         self.v_th = np.sqrt(
             2 * self.T_norm * SIKE_tools.el_charge / SIKE_tools.el_mass)  # m/s
 
