@@ -4,7 +4,7 @@ import numpy as np
 import re
 import matplotlib.pyplot as plt
 import atomic_state
-import tools
+import SIKE_tools
 
 
 class Transition2:
@@ -71,7 +71,7 @@ class ExTrans(Transition2):
         Returns:
             float: electron density multiplied by ionization rate coefficient
         """
-        K_ex = tools.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        K_ex = SIKE_tools.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_ex
 
     def get_mat_value_inv(self, fe, vgrid, dvc):
@@ -87,7 +87,7 @@ class ExTrans(Transition2):
             float: electron density multiplied by three-body recombination rate coefficient
         """
 
-        K_deex = tools.calc_rate(
+        K_deex = SIKE_tools.calc_rate(
             vgrid, dvc, fe, self.sigma_deex, self.collrate_const)
         return K_deex
 
@@ -103,7 +103,7 @@ class ExTrans(Transition2):
         Returns:
             np.array: local de-excitation cross-section
         """
-        sigma_deex = tools.get_sigma_deex(
+        sigma_deex = SIKE_tools.get_sigma_deex(
             vgrid, vgrid_inv, sigma_interp, g_ratio)
 
         return sigma_deex
@@ -153,7 +153,7 @@ class IzTrans(Transition2):
         Returns:
             float: electron density multiplied by ionization rate coefficient
         """
-        K_ion = tools.calc_rate(
+        K_ion = SIKE_tools.calc_rate(
             vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_ion
 
@@ -170,7 +170,7 @@ class IzTrans(Transition2):
             float: electron density multiplied by three-body recombination rate coefficient
         """
         sigma_tbrec = self.get_sigma_tbrec(vgrid, Te)
-        K_tbrec = tools.calc_rate(
+        K_tbrec = SIKE_tools.calc_rate(
             vgrid, dvc, fe, sigma_tbrec, ne * self.tbrec_norm * self.collrate_const)
         return K_tbrec
 
@@ -186,7 +186,7 @@ class IzTrans(Transition2):
             np.array: local three-body recombination cross-section
         """
 
-        sigma_tbrec = tools.get_sigma_tbr(
+        sigma_tbrec = SIKE_tools.get_sigma_tbr(
             vgrid, self.vgrid_inv, self.sigma_interp, self.g_ratio, Te)
 
         return sigma_tbrec
@@ -224,7 +224,7 @@ class RRTrans(Transition2):
         Returns:
             float: electron density multiplied by ionization rate coefficient
         """
-        K_radrec = tools.calc_rate(
+        K_radrec = SIKE_tools.calc_rate(
             vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_radrec
 
