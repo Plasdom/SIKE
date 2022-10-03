@@ -177,7 +177,7 @@ def evolve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_
                 print('\nKSP failed on rank ' + str(rank) + ', reason: ' + str(reason))
             return None
         
-        if dndt_global > prev_residual and i/num_t > 0.1:
+        if dndt_global > prev_residual and i/num_t > 0.01:
             break
 
         prev_residual = dndt_global
