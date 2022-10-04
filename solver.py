@@ -118,14 +118,6 @@ def evolve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_
     be_op_mat.assemblyBegin()
     be_op_mat.assemblyEnd()
     be_op_mat = I - dt * rate_matrix
-    
-    # for row in range(be_op_mat.size[0]):
-    #     rows, row_vals = be_op_mat.getRow(row)
-    #     for row_val in row_vals:
-    #         if np.isnan(row_val):
-    #             print('aaah')
-    #         if np.isinf(row_val):
-    #             print('aaah')
 
     # Initialise the KSP solver
     ksp = PETSc.KSP().create(comm=PETSc.COMM_SELF)
@@ -186,6 +178,90 @@ def evolve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_
             if (i+1) % 10 == 0:
                 print('TIMESTEP ' + str(i+1) +
                 ' | max(dn/dt) {:.2e}'.format((n_norm / t_norm) * dndt_global) + ' | NUM_ITS ' + str(num_its_global) + '            ', end='\r')
+        
+        if dndt_global < dndt_thresh:
+            break
+        
+
+    n_solved = np.array([[n_new[i + (j * num_states)]
+                        for i in range(num_states)] for j in range(loc_num_x)])
+    
+    PETSc.COMM_WORLD.Barrier()
+    
+    if rank == 0:
+        print('')
+    print("Conservation check on rank " + str(rank) + ": {:.2e}".format(
+        np.sum(n_solved) - np.sum(n_init[min_x:max_x,:])))
+
+    return n_solved
+
+def evolve_rk4(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_thresh, n_norm, t_norm, ksp_solver, ksp_pc, ksp_tol):
+    """Evolve the matrix equation dn/dt = R * n using RK4 explicit time-stepping. R is the rate matrix, n is the density array
+
+    Args:
+        rate_matrix (AIJMat): rate matrix
+        n_init (np.array): initial densities
+        num_x (int): number of spatial cells
+        dt (float): time step
+
+    Returns:
+        n_solved (np.array): equilibrium densities
+    """
+    
+    num_states = len(n_init[0, :])
+
+    rate_matrix.assemblyBegin()
+    rate_matrix.assemblyEnd()
+    
+    rank = PETSc.COMM_WORLD.Get_rank()
+
+    # Initialise the old and new density vectors
+    n_old = PETSc.Vec().createSeq(num_states * loc_num_x, comm=PETSc.COMM_SELF)
+    n_old.setValues(range(num_states * loc_num_x), n_init[min_x:max_x,:].flatten())
+    n_new = PETSc.Vec().createSeq(num_states * loc_num_x,comm=PETSc.COMM_SELF)
+    
+    k1 = PETSc.Vec().createSeq(num_states * loc_num_x,comm=PETSc.COMM_SELF)
+    k2 = PETSc.Vec().createSeq(num_states * loc_num_x,comm=PETSc.COMM_SELF)
+    k3 = PETSc.Vec().createSeq(num_states * loc_num_x,comm=PETSc.COMM_SELF)
+    k4 = PETSc.Vec().createSeq(num_states * loc_num_x,comm=PETSc.COMM_SELF)
+
+    prev_residual = 1e20
+    for i in range(num_t):
+        
+        rate_matrix.mult(n_old,k1)
+        rate_matrix.mult(n_old + k1 * (dt/2.0),k2)
+        rate_matrix.mult(n_old + k2 * (dt/2.0),k3)
+        rate_matrix.mult(n_old + k3 * dt,k4)
+        
+        dt_6 = dt / 6.0
+        
+        add_vec = k1 * dt_6
+        add_vec = add_vec + 2.0 * k2 * dt_6
+        add_vec = add_vec + 2.0 * k3 * dt_6
+        add_vec = add_vec + k4 * dt_6
+        
+        n_new = n_old + add_vec
+
+        dndt = np.max(np.abs(n_old - n_new)) / dt
+
+        # Update densities
+        n_old.setValues(range(num_states*loc_num_x),
+                        n_new.getValues(range(num_states*loc_num_x)))
+
+        # Do some communication
+        all_dndts = MPI.COMM_WORLD.gather(dndt,root=0)
+        max_dndt = None
+        solver_failed = None
+        if rank == 0:
+            max_dndt = max(all_dndts)
+        dndt_global = MPI.COMM_WORLD.bcast(max_dndt, root=0)
+
+        prev_residual = dndt_global
+        
+        if rank == 0:
+            if (i+1) % 10 == 0:
+                print('TIMESTEP ' + str(i+1) +
+                ' | max(dn/dt) {:.2e}'.format((n_norm / t_norm) * dndt_global), end='\r')
         
         if dndt_global < dndt_thresh:
             break
