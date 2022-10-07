@@ -236,15 +236,15 @@ def get_cr_iz_coeffs(r, el, kinetic=False):
     cr_iz_coeffs = np.zeros([r.num_x,r.impurities[el].num_Z-1])
     for x_pos in range(r.num_x):
         
+        print('{:.2f}%'.format(100*x_pos/r.num_x),end='\r')
+        
         for Z in range(r.impurities[el].num_Z-1):
             
+            # Extract relevant part of rate matrix
             offset = x_pos * tot_states
-        
             rows = [s.pos + offset for s in r.impurities[el].states if s.Z == Z] 
             cols = rows
-            
             rate_mat = m.getValues(rows=rows, cols=cols)
-            
             
             # Build ionization array
             Z_states = gather_states(r.impurities[el].states,Z)
@@ -255,139 +255,24 @@ def get_cr_iz_coeffs(r, el, kinetic=False):
             gs_Zplus1 = Zplus1_states[0]
             iz_trans = [t for t in r.impurities[el].transitions if t.type == 'ionization'
                         and t.from_id in Z_ids and t.to_id == gs_Zplus1.id]
-            iz_trans = sorted(iz_trans, key=lambda x: x.from_id)
-            S = [t.get_mat_value(fe[:,x_pos], r.vgrid, r.dvc) for t in iz_trans]
-            
+            S = np.zeros(len(Z_states))
+            for i in range(len(Z_states)):
+                izt = None
+                for t in iz_trans:
+                    if t.from_id == Z_states[i].id:
+                        izt = t
+                        break
+                if izt is not None:
+                    S[i] = izt.get_mat_value(fe[:,x_pos], r.vgrid, r.dvc)
             S_vs = S[0]
             S_vj = S[1:]
             
+            # Compute the collisional-radiative ionization coefficients
             C_ij_inv = np.linalg.inv(rate_mat[1:,1:])
             C_is = rate_mat[1:,0]
-            
             iz_coeff = S_vs - np.dot(S_vj, np.dot(C_ij_inv, C_is) )
-            cr_iz_coeffs[x_pos,Z] = iz_coeff / (r.n_norm * r.t_norm)
-            
-            
-            # S = rate_mat[0,0] + np.sum(rate_mat[1:,0])
-            # inv_rate_mat = np.linalg.inv(rate_mat)
-            # for j in range(1,num_states-1):
-            #     for i in range(1,num_states-1):
-            #         S -= rate_mat[0,j] * inv_rate_mat[j,i] * rate_mat[i,0]
-            #         S -= rate_mat[0,j] * inv_rate_mat[j,i] * rate_mat[i,0]
-            # S /= r.ne[x_pos]
-            # cr_iz_coeffs[x_pos,Z] = 1e6 * S / (r.n_norm * r.t_norm)
-            
+            cr_iz_coeffs[x_pos,Z] = iz_coeff / (r.ne[x_pos] * r.n_norm * r.t_norm)
     
-    
-    
-    # if kinetic:
-    #     fe = r.fe 
-    #     dens = r.impurities[el].dens
-    # else:
-    #     fe = r.fe_Max
-    #     dens = r.impurities[el].dens_Max
-    
-    # num_Z = r.impurities[el].num_Z
-    # cr_iz_coeffs = np.zeros([r.num_x,num_Z-1])
-        
-    # for Z in range(num_Z-1):
-        
-    #     print(Z)
-        
-    #     Z_dens = gather_dens(dens,r.impurities[el].states,Z)
-    #     Z_states = gather_states(r.impurities[el].states,Z)
-    #     # Z_states = [s for s in Z_states if s.iz_energy > 0.0]
-    #     stable_state = Z_states[0]
-    #     Zplus1_states = gather_states(r.impurities[el].states,Z+1)
-    #     stable_state_Zplus1 = Zplus1_states[0]
-    #     Z_iz_transitions = gather_transitions(r.impurities[el].transitions, r.impurities[el].states, type='ionization', Z=Z)
-    #     Z_iz_transitions = [t for t in Z_iz_transitions if t.to_id == stable_state_Zplus1.id]
-    #     Z_ex_transitions = gather_transitions(r.impurities[el].transitions, r.impurities[el].states, type='excitation', Z=Z)
-    #     Z_em_transitions = gather_transitions(r.impurities[el].transitions, r.impurities[el].states, type='emission', Z=Z)
-    #     id2pos = {Z_states[i].id: i for i in range(
-    #                 len(Z_states))}
-    #     num_Z_states = len(Z_states)
-        
-    #     # Check position 0 is ground state
-    #     ens = [s.energy for s in Z_states]
-    #     if np.argmin(ens) != 0:
-    #         raise ValueError('First state in states belonging to Z should be the ground state!')
-            
-    #     for k in range(r.num_x):
-            
-    #         transition_mat = np.zeros([num_Z_states,num_Z_states])
-    #         iz_array = np.zeros(num_Z_states)
-                
-    #         # Create ionization rate array
-    #         transition_mat = np.zeros([num_Z_states,num_Z_states])
-    #         iz_array = np.zeros(num_Z_states)
-    #         for iz_trans in Z_iz_transitions:
-    #             from_pos = id2pos[iz_trans.from_id]
-    #             val = iz_trans.get_mat_value( fe[:,k], r.vgrid, r.dvc)
-    #             iz_array[from_pos] = val
-    #             transition_mat[from_pos, from_pos] -= val
-
-    #         # Create transition matrix
-    #         for ex_trans in Z_ex_transitions:
-                
-    #             # Excitation
-    #             val = ex_trans.get_mat_value(
-    #                 fe[:, k], r.vgrid, r.dvc)
-    #             from_pos = id2pos[ex_trans.from_id]
-    #             to_pos = id2pos[ex_trans.to_id]
-                
-    #             row = to_pos; col = from_pos
-    #             transition_mat[row,col] += val
-                
-    #             row = from_pos; col = from_pos
-    #             transition_mat[row,col] -= val
-                
-    #             # De-excitation
-    #             val = ex_trans.get_mat_value_inv(
-    #                 fe[:, k], r.vgrid, r.dvc)
-    #             from_pos = id2pos[ex_trans.to_id]
-    #             to_pos = id2pos[ex_trans.from_id]
-                
-    #             row = to_pos; col = from_pos
-    #             transition_mat[row,col] += val
-                
-    #             row = from_pos; col = from_pos
-    #             transition_mat[row,col] -= val
-
-    #         for em_trans in Z_em_transitions:
-                
-    #             # Emission
-    #             val = em_trans.get_mat_value()
-    #             from_pos = id2pos[em_trans.from_id]
-    #             to_pos = id2pos[em_trans.to_id]
-                
-    #             row = to_pos; col = from_pos
-    #             transition_mat[row,col] += val
-                
-    #             row = from_pos; col = from_pos
-    #             transition_mat[row,col] -= val
-                
-    #         try:
-                
-    #             inv_transition_mat = np.linalg.inv(transition_mat)
-                
-    #             S = iz_array[0]
-    #             for j in range(1,num_Z_states):
-    #                 for i in range(1,num_Z_states):
-    #                     S -= iz_array[j] * inv_transition_mat[j,i] * transition_mat[i,0]
-    #             S /= r.ne[k]
-                
-    #             # S = transition_mat[0,0]
-    #             # for j in range(num_Z_states):
-    #             #     for i in range(num_Z_states):
-    #             #         S -= transition_mat[0,j] * inv_transition_mat[j,i] * transition_mat[i,0]
-    #             #         S -= transition_mat[0,j] * inv_transition_mat[j,i] * transition_mat[i,0]
-    #             # S /= r.ne[k]
-                
-    #             cr_iz_coeffs[k,Z] = S
-                
-    #         except (np.linalg.LinAlgError):
-    #             print('Singular matrix for Z = ' + str(Z) + ', x position = ' + str(k))
-    #             cr_iz_coeffs[k,Z] = np.nan
+    print('{:.2f}%'.format(100))
     
     return cr_iz_coeffs

@@ -105,7 +105,6 @@ class SIKERun(object):
         for option in default_opts:
             if option not in list(self.opts.keys()):
                 self.opts[option] = default_opts[option]
-    
 
         if xgrid is not None:
             self.xgrid = xgrid.copy()
@@ -133,6 +132,9 @@ class SIKERun(object):
                 el, self.opts, self.vgrid, self.Egrid, self.ne, self.collrate_const, self.tbrec_norm, self.sigma_0, self.t_norm, self.T_norm)
         if self.rank == 0:
             print('Finished initialising impurity species objects.')
+            
+        self.rate_mats = {}
+        self.rate_mats_Max = {}
 
     def init_from_dist(self):
 
@@ -268,8 +270,6 @@ class SIKERun(object):
 
     def build_matrix(self, kinetic=False):
         # Build the rate matrices
-        self.rate_mats = {}
-        self.rate_mats_Max = {}
         for el in self.opts['modelled_impurities']:
 
             if kinetic:

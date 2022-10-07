@@ -177,7 +177,7 @@ def evolve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_
         if rank == 0:
             if (i+1) % 10 == 0:
                 print('TIMESTEP ' + str(i+1) +
-                ' | max(dn/dt) {:.2e}'.format((n_norm / t_norm) * dndt_global) + ' | NUM_ITS ' + str(num_its_global) + '            ', end='\r')
+                ' | max(dn/dt) {:.2e}'.format((n_norm / t_norm) * dndt_global) + ' / {:.2e}'.format((n_norm / t_norm) * dndt_thresh) + ' | NUM_ITS ' + str(num_its_global) + '            ', end='\r')
         
         if dndt_global < dndt_thresh:
             break

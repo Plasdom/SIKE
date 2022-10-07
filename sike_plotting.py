@@ -124,6 +124,7 @@ def plot_rad_profile(r, el, kinetic = True, maxwellian = True, xaxis='x', logx=F
         kinetic (bool, optional): whether to plot kinetic radiation profile. Defaults to True.
         maxwellian (bool, optional): whether to plot Maxwellian radiation  profile. Defaults to True.
         xaxis (str,optional): choice of x-axis: 'Te', 'ne', 'x'. Defaults to 'x'
+        logx (bool, optional): plot x-axis on log scale. Defaults to False
     """
     
     ne = r.ne * r.n_norm
@@ -173,7 +174,17 @@ def get_xaxis(r,xaxis):
     return x, xlabel
 
 def plot_gs_iz_coeffs(r,el, kinetic=True, maxwellian=True, xaxis='Te', logx=False):
-    # Plot ground state ionization coefficients
+    """Plot the ground-state to ground-state ionization coefficients
+
+    Args:
+        r (SIKERun): SIKEun object
+        el (str): impurity species
+        kinetic (bool, optional): whether to plot kinetic coefficients. Defaults to True.
+        maxwellian (bool, optional): whether to plot Maxwellian coefficients. Defaults to True.
+        xaxis (str,optional): choice of x-axis: 'Te', 'ne', 'x'. Defaults to 'x'
+        logx (bool, optional): _description_. Defaults to False.
+        logx (bool, optional): plot x-axis on log scale. Defaults to False
+    """
     if maxwellian:
         gs_iz_coeffs_Max = get_gs_iz_coeffs(r,el,kinetic=False)
     if kinetic:
@@ -198,6 +209,58 @@ def plot_gs_iz_coeffs(r,el, kinetic=True, maxwellian=True, xaxis='Te', logx=Fals
     ax.set_xlabel(xlabel)
     ax.set_ylabel(r'$\langle \sigma v \rangle$ [m$^{3}$s$^{-1}$]')
     ax.set_title('Ionization coefficients (from ground state): ' + el)
+    
+    if logx:
+        ax.set_xscale('log')
+        
+def plot_cr_iz_coeffs(r,el, kinetic=True, maxwellian=True, xaxis='Te', logx=False):
+    """Plot the collisional-radiative ionization coefficients (ground-state to ground-state)
+
+    Args:
+        r (SIKERun): SIKEun object
+        el (str): impurity species
+        kinetic (bool, optional): whether to plot kinetic coefficients. Defaults to True.
+        maxwellian (bool, optional): whether to plot Maxwellian coefficients. Defaults to True.
+        xaxis (str,optional): choice of x-axis: 'Te', 'ne', 'x'. Defaults to 'x'
+        logx (bool, optional): _description_. Defaults to False.
+        logx (bool, optional): plot x-axis on log scale. Defaults to False
+    """
+    
+    if maxwellian:
+        try:
+            r.rate_mats_Max[el]
+        except NameError:
+            raise AttributeError('SIKERun object has no Maxwellian rate matrix. Call SIKERun.build_matrix(kinetic=False)')
+        print('Getting Maxwellian ionization coeffs...')
+        cr_iz_coeffs_Max = get_cr_iz_coeffs(r,el,kinetic=False)
+    
+    if kinetic:
+        try:
+            r.rate_mats[el]
+        except NameError:
+            raise AttributeError('SIKERun object has no kinetic rate matrix. Call SIKERun.build_matrix(kinetic=True)')
+        print('Getting kinetic ionization coeffs...')
+        cr_iz_coeffs_kin = get_cr_iz_coeffs(r,el,kinetic=True)
+    
+    x, xlabel = get_xaxis(r,xaxis)
+    
+    fig,ax = plt.subplots(1)
+    for Z in range(r.impurities[el].num_Z-1):
+        l, = ax.plot([],[])
+        if maxwellian:
+            ax.plot(r.Te * r.T_norm, cr_iz_coeffs_Max[:,Z], '-', color=l.get_color(), label=el + '$^{' + str(Z) + r'+}\rightarrow$' + el + '$^{' + str(Z+1) + '+}$')
+        if kinetic:
+            ax.plot(r.Te * r.T_norm, cr_iz_coeffs_kin[:,Z], '--', color=l.get_color())
+    if maxwellian:
+        ax.plot([],[],color='black', label='Maxwellian')
+    if kinetic:
+        ax.plot([],[],'--',color='black', label='Kinetic')
+    ax.legend(loc='lower right')
+    ax.grid()
+    ax.set_yscale('log')
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(r'$\langle \sigma v \rangle$ [m$^{3}$s$^{-1}$]')
+    ax.set_title('Effective ionization coefficients : ' + el)
     
     if logx:
         ax.set_xscale('log')
