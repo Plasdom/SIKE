@@ -7,7 +7,7 @@ import atomic_state
 import SIKE_tools
 
 
-class Transition2:
+class Transition:
     """Base transition class.
 
     Attributes:
@@ -27,7 +27,7 @@ class Transition2:
         self.delta_E = delta_E
 
 
-class ExTrans(Transition2):
+class ExTrans(Transition):
     """Excitation transition class. Derived from Transition class.
 
     Attributes:
@@ -35,7 +35,7 @@ class ExTrans(Transition2):
     """
 
     def __init__(self, trans_dict, collrate_const, sigma_norm, T_norm):
-        Transition2.__init__(self, trans_dict['type'], trans_dict['element'],
+        Transition.__init__(self, trans_dict['type'], trans_dict['element'],
                              trans_dict['from_id'], trans_dict['to_id'], trans_dict['delta_E']/T_norm)
 
         self.sigma = 1e-4 * np.array(trans_dict['sigma']) / sigma_norm
@@ -109,7 +109,7 @@ class ExTrans(Transition2):
         return sigma_deex
 
 
-class IzTrans(Transition2):
+class IzTrans(Transition):
     """Ionization transition class. Derived from Transition class.
 
     Attributes:
@@ -118,7 +118,7 @@ class IzTrans(Transition2):
 
     def __init__(self, trans_dict, collrate_const, tbrec_norm, sigma_norm, T_norm):
 
-        Transition2.__init__(self, trans_dict['type'], trans_dict['element'],
+        Transition.__init__(self, trans_dict['type'], trans_dict['element'],
                              trans_dict['from_id'], trans_dict['to_id'], trans_dict['delta_E']/T_norm)
         self.sigma = 1e-4 * np.array(trans_dict['sigma']) / sigma_norm
         self.sigma[np.where(self.sigma < 0.0)] = 0.0
@@ -192,7 +192,7 @@ class IzTrans(Transition2):
         return sigma_tbrec
 
 
-class RRTrans(Transition2):
+class RRTrans(Transition):
     """Radiative recombination transition class. Derived from Transition class.
 
     Attributes:
@@ -200,7 +200,7 @@ class RRTrans(Transition2):
     """
 
     def __init__(self, trans_dict, collrate_const, sigma_0, T_norm):
-        Transition2.__init__(self, trans_dict['type'], trans_dict['element'],
+        Transition.__init__(self, trans_dict['type'], trans_dict['element'],
                              trans_dict['from_id'], trans_dict['to_id'], trans_dict['delta_E']/T_norm)
         self.sigma = 1e-4 * np.array(trans_dict['sigma']) / sigma_0
         self.collrate_const = collrate_const
@@ -229,7 +229,7 @@ class RRTrans(Transition2):
         return K_radrec
 
 
-class EmTrans(Transition2):
+class EmTrans(Transition):
     """Spontaneous emission transition class. Derived from Transition class.
 
     Attributes:
@@ -237,7 +237,7 @@ class EmTrans(Transition2):
     """
 
     def __init__(self, trans_dict, time_norm, T_norm):
-        Transition2.__init__(self, trans_dict['type'], trans_dict['element'],
+        Transition.__init__(self, trans_dict['type'], trans_dict['element'],
                              trans_dict['from_id'], trans_dict['to_id'], trans_dict['delta_E']/T_norm)
         if 'gf' in trans_dict.keys():
             self.gf = trans_dict['gf']
@@ -253,7 +253,7 @@ class EmTrans(Transition2):
         return A_em
 
 
-class AiTrans(Transition2):
+class AiTrans(Transition):
     """Autoionization transition class. Derived from Transition class.
 
     Attributes:
@@ -261,7 +261,7 @@ class AiTrans(Transition2):
     """
 
     def __init__(self, trans_dict, time_norm, T_norm):
-        Transition2.__init__(self, trans_dict['type'], trans_dict['element'],
+        Transition.__init__(self, trans_dict['type'], trans_dict['element'],
                              trans_dict['from_id'], trans_dict['to_id'], trans_dict['delta_E']/T_norm)
         self.rate = trans_dict['rate'] * time_norm
 

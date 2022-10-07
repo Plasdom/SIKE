@@ -171,3 +171,34 @@ def get_xaxis(r,xaxis):
         x = r.xgrid * r.x_norm
         xlabel = 'x [m]'
     return x, xlabel
+
+def plot_gs_iz_coeffs(r,el, kinetic=True, maxwellian=True, xaxis='Te', logx=False):
+    # Plot ground state ionization coefficients
+    if maxwellian:
+        gs_iz_coeffs_Max = get_gs_iz_coeffs(r,el,kinetic=False)
+    if kinetic:
+        gs_iz_coeffs_kin = get_gs_iz_coeffs(r,el,kinetic=True)
+
+    x, xlabel = get_xaxis(r,xaxis)
+    
+    fig,ax = plt.subplots(1)
+    for Z in range(r.impurities[el].num_Z-1):
+        l, = ax.plot([],[])
+        if maxwellian:
+            ax.plot(r.Te * r.T_norm, gs_iz_coeffs_Max[:,Z], '-', color=l.get_color(), label=el + '$^{' + str(Z) + r'+}\rightarrow$' + el + '$^{' + str(Z+1) + '+}$')
+        if kinetic:
+            ax.plot(r.Te * r.T_norm, gs_iz_coeffs_kin[:,Z], '--', color=l.get_color())
+    if maxwellian:
+        ax.plot([],[],color='black', label='Maxwellian')
+    if kinetic:
+        ax.plot([],[],'--',color='black', label='Kinetic')
+    ax.legend(loc='lower right')
+    ax.grid()
+    ax.set_yscale('log')
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(r'$\langle \sigma v \rangle$ [m$^{3}$s$^{-1}$]')
+    ax.set_title('Ionization coefficients (from ground state): ' + el)
+    
+    if logx:
+        ax.set_xscale('log')
+    
