@@ -2,10 +2,11 @@ from petsc4py import PETSc
 import petsc4py
 import numpy as np
 import math
+import scipy
 from mpi4py import MPI
 
 
-def solve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, ksp_solver, ksp_pc, ksp_tol):
+def solve_petsc(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, ksp_solver, ksp_pc, ksp_tol):
     """Solve the matrix equation R * n = b using PETSc. R is the rate matrix, n is the density array and b is the right-hand side, which is zero apart from the last element in each spatial cell which is equal to the total impurity density
 
     Args:
@@ -77,8 +78,51 @@ def solve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, ksp_solver, ksp_p
 
     return n_solved
 
+def solve_np(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, ksp_solver, ksp_pc, ksp_tol):
+    """Solve the matrix equation R * n = b using numpy. R is the rate matrix, n is the density array and b is the right-hand side, which is zero apart from the last element in each spatial cell which is equal to the total impurity density
 
-def evolve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_thresh, n_norm, t_norm, ksp_solver, ksp_pc, ksp_tol):
+    Args:
+        rate_matrix (list): rate matrix
+        n_init (np.array): initial densities
+        num_x (int): number of spatial cells
+
+    Returns:
+        n_solved (np.array): equilibrium densities
+    """
+
+    num_states = len(n_init[0, :])
+    num_x = len(n_init[:,0])
+
+    rank = PETSc.COMM_WORLD.Get_rank()
+    
+    # Initialise the rhs and new density vectors
+    n_solved = [np.zeros(num_states) for i in range(loc_num_x)]
+    rhs = [np.zeros(num_states) for i in range(loc_num_x)] 
+    for i in range(loc_num_x):
+        rhs[i][-1] = np.sum(n_init[i+min_x, :])
+
+    # Set the last row of numpy matrix to ones
+    for i in range(loc_num_x):
+        for j in range(num_states):
+            row = num_states-1
+            col = j
+            rate_matrix[i][row,col] = 1.0
+    
+    # Solve the matrix equation
+    for i in range(loc_num_x):
+        # n_solved[i] = np.linalg.inv(rate_matrix[i]) @ rhs[i]
+        n_solved[i] = np.linalg.solve(rate_matrix[i], rhs[i])
+
+    n_solved = np.array(n_solved)
+
+    PETSc.COMM_WORLD.Barrier()
+    print("Conservation check on rank " + str(rank) + ": {:.2e}".format(
+        np.sum(n_solved) - np.sum(n_init[min_x:max_x,:])))
+
+    return n_solved
+
+
+def evolve_petsc(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_thresh, n_norm, t_norm, ksp_solver, ksp_pc, ksp_tol):
     """Evolve the matrix equation dn/dt = R * n using PETSc using backwards Euler time-stepping. R is the rate matrix, n is the density array
 
     Args:
@@ -115,9 +159,9 @@ def evolve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_
     # Create the backwards Euler operator matrix
     be_op_mat = PETSc.Mat().createAIJ(
         [num_states*loc_num_x, num_states*loc_num_x], nnz=num_states,comm=PETSc.COMM_SELF)
+    be_op_mat = I - dt * rate_matrix
     be_op_mat.assemblyBegin()
     be_op_mat.assemblyEnd()
-    be_op_mat = I - dt * rate_matrix
 
     # Initialise the KSP solver
     ksp = PETSc.KSP().create(comm=PETSc.COMM_SELF)
@@ -169,22 +213,111 @@ def evolve(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_
                 print('\nKSP failed on rank ' + str(rank) + ', reason: ' + str(reason))
             return None
         
-        if dndt_global > prev_residual and i/num_t > 0.01:
-            break
+        # if dndt_global > prev_residual and i/num_t > 0.01:
+        #     print('Finishing time integration because dn/dt has begun to increase.')
+        #     break
 
         prev_residual = dndt_global
         
         if rank == 0:
-            if (i+1) % 10 == 0:
-                print('TIMESTEP ' + str(i+1) +
-                ' | max(dn/dt) {:.2e}'.format((n_norm / t_norm) * dndt_global) + ' / {:.2e}'.format((n_norm / t_norm) * dndt_thresh) + ' | NUM_ITS ' + str(num_its_global) + '            ', end='\r')
+          print('TIMESTEP ' + str(i+1) +
+          ' | max(dn/dt) {:.2e}'.format((n_norm / t_norm) * dndt_global) + ' / {:.2e}'.format((n_norm / t_norm) * dndt_thresh) + ' | NUM_ITS ' + str(num_its_global) + '            ', end='\r')
         
         if dndt_global < dndt_thresh:
+            print('Finishing time integration because dn/dt reached threshold.')
             break
         
 
     n_solved = np.array([[n_new[i + (j * num_states)]
                         for i in range(num_states)] for j in range(loc_num_x)])
+    
+    PETSc.COMM_WORLD.Barrier()
+    
+    if rank == 0:
+        print('')
+    print("Conservation check on rank " + str(rank) + ": {:.2e}".format(
+        np.sum(n_solved) - np.sum(n_init[min_x:max_x,:])))
+
+    return n_solved
+
+def evolve_np(loc_num_x, min_x, max_x, rate_matrix, n_init, num_x, dt, num_t, dndt_thresh, n_norm, t_norm, ksp_solver, ksp_pc, ksp_tol):
+    """Evolve the matrix equation dn/dt = R * n using PETSc using backwards Euler time-stepping. R is the rate matrix, n is the density array
+
+    Args:
+        rate_matrix (AIJMat): rate matrix
+        n_init (np.array): initial densities
+        num_x (int): number of spatial cells
+        dt (float): time step
+
+    Returns:
+        n_solved (np.array): equilibrium densities
+    """
+    
+    # dndt_thresh *= (n_norm / t_norm)
+    
+    num_states = len(n_init[0, :])
+    
+    rank = PETSc.COMM_WORLD.Get_rank()
+
+    # Initialise the old and new density vectors
+    n_old = [np.zeros(num_states) for i in range(loc_num_x)]
+    for i in range(loc_num_x):
+      n_old[i][:] = n_init[i+min_x,:]
+    n_new = [np.zeros(num_states) for i in range(loc_num_x)]
+
+    # Create an identity matrix
+    I = np.diag(np.ones(num_states))
+
+    # Create the backwards Euler operator matrix
+    be_op_mat = []
+    for i in range(loc_num_x):
+        be_op_mat.append(I - dt * rate_matrix[i])
+    
+    # Find inverse of operator matrix
+    for i in range(loc_num_x):
+        be_op_mat[i] = np.linalg.inv(be_op_mat[i])
+    prev_residual = 1e20
+    for i in range(num_t):
+        
+        # Solve the matrix equation
+        for j in range(loc_num_x):
+            n_new[j] = be_op_mat[j].dot(n_old[j])
+            # n_new[j] = np.linalg.solve(be_op_mat[j], n_old[j])
+
+        # Find dn/dt
+        dndt = 0
+        for j in range(loc_num_x):
+            dndt_cur = np.max(np.abs(n_old[j] - n_new[j])) / dt
+            if dndt_cur > dndt:
+                dndt = dndt_cur
+
+        # Update densities
+        for j in range(loc_num_x):
+            n_old[j] = n_new[j]
+
+        # Do some communication
+        all_dndts = MPI.COMM_WORLD.gather(dndt,root=0)
+        max_dndt = None
+        if rank == 0:
+            max_dndt = max(all_dndts)
+        dndt_global = MPI.COMM_WORLD.bcast(max_dndt, root=0)
+
+        # if dndt_global > prev_residual and i/num_t > 0.01:
+        #   print('Finishing time integration because dn/dt has begun to increase.')
+        #   break
+
+        prev_residual = dndt_global
+        
+        if rank == 0:
+          print('TIMESTEP ' + str(i+1) +
+          ' | max(dn/dt) {:.2e}'.format((n_norm / t_norm) * dndt_global) + ' / {:.2e}'.format((n_norm / t_norm) * dndt_thresh) + '            ', end='\r')
+        
+        if dndt_global < dndt_thresh:
+            print('Finishing time integration because dn/dt reached threshold.')
+            break
+        
+
+    n_solved = np.array(n_new)
     
     PETSc.COMM_WORLD.Barrier()
     
