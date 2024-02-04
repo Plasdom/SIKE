@@ -9,3 +9,4 @@ __pycache__/*
 legacy/*
 .idea
 .idea/*
+*.egg-info
