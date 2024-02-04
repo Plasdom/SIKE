@@ -10,3 +10,4 @@ legacy/*
 .idea
 .idea/*
 *.egg-info
+atomic_data/*
