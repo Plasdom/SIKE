@@ -4,7 +4,7 @@ from pathlib import Path
 from zipfile import ZipFile
 import shutil
 
-from sike import constants as c
+import constants as c
 
 setup(name="SIKE", version="0.1.0", packages=find_packages())
 
