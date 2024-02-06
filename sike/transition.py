@@ -53,8 +53,6 @@ class ExTrans(Transition):
         :type collrate_const: float
         :param sigma_norm: Normalisation constant for cross-section
         :type sigma_norm: float
-        :param T_norm: Normalisation constant for temperature
-        :type T_norm: float
         :param from_stat_weight: Statistical weight of the initial state, defaults to None
         :type from_stat_weight: float | None, optional
         :param born_bethe_coeffs: Born-Bethe coefficients, defaults to None
@@ -256,100 +254,118 @@ class IzTrans(Transition):
 
 
 class RRTrans(Transition):
-    """Radiative recombination transition class. Derived from Transition class.
+    """Radiative recombination transition class. Derived from Transition class."""
 
-    Attributes:
-        sigma (np.array): radiative recombination cross-section in cm^2
-    """
+    def __init__(
+        self,
+        sigma: ArrayLike,
+        collrate_const: float,
+        sigma_norm: float,
+        from_stat_weight: float | None,
+        to_stat_weight: float | None,
+        l: int | None,
+        fit_params: ArrayLike | None,
+        **transition_kwargs,
+    ):
+        """Initialise
 
-    def __init__(self, trans_dict, collrate_const, sigma_0, T_norm):
-        Transition.__init__(
-            self,
-            trans_dict["type"],
-            trans_dict["element"],
-            trans_dict["from_id"],
-            trans_dict["to_id"],
-            trans_dict["delta_E"] / T_norm,
-        )
-        self.sigma = 1e-4 * np.array(trans_dict["sigma"]) / sigma_0
+        :param sigma: Cross-sections
+        :type sigma: ArrayLike
+        :param collrate_const: Normalisation constant for collision rate calculation
+        :type collrate_const: float
+        :param sigma_norm: Normalisation constant for cross-section
+        :type sigma_norm: float
+        :param from_stat_weight: Statistical weight of the initial state, defaults to None
+        :type from_stat_weight: float | None
+        :param to_stat_weight: Statistical weight of the final state, defaults to None
+        :type to_stat_weight: float | None
+        :param l: Orbital angular momentum quantum number of final state (TODO: Check this)
+        :type l: int | None
+        :param fit_params: Parameters for high-energy cross-section fit
+        :type fit_params: ArrayLike | None
+        """
+        self.super().__init__(self, transition_kwargs)
+
+        self.sigma = 1e-4 * np.array(sigma) / sigma_norm
         self.collrate_const = collrate_const
-        if "from_stat_weight" in trans_dict.keys():
-            self.from_stat_weight = trans_dict["from_stat_weight"]
-        if "to_stat_weight" in trans_dict.keys():
-            self.to_stat_weight = trans_dict["to_stat_weight"]
-        if "l" in trans_dict.keys():
-            self.l = trans_dict["l"]
-        if "fit_params" in trans_dict.keys():
-            self.fit_params = trans_dict["fit_params"]
+        self.from_stat_weight = from_stat_weight
+        self.to_stat_weight = to_stat_weight
+        self.l = l
+        self.fit_params = fit_params
 
-    def get_mat_value(self, fe, vgrid, dvc):
-        """Get the matrix value for this transition. For radiative recombination transitions, this is ne * rate coefficient
+    def get_mat_value(self, fe: ArrayLike, vgrid: ArrayLike, dvc: ArrayLike) -> float:
+        """Get the matrix value for this transition.
 
-        Args:
-            fe (np.array): local electron distribution
-            vgrid (np.array): velocity grid
-            dvc (np.array): velocity grid widths
-
-        Returns:
-            float: electron density multiplied by ionization rate coefficient
+        :param fe: local electron distribution
+        :type fe: ArrayLike
+        :param vgrid: velocity grid
+        :type vgrid: ArrayLike
+        :param dvc: velocity grid widths
+        :type dvc: ArrayLike
+        :return: Matrix value
+        :rtype: float
         """
         K_radrec = SIKE_tools.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_radrec
 
 
 class EmTrans(Transition):
-    """Spontaneous emission transition class. Derived from Transition class.
+    """Spontaneous emission transition class. Derived from Transition class."""
 
-    Attributes:
-        rate (float): spontaneous emission rate in s^-1
-    """
+    def __init__(
+        self,
+        rate: float,
+        time_norm: float,
+        gf: float | None = None,
+        **transition_kwargs,
+    ):
+        """Initialise
 
-    def __init__(self, trans_dict, time_norm, T_norm):
-        Transition.__init__(
-            self,
-            trans_dict["type"],
-            trans_dict["element"],
-            trans_dict["from_id"],
-            trans_dict["to_id"],
-            trans_dict["delta_E"] / T_norm,
-        )
-        if "gf" in trans_dict.keys():
-            self.gf = trans_dict["gf"]
-        self.rate = trans_dict["rate"] * time_norm
+        :param rate: Spontaneous emission rate (TODO: units?)
+        :type rate: float
+        :param time_norm: Time units normalisation constant
+        :type time_norm: float
+        :param gf: _description_ (TODO: check), defaults to None
+        :type gf: float | None, optional
+        :param transition_kwargs: Arguments for base Transition class
+        :type: Keyword arguments
+        """
+        self.super().__init__(self, transition_kwargs)
 
-    def get_mat_value(self, _=None, __=None, ___=None):
+        self.gf = gf
+        self.rate = rate * time_norm
+
+    def get_mat_value(self) -> float:
         """Get the matrix value for this transition. For spontaneous emission, this is the emission rate
 
-        Returns:
-            float: electron density multiplied by ionization rate coefficient
+        :return: Matrix value
+        :rtype: float
         """
         A_em = self.rate
         return A_em
 
 
 class AiTrans(Transition):
-    """Autoionization transition class. Derived from Transition class.
+    """Autoionization transition class. Derived from Transition class."""
 
-    Attributes:
-        rate (float): autoionization rate in s^-1
-    """
+    def __init__(self, rate: float, time_norm: float, **transition_kwargs):
+        """Initialise
 
-    def __init__(self, trans_dict, time_norm, T_norm):
-        Transition.__init__(
-            self,
-            trans_dict["type"],
-            trans_dict["element"],
-            trans_dict["from_id"],
-            trans_dict["to_id"],
-            trans_dict["delta_E"] / T_norm,
-        )
-        self.rate = trans_dict["rate"] * time_norm
+        :param rate: Autoionization rate (TODO: units?)
+        :type rate: float
+        :param time_norm: Time units normalisation constant
+        :type time_norm: float
+        :param transition_kwargs: Arguments for base Transition class
+        :type: Keyword arguments
+        """
+        self.super().__init__(self, transition_kwargs)
+        self.rate = rate * time_norm
 
-    def get_mat_value(self, _=None, __=None, ___=None):
+    def get_mat_value(self) -> float:
         """Get the matrix value for this transition. For spontaneous emission, this is the emission rate
 
-        Returns:
-            float: electron density multiplied by ionization rate coefficient
+        :return: Matrix value
+        :rtype: float
         """
         A_ai = self.rate
         return A_ai
