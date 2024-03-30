@@ -1,6 +1,7 @@
 from scipy import interpolate
 import numpy as np
 from numpy.typing import ArrayLike
+from numba import jit
 
 import atomic_state
 import physics_tools
@@ -373,3 +374,109 @@ class AiTrans(Transition):
         """
         A_ai = self.rate
         return A_ai
+
+
+@jit(nopython=True)
+def calc_rate(
+    vgrid: np.ndarray,
+    dvc: np.ndarray,
+    fe: np.ndarray,
+    sigma: np.ndarray,
+    const: float = 1.0,
+) -> float:
+    """Efficiently compute the collisional rate for a given process
+
+    :param vgrid: velocity grid
+    :type vgrid: np.ndarray
+    :param dvc: velocity grid widths
+    :type dvc: np.ndarray
+    :param fe: local electron velocity distribution
+    :type fe: np.ndarray
+    :param sigma: cross-section
+    :type sigma: np.ndarray
+    :param const: normalisation cross-section (defaults to 1), defaults to 1.0
+    :type const: float, optional
+    :return: _description_
+    :rtype: float
+    """
+    rate = 0.0
+    for i in range(len(vgrid)):
+        rate += vgrid[i] ** 3 * dvc[i] * fe[i] * sigma[i]
+    rate *= const * 4.0 * np.pi
+    return rate
+
+
+@jit(nopython=True)
+def get_sigma_tbr(vgrid, vgrid_inv, sigma_interp, g_ratio, Te):
+    """Calculate the three-body recombination cross-section
+
+    Args:
+        vgrid (nd.ndarray): velocity grid
+        vgrid_inv (nd.ndarray): post-collision velocity grid
+        sigma_interp (np.ndarray): Ionization cross-section interpolated to vgrid_inv
+        g_ratio (float): ratio of statistical weights
+        Te (float): local electron temperature
+
+    Returns:
+        _type_: _description_
+    """
+    sigma_tbrec = (
+        0.5
+        * g_ratio
+        * (1 / (np.sqrt(Te) ** 3))
+        * sigma_interp
+        * ((vgrid_inv / vgrid) ** 2)
+    )
+    return sigma_tbrec
+
+
+@jit(nopython=True)
+def get_sigma_deex(vgrid, vgrid_inv, sigma_interp, g_ratio):
+    """Calculate the deexcitation cross-section
+
+    Args:
+        vgrid (nd.ndarray): velocity grid
+        vgrid_inv (nd.ndarray): post-collision velocity grid
+        sigma_interp (np.ndarray): Excitation cross-section interpolated to vgrid_inv
+        g_ratio (float): ratio of statistical weights
+
+    Returns:
+        nd.ndarray: deexcitation cross-section
+    """
+    sigma_deex = g_ratio * sigma_interp * ((vgrid_inv / vgrid) ** 2)
+    return sigma_deex
+
+
+@jit(nopython=True)
+def get_associated_transitions(state_id, from_ids, to_ids):
+    """Efficiently find the positions of all transitions associated with a given state ID
+
+    Args:
+        state_id (int): ID for a given state
+        from_ids (np.ndarray): list of all from IDs for each transition
+        to_ids (np.ndarray): list of all to IDs for each transition
+
+    Returns:
+        list: a list of the indices of all associated transitions
+    """
+    associated_transition_indices = []
+    for i in range(len(from_ids)):
+        if from_ids[i] == state_id or to_ids[i] == state_id:
+            associated_transition_indices.append(i)
+    return associated_transition_indices
+
+
+def interpolate_adf11_data(adas_file, Te, ne, num_z):
+    num_x = len(Te)
+    interp_data = np.zeros([num_x, num_z - 1])
+    for z in range(num_z - 1):
+        adas_file_interp = interpolate.interp2d(
+            adas_file.logNe, adas_file.logT, adas_file.data[z], kind="linear"
+        )
+        for i in range(num_x):
+            log_ne = np.log10(1e-6 * ne[i])
+            log_Te = np.log10(Te[i])
+            interp_result = adas_file_interp(log_ne, log_Te)
+            interp_data[i, z] = 1e-6 * (10 ** interp_result[0])
+
+    return interp_data
