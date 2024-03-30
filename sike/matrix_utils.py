@@ -9,15 +9,17 @@ import math
 
 # TODO: Tidy this module up. Could do with sparse local matrices instead? May be necessary for adding transport
 
+
 class LocalMat:
-    """A local dense matrix class for storing values to be inserted into petsc sparse matrix
-    """
+    """A local dense matrix class for storing values to be inserted into petsc sparse matrix"""
 
     def __init__(self, x_idx, num_states):
-        self.rows = np.array([x_idx * num_states +
-                              k for k in range(num_states)], dtype=np.int32)
-        self.cols = np.array([x_idx * num_states +
-                             k for k in range(num_states)], dtype=np.int32)
+        self.rows = np.array(
+            [x_idx * num_states + k for k in range(num_states)], dtype=np.int32
+        )
+        self.cols = np.array(
+            [x_idx * num_states + k for k in range(num_states)], dtype=np.int32
+        )
         self.values = np.zeros([num_states, num_states])
 
 
@@ -50,22 +52,29 @@ class TransitionTerm(MatrixTerm):
         """
 
         self.rows = np.concatenate(
-            [self.rows, np.array([loc_row + i * num_states for i in range(num_x)], dtype=int)])
+            [
+                self.rows,
+                np.array([loc_row + i * num_states for i in range(num_x)], dtype=int),
+            ]
+        )
         self.cols = np.concatenate(
-            [self.cols, np.array([loc_col + i * num_states for i in range(num_x)], dtype=int)])
+            [
+                self.cols,
+                np.array([loc_col + i * num_states for i in range(num_x)], dtype=int),
+            ]
+        )
         self.values = np.concatenate([self.values, np.zeros(num_x)])
         self.mat_loc_positions = np.concatenate(
-            [self.mat_loc_positions, np.zeros(num_x, dtype=int)])
+            [self.mat_loc_positions, np.zeros(num_x, dtype=int)]
+        )
         self.x_positions = np.concatenate(
-            [self.x_positions, np.arange(num_x, dtype=int)])
-        self.mults = np.concatenate(
-            [self.mults, mult*np.ones(num_x)])
+            [self.x_positions, np.arange(num_x, dtype=int)]
+        )
+        self.mults = np.concatenate([self.mults, mult * np.ones(num_x)])
         if inverse is True:
-            self.inverse = np.concatenate(
-                [self.inverse, np.ones(num_x)])
+            self.inverse = np.concatenate([self.inverse, np.ones(num_x)])
         else:
-            self.inverse = np.concatenate(
-                [self.inverse, np.zeros(num_x)])
+            self.inverse = np.concatenate([self.inverse, np.zeros(num_x)])
 
         self.nnz += num_x
 
@@ -80,8 +89,7 @@ class SparseMat:
 
     def add_nonzeros(self, terms):
         for term in terms:
-            self.locs += [(term.rows[j], term.cols[j])
-                          for j in range(term.nnz)]
+            self.locs += [(term.rows[j], term.cols[j]) for j in range(term.nnz)]
         self.locs = list(dict.fromkeys(self.locs))
         self.values += [0.0 for _ in range(len(self.locs))]
         self.nnz = len(self.locs)
@@ -96,7 +104,7 @@ class SparseMat:
         return get_loc_pos(self.rows, self.cols, row, col)
 
 
-@ jit(nopython=True)
+@jit(nopython=True)
 def get_loc_pos(rows, cols, row, col):
     for i in range(len(rows)):
         if row == rows[i] and col == cols[i]:
@@ -120,7 +128,6 @@ def build_petsc_matrix(loc_num_x, min_x, max_x, num_states, transitions, num_x, 
     if evolve is True:
         trans_mat = np.zeros([num_states, num_states])
         for trans in transitions:
-
             from_pos = trans.from_pos
             to_pos = trans.to_pos
             type = trans.type
@@ -138,8 +145,7 @@ def build_petsc_matrix(loc_num_x, min_x, max_x, num_states, transitions, num_x, 
             col = from_pos
             trans_mat[row, col] = val
 
-            if type == 'excitation':
-
+            if type == "excitation":
                 val = 1.0
 
                 # Add the loss term
@@ -152,8 +158,7 @@ def build_petsc_matrix(loc_num_x, min_x, max_x, num_states, transitions, num_x, 
                 col = to_pos
                 trans_mat[row, col] = val
 
-            elif type == 'ionization':
-
+            elif type == "ionization":
                 val = 1.0
 
                 # Add the loss term
@@ -172,22 +177,24 @@ def build_petsc_matrix(loc_num_x, min_x, max_x, num_states, transitions, num_x, 
 
     loc_num_rows = num_states * loc_num_x
     rate_mat = PETSc.Mat().createAIJ(
-        [loc_num_rows, loc_num_rows], nnz=nnz_per_row,comm=PETSc.COMM_SELF)
+        [loc_num_rows, loc_num_rows], nnz=nnz_per_row, comm=PETSc.COMM_SELF
+    )
     # rate_mat = PETSc.Mat().createAIJ(
     #     [num_states * num_x, num_states * num_x], [num_states*loc_num_x, num_states*loc_num_x], nnz=nnz_per_row,comm=PETSc.COMM_WORLD)
 
     if evolve is False:
         # Initialise diagonals
-        for row in range(num_states*loc_num_x):
+        for row in range(num_states * loc_num_x):
             rate_mat.setValue(row, row, 0.0, addv=True)
         # Initialise bottom row of each submatrix
         for i in range(min_x, max_x):
-            offset = (i-min_x)*num_states
+            offset = (i - min_x) * num_states
             row = num_states - 1 + offset
-            for col in range(offset, offset+num_states):
+            for col in range(offset, offset + num_states):
                 rate_mat.setValue(row, col, 0.0, addv=True)
 
     return rate_mat
+
 
 def build_np_matrix(min_x, max_x, num_states):
     """Construct an array of local numpy matrices for the problem
@@ -199,74 +206,79 @@ def build_np_matrix(min_x, max_x, num_states):
     Returns:
         _type_: _description_
     """
-    
+
     rate_mat = []
-    for i in range(min_x,max_x):
-        loc_mat = np.zeros([num_states,num_states])
+    for i in range(min_x, max_x):
+        loc_mat = np.zeros([num_states, num_states])
         rate_mat.append(loc_mat)
 
     return rate_mat
 
+
 def fill_local_mat(transitions, num_states, fe, ne, Te, vgrid, dvc):
-    
     local_mat = np.zeros([num_states, num_states])
 
     # Calculate the values
     for j, trans in enumerate(transitions):
-
         from_pos = trans.from_pos
         to_pos = trans.to_pos
         typ = trans.type
 
         # # Calculate the value to be added to the matrix
-        val = trans.get_mat_value(
-            fe, vgrid, dvc)
+        val = trans.get_mat_value(fe, vgrid, dvc)
 
         # Add the loss term
         row = from_pos
         col = from_pos
-        local_mat[row,col] -= val
+        local_mat[row, col] -= val
 
         # Add the gain term
         row = to_pos
         col = from_pos
-        local_mat[row,col] += val
+        local_mat[row, col] += val
 
         # Calculate inverse process matrix entries (3-body recombination & de-excitation)
-        if typ == 'excitation':
-
-            val = trans.get_mat_value_inv(
-                fe, vgrid, dvc)
+        if typ == "excitation":
+            val = trans.get_mat_value_inv(fe, vgrid, dvc)
 
             # Add the loss term
             row = to_pos
             col = to_pos
-            local_mat[row,col] -= val
+            local_mat[row, col] -= val
 
             # Add the gain term
             row = from_pos
             col = to_pos
-            local_mat[row,col] += val
+            local_mat[row, col] += val
 
-        elif typ == 'ionization':
-
-            val = trans.get_mat_value_inv(
-                fe, vgrid, dvc, ne, Te)
+        elif typ == "ionization":
+            val = trans.get_mat_value_inv(fe, vgrid, dvc, ne, Te)
 
             # Add the loss term
             row = to_pos
             col = to_pos
-            local_mat[row,col] -= val
+            local_mat[row, col] -= val
 
             # Add the gain term
             row = from_pos
             col = to_pos
-            local_mat[row,col] += val
-    
+            local_mat[row, col] += val
+
     return local_mat
-    
 
-def fill_petsc_rate_matrix(loc_num_x: int, min_x: int, max_x: int, mat: PETSc.Mat, impurity: Impurity, fe: np.ndarray, ne: np.ndarray, Te: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray):
+
+def fill_petsc_rate_matrix(
+    loc_num_x: int,
+    min_x: int,
+    max_x: int,
+    mat: PETSc.Mat,
+    impurity: Impurity,
+    fe: np.ndarray,
+    ne: np.ndarray,
+    Te: np.ndarray,
+    vgrid: np.ndarray,
+    dvc: np.ndarray,
+):
     """Fill the rate matrix with rates calculated by each transition object
 
     Args:
@@ -284,20 +296,17 @@ def fill_petsc_rate_matrix(loc_num_x: int, min_x: int, max_x: int, mat: PETSc.Ma
     # Next, calculate the values
     rank = PETSc.COMM_WORLD.Get_rank()
     for i in range(min_x, max_x):
-
         if rank == 0:
-            print(' {:.1f}%'.format(100*float(i/loc_num_x)), end='\r')
+            print(" {:.1f}%".format(100 * float(i / loc_num_x)), end="\r")
         offset = (i - min_x) * num_states
 
         for j, trans in enumerate(impurity.transitions):
-
             from_pos = trans.from_pos
             to_pos = trans.to_pos
             typ = trans.type
 
             # # Calculate the value to be added to the matrix
-            val = trans.get_mat_value(
-                fe[:, i], vgrid, dvc)
+            val = trans.get_mat_value(fe[:, i], vgrid, dvc)
 
             # Add the loss term
             row = from_pos + offset
@@ -310,10 +319,8 @@ def fill_petsc_rate_matrix(loc_num_x: int, min_x: int, max_x: int, mat: PETSc.Ma
             mat.setValue(row, col, val, addv=True)
 
             # # Calculate inverse process matrix entries (3-body recombination & de-excitation)
-            if typ == 'excitation':
-
-                val = trans.get_mat_value_inv(
-                    fe[:, i], vgrid, dvc)
+            if typ == "excitation":
+                val = trans.get_mat_value_inv(fe[:, i], vgrid, dvc)
 
                 # Add the loss term
                 row = to_pos + offset
@@ -325,10 +332,8 @@ def fill_petsc_rate_matrix(loc_num_x: int, min_x: int, max_x: int, mat: PETSc.Ma
                 col = to_pos + offset
                 mat.setValue(row, col, val, addv=True)
 
-            elif typ == 'ionization':
-
-                val = trans.get_mat_value_inv(
-                    fe[:, i], vgrid, dvc, ne[i], Te[i])
+            elif typ == "ionization":
+                val = trans.get_mat_value_inv(fe[:, i], vgrid, dvc, ne[i], Te[i])
 
                 # Add the loss term
                 row = to_pos + offset
@@ -341,13 +346,23 @@ def fill_petsc_rate_matrix(loc_num_x: int, min_x: int, max_x: int, mat: PETSc.Ma
                 mat.setValue(row, col, val, addv=True)
 
     if rank == 0:
-        print(' {:.1f}%'.format(100))
-
+        print(" {:.1f}%".format(100))
 
     return mat
 
 
-def fill_np_rate_matrix(loc_num_x: int, min_x: int, max_x: int, mat: list, impurity: Impurity, fe: np.ndarray, ne: np.ndarray, Te: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray):
+def fill_np_rate_matrix(
+    loc_num_x: int,
+    min_x: int,
+    max_x: int,
+    mat: list,
+    impurity: Impurity,
+    fe: np.ndarray,
+    ne: np.ndarray,
+    Te: np.ndarray,
+    vgrid: np.ndarray,
+    dvc: np.ndarray,
+):
     """Fill the rate matrix with rates calculated by each transition object
 
     Args:
@@ -365,63 +380,57 @@ def fill_np_rate_matrix(loc_num_x: int, min_x: int, max_x: int, mat: list, impur
     # Next, calculate the values
     rank = PETSc.COMM_WORLD.Get_rank()
     for i in range(loc_num_x):
-
         if rank == 0:
-            print(' {:.1f}%'.format(100*float(i/loc_num_x)), end='\r')
+            print(" {:.1f}%".format(100 * float(i / loc_num_x)), end="\r")
 
         for j, trans in enumerate(impurity.transitions):
-
             from_pos = trans.from_pos
             to_pos = trans.to_pos
             typ = trans.type
 
             # # Calculate the value to be added to the matrix
-            val = trans.get_mat_value(
-                fe[:, i+min_x], vgrid, dvc)
+            val = trans.get_mat_value(fe[:, i + min_x], vgrid, dvc)
 
             # Add the loss term
             row = from_pos
             col = from_pos
-            mat[i][row,col] += -val
+            mat[i][row, col] += -val
 
             # Add the gain term
             row = to_pos
             col = from_pos
-            mat[i][row,col] += val
+            mat[i][row, col] += val
 
             # # Calculate inverse process matrix entries (3-body recombination & de-excitation)
-            if typ == 'excitation':
-
-                val = trans.get_mat_value_inv(
-                    fe[:, i+min_x], vgrid, dvc)
+            if typ == "excitation":
+                val = trans.get_mat_value_inv(fe[:, i + min_x], vgrid, dvc)
 
                 # Add the loss term
                 row = to_pos
                 col = to_pos
-                mat[i][row,col] += -val
+                mat[i][row, col] += -val
 
                 # Add the gain term
                 row = from_pos
                 col = to_pos
-                mat[i][row,col] += val
+                mat[i][row, col] += val
 
-            elif typ == 'ionization':
-
+            elif typ == "ionization":
                 val = trans.get_mat_value_inv(
-                    fe[:, i+min_x], vgrid, dvc, ne[i+min_x], Te[i+min_x])
+                    fe[:, i + min_x], vgrid, dvc, ne[i + min_x], Te[i + min_x]
+                )
 
                 # Add the loss term
                 row = to_pos
                 col = to_pos
-                mat[i][row,col] += -val
+                mat[i][row, col] += -val
 
                 # Add the gain term
                 row = from_pos
                 col = to_pos
-                mat[i][row,col] += val
+                mat[i][row, col] += val
 
     if rank == 0:
-        print(' {:.1f}%'.format(100))
-
+        print(" {:.1f}%".format(100))
 
     return mat
