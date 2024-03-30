@@ -1,6 +1,6 @@
 import numpy as np
-import SIKE_tools
-import SIKE
+import physics_tools
+import core
 import os
 import json
 import copy
@@ -72,7 +72,7 @@ def get_cooling_curves(run, element, kinetic=True):
 
         # cooling_curves[np.where(Z_dens[:,Z] < 0.0), Z] = 0.0
 
-    cooling_curves *= SIKE_tools.el_charge * run.T_norm / (run.t_norm * run.n_norm)
+    cooling_curves *= physics_tools.el_charge * run.T_norm / (run.t_norm * run.n_norm)
 
     eff_cooling_curve = np.zeros(run.num_x)
     for Z in range(num_Z):
@@ -228,60 +228,6 @@ def get_cr_iz_coeffs(r, el, kinetic=False):
         np.ndarray: 2D array of CR ionization coefficients (num_x, num_Z-1)
     """
 
-    # if kinetic:
-    #     m = r.rate_mats[el]
-    #     fe = r.fe
-    # else:
-    #     m = r.rate_mats_Max[el]
-    #     fe = r.fe_Max
-    # m.assemblyBegin()
-    # m.assemblyEnd()
-    # tot_states = r.impurities[el].tot_states
-
-    # cr_iz_coeffs = np.zeros([r.num_x,r.impurities[el].num_Z-1])
-    # for x_pos in range(r.num_x):
-
-    #     print('{:.2f}%'.format(100*x_pos/r.num_x),end='\r')
-
-    #     for Z in range(r.impurities[el].num_Z-1):
-
-    #         # Extract relevant part of rate matrix
-    #         offset = x_pos * tot_states
-    #         rows = [s.pos + offset for s in r.impurities[el].states if s.Z == Z]
-    #         cols = rows
-    #         rate_mat = m.getValues(rows=rows, cols=cols)
-
-    #         # Build ionization array
-    #         Z_states = gather_states(r.impurities[el].states,Z)
-    #         Z_ids = [s.id for s in Z_states]
-    #         gs = Z_states[0]
-    #         Zplus1_states = gather_states(r.impurities[el].states,Z+1)
-    #         Zplus1_ids = [s.id for s in Zplus1_states]
-    #         gs_Zplus1 = Zplus1_states[0]
-    #         iz_trans = [t for t in r.impurities[el].transitions if t.type == 'ionization'
-    #                     and t.from_id in Z_ids and t.to_id == gs_Zplus1.id]
-    #         S = np.zeros(len(Z_states))
-    #         for i in range(len(Z_states)):
-    #             izt = None
-    #             for t in iz_trans:
-    #                 if t.from_id == Z_states[i].id:
-    #                     izt = t
-    #                     break
-    #             if izt is not None:
-    #                 S[i] = izt.get_mat_value(fe[:,x_pos], r.vgrid, r.dvc)
-    #         S_vs = S[0]
-    #         S_vj = S[1:]
-
-    #         # Compute the collisional-radiative ionization coefficients
-    #         C_ij_inv = np.linalg.inv(rate_mat[1:,1:])
-    #         C_is = rate_mat[1:,0]
-    #         iz_coeff = S_vs - np.dot(S_vj, np.dot(C_ij_inv, C_is) )
-    #         cr_iz_coeffs[x_pos,Z] = iz_coeff / (r.ne[x_pos] * r.n_norm * r.t_norm)
-
-    # print('{:.2f}%'.format(100))
-
-    # return cr_iz_coeffs
-
     r.calc_eff_rate_mats(kinetic=kinetic)
     cr_iz_coeffs = np.zeros([r.loc_num_x, r.impurities[el].num_Z - 1])
 
@@ -351,7 +297,7 @@ def load_sikerun_from_dir(rdir, el, check_for_cr_coeffs=True):
             fe = np.loadtxt(f)
         with open(os.path.join(rdir, "vgrid.txt")) as f:
             vgrid = np.loadtxt(f)
-        r = SIKE.SIKERun(fe=fe, vgrid=vgrid, opts=opts)
+        r = core.SIKERun(fe=fe, vgrid=vgrid, opts=opts)
         r.impurities[el].dens = dens
         r.impurities[el].dens_Max = dens_Max
 
@@ -367,7 +313,7 @@ def load_sikerun_from_dir(rdir, el, check_for_cr_coeffs=True):
                 vgrid = np.loadtxt(f)
         except:
             vgrid = None
-        r = SIKE.SIKERun(ne=ne, Te=Te, vgrid=vgrid, opts=opts)
+        r = core.SIKERun(ne=ne, Te=Te, vgrid=vgrid, opts=opts)
         r.impurities[el].dens_Max = dens_Max
 
     if check_for_cr_coeffs:

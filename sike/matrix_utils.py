@@ -1,13 +1,11 @@
 from petsc4py import PETSc
-import petsc4py
 import numpy as np
 from impurity import Impurity
 from numba import jit
-from mpi4py import MPI
-import math
 
 
 # TODO: Tidy this module up. Could do with sparse local matrices instead? May be necessary for adding transport
+# TODO: Is this module necessary if not using petsc? If we're throwing out petsc, can we still do impurity transport, etc?
 
 
 class LocalMat:

@@ -3,7 +3,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 import atomic_state
-import SIKE_tools
+import physics_tools
 
 
 class Transition:
@@ -97,7 +97,7 @@ class ExTrans(Transition):
         :return: Matrix value
         :rtype: float
         """
-        K_ex = SIKE_tools.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        K_ex = physics_tools.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_ex
 
     def get_mat_value_inv(
@@ -114,7 +114,7 @@ class ExTrans(Transition):
         :return: electron density multiplied by three-body recombination rate coefficient
         :rtype: float
         """
-        K_deex = SIKE_tools.calc_rate(
+        K_deex = physics_tools.calc_rate(
             vgrid, dvc, fe, self.sigma_deex, self.collrate_const
         )
         return K_deex
@@ -139,7 +139,9 @@ class ExTrans(Transition):
         :return: local de-excitation cross-section
         :rtype: ArrayLike
         """
-        sigma_deex = SIKE_tools.get_sigma_deex(vgrid, vgrid_inv, sigma_interp, g_ratio)
+        sigma_deex = physics_tools.get_sigma_deex(
+            vgrid, vgrid_inv, sigma_interp, g_ratio
+        )
 
         return sigma_deex
 
@@ -209,7 +211,7 @@ class IzTrans(Transition):
         :return: Matrix value
         :rtype: float
         """
-        K_ion = SIKE_tools.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        K_ion = physics_tools.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_ion
 
     def get_mat_value_inv(
@@ -231,7 +233,7 @@ class IzTrans(Transition):
         :rtype: float
         """
         sigma_tbrec = self.get_sigma_tbrec(vgrid, Te)
-        K_tbrec = SIKE_tools.calc_rate(
+        K_tbrec = physics_tools.calc_rate(
             vgrid, dvc, fe, sigma_tbrec, ne * self.tbrec_norm * self.collrate_const
         )
         return K_tbrec
@@ -246,7 +248,7 @@ class IzTrans(Transition):
         :return: Three-body recombination cross-section
         :rtype: ArrayLike
         """
-        sigma_tbrec = SIKE_tools.get_sigma_tbr(
+        sigma_tbrec = physics_tools.get_sigma_tbr(
             vgrid, self.vgrid_inv, self.sigma_interp, self.g_ratio, Te
         )
 
@@ -305,7 +307,9 @@ class RRTrans(Transition):
         :return: Matrix value
         :rtype: float
         """
-        K_radrec = SIKE_tools.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        K_radrec = physics_tools.calc_rate(
+            vgrid, dvc, fe, self.sigma, self.collrate_const
+        )
         return K_radrec
 
 
