@@ -3,7 +3,6 @@ import os
 from transition import *
 from atomic_state import State
 import json
-from mpi4py import MPI
 import math
 import post_processing
 from scipy import interpolate
@@ -14,76 +13,114 @@ class Impurity:
 
     def __init__(
         self,
-        rank: int,
-        size: int,
         name: str,
-        opts: dict,
-        vgrid: np.ndarray,
-        Egrid: np.ndarray,
-        ne: np.ndarray,
-        Te: np.ndarray,
+        resolve_l: bool,
+        resolve_j: bool,
+        state_ids: list[int],
+        kinetic_electrons: bool,
+        maxwellian_electrons: bool,
+        saha_boltzmann_init: bool,
+        fixed_fraction_init: bool,
+        frac_imp_dens: float,
+        ionization: bool,
+        autoionization: bool,
+        emission: bool,
+        radiative_recombination: bool,
+        excitation: bool,
         collrate_const: float,
         tbrec_norm: float,
         sigma_norm: float,
         time_norm: float,
         T_norm: float,
         n_norm: float,
+        vgrid: np.ndarray,
+        Egrid: np.ndarray,
+        ne: np.ndarray,
+        Te: np.ndarray,
     ):
         """Initialise
 
-        :param rank: Processor number
-        :type rank: _type_
-        :param size: _description_
-        :type size: _type_
-        :param name: _description_
-        :type name: _type_
-        :param opts: _description_
-        :type opts: _type_
-        :param vgrid: _description_
-        :type vgrid: _type_
-        :param Egrid: _description_
-        :type Egrid: _type_
-        :param ne: _description_
-        :type ne: _type_
-        :param Te: _description_
-        :type Te: _type_
-        :param collrate_const: _description_
-        :type collrate_const: _type_
-        :param tbrec_norm: _description_
-        :type tbrec_norm: _type_
-        :param sigma_norm: _description_
-        :type sigma_norm: _type_
-        :param time_norm: _description_
-        :type time_norm: _type_
-        :param T_norm: _description_
-        :type T_norm: _type_
-        :param n_norm: _description_
-        :type n_norm: _type_
+        :param name: Name of the impurity
+        :type name: str
+        :param resolve_l: Whether to resolve states by orbital angular momentum quantum number l
+        :type resolve_l: bool
+        :param resolve_j: Whether to resolve by total angular momentum quantum number j
+        :type resolve_j: bool
+        :param state_ids: List of state IDs to evolve (default is for all states to be included)
+        :type state_ids: list[int]
+        :param kinetic_electrons: Whether to solve rate equations for arbitrary electron distributions
+        :type kinetic_electrons: bool
+        :param maxwellian_electrons: Whether to solve rate equations for Maxwellian electron distributions
+        :type maxwellian_electrons: bool
+        :param saha_boltzmann_init: Whether to initialise state distribution to Saha-Boltzmann equilibria
+        :type saha_boltzmann_init: bool
+        :param fixed_fraction_init: Whether to initialise total impurity density to a fixed fraction of the electron density
+        :type fixed_fraction_init: bool
+        :param frac_imp_dens: Fractional impurity density to initialise (total) impurity densities with, if fixed_fraction_init is True
+        :type frac_imp_dens: float
+        :param ionization: Whether to include ionization transitions and inverse
+        :type ionization: bool
+        :param autoionization: Whether to include autoionization transitions
+        :type autoionization: bool
+        :param emission: Whether to include spontaneous emission transitions
+        :type emission: bool
+        :param radiative_recombination: Whether to include radiative recombination transitions
+        :type radiative_recombination: bool
+        :param excitation: Whether to include collisional excitation transitions and inverse
+        :type excitation: bool
+        :param collrate_const: Collision rate normalisation constant
+        :type collrate_const: float
+        :param tbrec_norm: Three-body recombination rate normalisation constant
+        :type tbrec_norm: float
+        :param sigma_norm: Cross-section normalisation constant
+        :type sigma_norm: float
+        :param time_norm: Time normalisation constant
+        :type time_norm: float
+        :param T_norm: Temperature normalisation constant
+        :type T_norm: float
+        :param n_norm: Density normalisation constant
+        :type n_norm: float
+        :param vgrid: Electron velocity grid
+        :type vgrid: np.ndarray
+        :param Egrid: Electron energy grid
+        :type Egrid: np.ndarray
+        :param ne: Electron densities
+        :type ne: np.ndarray
+        :param Te: Electron temperatures
+        :type Te: np.ndarray
         """
+
+        # Save settings
         self.name = name
+        self.resolve_j = (resolve_j,)
+        self.resolve_l = (resolve_l,)
+        self.state_ids = (state_ids,)
+        self.kinetic_electrons = (kinetic_electrons,)
+        self.maxwellian_electrons = (maxwellian_electrons,)
+        self.saha_boltzmann_init = (saha_boltzmann_init,)
+        self.fixed_fraction_init = (fixed_fraction_init,)
+        self.frac_imp_dens = (frac_imp_dens,)
+        self.ionization = (ionization,)
+        self.autoionization = (autoionization,)
+        self.emission = (emission,)
+        self.radiative_recombination = (radiative_recombination,)
+        self.excitation = (excitation,)
+        self.collrate_const = (collrate_const,)
+        self.tbrec_norm = tbrec_norm
+        self.sigma_norm = (sigma_norm,)
+        self.time_norm = (time_norm,)
+        self.T_norm = T_norm
+        self.n_norm = n_norm
+
+        # Initialise impurity data
         self.get_element_data()
-        if rank == 0:
-            print(" Initialising states...")
-        self.init_states(opts)
-        if rank == 0:
-            print(" Initialising transitions...")
-        self.init_transitions(
-            rank,
-            size,
-            vgrid,
-            Egrid,
-            collrate_const,
-            tbrec_norm,
-            sigma_norm,
-            time_norm,
-            T_norm,
-            opts,
-        )
-        if rank == 0:
-            print(" Initialising densities...")
-        self.init_dens(opts, ne, n_norm, Te, T_norm)
-        if rank == 0:
-            print(" Finalising states...")
+        print(" Initialising states...")
+        self.init_states()
+        print(" Initialising transitions...")
+        self.init_transitions(vgrid=vgrid, Egrid=Egrid)
+        print(" Initialising densities...")
+        self.init_dens(ne=ne, Te=Te)
+        print(" Finalising states...")
         self.set_state_positions()
         self.set_transition_positions()
 
@@ -119,13 +156,9 @@ class Impurity:
         self.num_Z = self.nuc_chg + 1
         self.longname = longname_dict[self.name]
 
-    def init_states(self, opts):
-        """Initialise the evolved atomic states
-
-        Args:
-            opts (dict): options dictionary from the SIKERun object
-        """
-        if opts["resolve_j"]:
+    def init_states(self):
+        """Initialise the evolved atomic states"""
+        if self.resolve_j:
             levels_f = os.path.join(
                 os.path.dirname(__file__),
                 "atom_data",
@@ -133,7 +166,7 @@ class Impurity:
                 self.name + "_levels_nlj.json",
             )
         else:
-            if opts["resolve_l"]:
+            if self.resolve_l:
                 levels_f = os.path.join(
                     os.path.dirname(__file__),
                     "atom_data",
@@ -151,12 +184,12 @@ class Impurity:
             levels_dict = json.load(f)
             self.states = [None] * len(levels_dict)
             for i, level_dict in enumerate(levels_dict):
-                self.states[i] = State(i, level_dict)
+                self.states[i] = State(id=i, **level_dict)
 
         # Keep only user-specified states
-        if opts["state_ids"] is not None:
+        if self.state_ids is not None:
             for i, state in enumerate(self.states):
-                if state.id not in opts["state_ids"]:
+                if state.id not in self.state_ids:
                     self.states[i] = None
         self.states = [s for s in self.states if s is not None]
 
@@ -198,30 +231,17 @@ class Impurity:
 
     def init_transitions(
         self,
-        rank,
-        size,
-        vgrid,
-        Egrid,
-        collrate_const,
-        tbrec_norm,
-        sigma_norm,
-        time_norm,
-        T_norm,
-        opts,
+        vgrid: np.ndarray,
+        Egrid: np.ndarray,
     ):
-        """Initialise all transitions between atomic states
+        """Initialise all transitions between evolved atomic states
 
-        Args:
-            vgrid (np.ndarray): velocity grid
-            Egrid (np.ndarray): energy grid
-            collrate_const (float): collisional rate normalisation
-            tbrec_norm (float): three-body recombination rate normalisation
-            sigma_norm (float): cross-section normalisation (m^2)
-            time_norm (float): time normalisation (s)
-            T_norm (float): temperature normalisation (eV)
-            opts (dict): options dictionary from the SIKERun object
+        :param vgrid: Electron velocity grid
+        :type vgrid: np.ndarray
+        :param Egrid: Electron energy grid
+        :type Egrid: np.ndarray
         """
-        if opts["resolve_j"]:
+        if self.resolve_j:
             trans_f = os.path.join(
                 os.path.dirname(__file__),
                 "atom_data",
@@ -229,7 +249,7 @@ class Impurity:
                 self.name + "_transitions_nlj.json",
             )
         else:
-            if opts["resolve_l"]:
+            if self.resolve_l:
                 trans_f = os.path.join(
                     os.path.dirname(__file__),
                     "atom_data",
@@ -243,49 +263,42 @@ class Impurity:
                     self.longname,
                     self.name + "_transitions_n.json",
                 )
-        if rank == 0:
-            print("  Loading transitions from json...")
+        print("  Loading transitions from json...")
         with open(trans_f) as f:
             trans_dict = json.load(f)
             trans_Egrid = trans_dict[0]["E_grid"]
 
-        if rank == 0:
-            print("  Creating transition objects...")
+        print("  Creating transition objects...")
         num_transitions = len(trans_dict)
         transitions = [None] * num_transitions
 
         for i, trans in enumerate(trans_dict[1:]):
-            # if rank == 0:
-            #     print('  {:.1f}%'.format(100*i/num_transitions), end='\r')
-            if opts["state_ids"] is not None:
-                if (trans["from_id"] not in opts["state_ids"]) or (
-                    trans["to_id"] not in opts["state_ids"]
+            if self.state_ids is not None:
+                if (trans["from_id"] not in self.state_ids) or (
+                    trans["to_id"] not in self.state_ids
                 ):
                     continue
-            if trans["type"] == "ionization" and opts["ionization"]:
-                transitions[i] = IzTrans(
-                    trans, collrate_const, tbrec_norm, sigma_norm, T_norm
-                )
-            elif trans["type"] == "autoionization" and opts["autoionization"]:
-                transitions[i] = AiTrans(trans, time_norm, T_norm)
+            if trans["type"] == "ionization" and self.ionization:
+                transitions[i] = IzTrans(**trans)
+            elif trans["type"] == "autoionization" and self.autoionization:
+                transitions[i] = AiTrans(**trans)
             elif (
-                trans["type"] == "radiative recombination"
-                and opts["radiative recombination"]
+                trans["type"] == "radiative_recombination"
+                and self.radiative_recombination
             ):
-                transitions[i] = RRTrans(trans, collrate_const, sigma_norm, T_norm)
-            elif trans["type"] == "emission" and opts["emission"]:
-                transitions[i] = EmTrans(trans, time_norm, T_norm)
-            elif trans["type"] == "excitation" and opts["excitation"]:
-                transitions[i] = ExTrans(trans, collrate_const, sigma_norm, T_norm)
+                transitions[i] = RRTrans(**trans)
+            elif trans["type"] == "emission" and self.emission:
+                transitions[i] = EmTrans(**trans)
+            elif trans["type"] == "excitation" and self.excitation:
+                transitions[i] = ExTrans(**trans)
         transitions = [t for t in transitions if t is not None]
 
         self.transitions = transitions
 
         # Set the de-excitation cross-sections
-        if rank == 0:
-            print("  Creating data for inverse transitions...")
+        print("  Creating data for inverse transitions...")
         id2pos = {self.states[i].id: i for i in range(len(self.states))}
-        if opts["excitation"]:
+        if self.excitation:
             for i, t in enumerate(self.transitions):
                 if t.type == "excitation":
                     g_ratio = (
@@ -294,8 +307,8 @@ class Impurity:
                     )
                     t.set_sigma_deex(g_ratio, vgrid)
 
-        # Set the stat weight ratios for ionization cross-sections
-        if opts["ionization"]:
+        # Set the statistical weight ratios for ionization cross-sections
+        if self.ionization:
             for i, t in enumerate(self.transitions):
                 if t.type == "ionization":
                     g_ratio = (
@@ -305,22 +318,17 @@ class Impurity:
                     t.set_inv_data(g_ratio, vgrid)
 
         # Checks
-        if rank == 0:
-            print("  Performing checks on transition data...")
-        self.state_and_transition_checks(
-            rank, Egrid, trans_Egrid, opts["autoionization"]
-        )
+        print("  Performing checks on transition data...")
+        self.state_and_transition_checks(Egrid, trans_Egrid)
 
-    def state_and_transition_checks(self, rank, Egrid, trans_Egrid, autoionization):
+    def state_and_transition_checks(self, Egrid: np.ndarray, trans_Egrid: np.ndarray):
         """Perform some checks on states and transitions belonging to the impurity. Removes orphaned states, transitions where one or more associated states are not evolved, etc
 
-        Args:
-            Egrid (_type_): _description_
-            trans_Egrid (_type_): _description_
-            autoionization (_type_): _description_
-
-        Raises:
-            ValueError: _description_
+        :param Egrid: Default electron energy grid
+        :type Egrid: np.ndarray
+        :param trans_Egrid: Electron energy grid on which transition rates will be calculated
+        :type trans_Egrid: np.ndarray
+        :raises ValueError: If the default electron energy grid and the transition energy grid are not the same (will be fixed in future to allow them to differ)
         """
 
         # Check that simulation E_grid is the same as the transitions E_grid
@@ -335,25 +343,18 @@ class Impurity:
         from_ids = np.array([t.from_id for t in self.transitions], dtype=int)
         to_ids = np.array([t.to_id for t in self.transitions], dtype=int)
         for i, state in enumerate(self.states):
-            # if rank == 0:
-            #     print('  {:.1f}%'.format(100*i/self.tot_states), end='\r')
             associated_transitions = SIKE_tools.get_associated_transitions(
                 state.id, from_ids, to_ids
             )
             if len(associated_transitions) == 0:
-                if rank == 0:
-                    print(
-                        "State ID " + str(state.id) + " is an orphaned state, removing."
-                    )
+                print("State ID " + str(state.id) + " is an orphaned state, removing.")
                 self.states[i] = None
                 self.tot_states -= 1
         self.states = [s for s in self.states if s is not None]
-        # if rank == 0:
-        #     print('  {:.1f}%'.format(100), end='\r')
 
         # Remove states above ionization energy if no autoionization
         # TODO: Is this necessary?
-        if autoionization is False:
+        if self.autoionization is False:
             for i, state in enumerate(self.states):
                 if state.iz_energy < 0:
                     self.states[i] = None
@@ -367,27 +368,33 @@ class Impurity:
                 self.transitions[i] = None
         self.transitions = [t for t in self.transitions if t is not None]
 
-    def init_dens(self, opts, ne, n_norm, Te, T_norm):
+    def init_dens(
+        self,
+        ne: np.ndarray,
+        Te: np.ndarray,
+    ):
         """Initialise densities of impurity states
 
-        Args:
-            opts (dict): options dictionary from the SIKERun object
-            ne (np.array): electron density array
+        :param ne: Electron densities
+        :type ne: np.ndarray
+        :param Te: Electron temperatures
+        :type Te: np.ndarray
         """
-
-        if opts["kinetic_electrons"]:
+        if self.kinetic_electrons:
             self.dens = np.zeros((len(ne), self.tot_states))
-        if opts["maxwellian_electrons"]:
+        if self.maxwellian_electrons:
             self.dens_Max = np.zeros((len(ne), self.tot_states))
 
-        if opts["saha_boltzmann_init"]:
+        if self.saha_boltzmann_init:
             self.set_state_positions()
 
             Z_dens = np.zeros([len(ne), self.num_Z])
             for i in range(len(ne)):
                 Z_dens[i, :] = (
-                    SIKE_tools.saha_dist(Te[i] * T_norm, ne[i] * n_norm, n_norm, self)
-                    / n_norm
+                    SIKE_tools.saha_dist(
+                        Te[i] * self.T_norm, ne[i] * self.n_norm, self.n_norm, self
+                    )
+                    / self.n_norm
                 )
 
             for Z in range(self.num_Z):
@@ -400,30 +407,30 @@ class Impurity:
                     Z_dens_loc = Z_dens[i, Z]
 
                     rel_dens = SIKE_tools.boltzmann_dist(
-                        Te[i] * T_norm, energies, stat_weights, gnormalise=False
+                        Te[i] * self.T_norm, energies, stat_weights, gnormalise=False
                     )
 
-                    if opts["kinetic_electrons"]:
+                    if self.kinetic_electrons:
                         self.dens[i, locs] = rel_dens * Z_dens_loc / np.sum(rel_dens)
-                        if opts["fixed_fraction_init"]:
-                            self.dens[i, locs] *= opts["frac_imp_dens"] * ne[i]
-                    if opts["maxwellian_electrons"]:
+                        if self.fixed_fraction_init:
+                            self.dens[i, locs] *= self.frac_imp_dens * ne[i]
+                    if self.maxwellian_electrons:
                         self.dens_Max[i, locs] = (
                             rel_dens * Z_dens_loc / np.sum(rel_dens)
                         )
-                        if opts["fixed_fraction_init"]:
-                            self.dens_Max[i, locs] *= opts["frac_imp_dens"] * ne[i]
+                        if self.fixed_fraction_init:
+                            self.dens_Max[i, locs] *= self.frac_imp_dens * ne[i]
         else:
-            if opts["fixed_fraction_init"]:
-                if opts["kinetic_electrons"]:
-                    self.dens[:, 0] = opts["frac_imp_dens"] * ne
-                if opts["maxwellian_electrons"]:
-                    self.dens_Max[:, 0] = opts["frac_imp_dens"] * ne
+            if self.fixed_fraction_init:
+                if self.kinetic_electrons:
+                    self.dens[:, 0] = self.frac_imp_dens * ne
+                if self.maxwellian_electrons:
+                    self.dens_Max[:, 0] = self.frac_imp_dens * ne
 
             else:
-                if opts["kinetic_electrons"]:
+                if self.kinetic_electrons:
                     self.dens[:, 0] = 1.0
-                if opts["maxwellian_electrons"]:
+                if self.maxwellian_electrons:
                     self.dens_Max[:, 0] = 1.0
 
     def set_state_positions(self):
@@ -442,7 +449,12 @@ class Impurity:
             self.transitions[i].from_pos = id2pos[self.transitions[i].from_id]
             self.transitions[i].to_pos = id2pos[self.transitions[i].to_id]
 
-    def reorder_PQ_states(self, P_states="ground"):
+    def reorder_PQ_states(self, P_states: str = "ground"):
+        """Ensure evolved and non-evolved atomic states are in the correct order
+
+        :param P_states: Which atomic states are evolved, defaults to "ground"
+        :type P_states: str, optional
+        """
         if P_states == "ground":
             ground_states = [s for s in self.states if s.ground is True]
             other_states = [s for s in self.states if s.ground is False]
