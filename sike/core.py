@@ -3,34 +3,6 @@ import numpy as np
 from impurity import Impurity
 import matrix_utils
 import solver
-from mpi4py import MPI
-from petsc4py import PETSc
-import petsc4py
-
-default_opts = {
-    "modelled_impurities": ["Li"],
-    "delta_t": 1.0e-3,
-    "evolve": True,
-    "use_petsc": True,
-    "kinetic_electrons": False,
-    "maxwellian_electrons": True,
-    "dndt_thresh": 1e-5,
-    "max_steps": 1000,
-    "frac_imp_dens": 0.05,
-    "resolve_l": True,
-    "resolve_j": True,
-    "ionization": True,
-    "radiative recombination": True,
-    "excitation": True,
-    "emission": True,
-    "autoionization": True,
-    "fixed_fraction_init": True,
-    "saha_boltzmann_init": True,
-    "state_ids": None,
-    "ksp_solver": "ibcgs",
-    "ksp_pc": "bjacobi",
-    "ksp_tol": 1e-15,
-}
 
 # TODO: Do we ever want to actually evolve all states? Or only build M_eff and get derived coefficients? Opportunity to massively simplify by removing petsc & mpi dependency
 # TODO: I guess we should only ever really be evolving the P states, so all that code is still useful, but could probably do it with dense numpy matrices rather than petsc, and probably don't need MPI!
@@ -51,7 +23,7 @@ class SIKERun(object):
             velocity grid on which fe is defined (units [m/s])
         xgrid: np.array(num_x)
             x-grid on which to evolve impurity densities (units [m])
-        opts: run options (see below for description and defaults)
+        **kwargs: run options (see __init__() documentation for details)
 
     ...
 
@@ -64,67 +36,108 @@ class SIKERun(object):
             electron density profile (units [m^-3])
         xgrid: np.array(num_x)
             x-grid on which to evolve impurity densities (units [m])
-        opts: run options (see below for description and defaults)
-
-    ...
-
-    Options
-    _______
-    Simulation options. If not provided defaults will be used.
-        opts: dict
-            'evolve': boolean(=True)
-                Specify whether to evolve the state density equations in time. If false, simply invert the rate matrix (this method sometimes suffers from numerical instabilities)
-            'use_petsc': boolean(=True)
-                Specify whether to use PETSc matrix solver routines. If False, numpy matrix inversion iwll be used instead
-            'modelled_impurities': list(=['C'])
-                A list of the impurity species to evolve (use chemical symbols)
-            'modelled_states': str(='all')
-                Specify whether to evolve 'all', 'ground' or 'metastable' states
-            'kinetic_electrons': boolean(=True)
-                Solve rate equations for Maxwellian electrons at given density and temperatures
-            'maxwellian_electrons': boolean(=True)
-                Solve rate equations for kinetic electrons with given distribution functions
-            'delta_t': float(=1.0e-3)
-                The  to use in seconds if "evolve" option is true
-            'dn_dt_thresh': float(=1e-5)
-                The threshold density residual between subsequent s which defines whether equilibrium has been reached
-            'max_steps': int(=1e3)
-                The maximum number of s to evolve if EVOLVE is true
-            'frac_imp_dens': 0.05
-                The fractional impurity density at initialisation
-            'ionization': boolean(=True)
-                Include collisional ionisation and three-body recombination processes
-            'radiative recombination': boolean(=True)
-                Include radiative recombination process
-            'excitation': boolean(=True)
-                Include collisional excitation and deexcitation processes
-            'emission': boolean(=True)
-                Include spontaneous emission process
-            'autoionization': boolean(=True)
-                Include autoionization process
-            'fixed_fraction_init': boolean(=True)
-                Specify whether to initialise impurity densities to fixed fraction of electron density. If false, use flat impurity density profiles.
-            'state_ids': list(=None)
-                A specific list of state IDs to evolve. If None then all states in levels.json will be evolved.
-
+        **kwargs: run options (see __init__() documentation for details)
     """
 
     def __init__(
         self,
-        fe=None,
-        vgrid=None,
-        Te=None,
-        ne=None,
-        xgrid=None,
-        opts=default_opts,
-        rank=0,
+        fe: np.ndarray | None = None,
+        vgrid: np.ndarray | None = None,
+        Te: np.ndarray | None = None,
+        ne: np.ndarray | None = None,
+        xgrid: np.ndarray | None = None,
+        modelled_impurities: list[str] = ["Li"],
+        delta_t: float = 1.0e-3,
+        evolve: bool = True,
+        kinetic_electrons: bool = False,
+        maxwellian_electrons: bool = True,
+        dndt_thresh: float = 1e-5,
+        max_steps: int = 1000,
+        frac_imp_dens: float = 0.05,
+        resolve_l: bool = True,
+        resolve_j: bool = True,
+        ionization: bool = True,
+        radiative_recombination: bool = True,
+        excitation: bool = True,
+        emission: bool = True,
+        autoionization: bool = True,
+        fixed_fraction_init: bool = True,
+        saha_boltzmann_init: bool = True,
+        state_ids: list[int] | None = None,
     ):
-        # TODO: Change fe so that spatial index comes first (like everywhere else)
-        self.opts = opts
-        for option in default_opts:
-            if option not in list(self.opts.keys()):
-                self.opts[option] = default_opts[option]
+        """Initialise
 
+        :param fe: Isotropic part of electron distribution function as a function of velocity magnitude (units [m^-6 s^-3]), defaults to None
+        :type fe: np.ndarray | None, optional
+        :param vgrid: Velocity grid on which fe is defined (units [m/s]), defaults to None
+        :type vgrid: np.ndarray | None, optional
+        :param Te: electron temperature profile (units [eV]), defaults to None
+        :type Te: np.ndarray | None, optional
+        :param ne: electron density profile (units [m^-3]), defaults to None
+        :type ne: np.ndarray | None, optional
+        :param xgrid: x-grid on which to evolve impurity densities (units [m]), defaults to None
+        :type xgrid: np.ndarray | None, optional
+        :param modelled_impurities: A list of the impurity species to evolve (use chemical symbols), defaults to ["Li"]
+        :type modelled_impurities: list[str], optional
+        :param delta_t: The time step to use in seconds if `evolve` option is true, defaults to 1.0e-3
+        :type delta_t: float, optional
+        :param evolve: Specify whether to evolve the state density equations in time. If false, simply invert the rate matrix (this method sometimes suffers from numerical instabilities), defaults to True
+        :type evolve: bool, optional
+        :param kinetic_electrons: Solve rate equations for Maxwellian electrons at given density and temperatures, defaults to False
+        :type kinetic_electrons: bool, optional
+        :param maxwellian_electrons: Solve rate equations for kinetic electrons with given distribution functions, defaults to True
+        :type maxwellian_electrons: bool, optional
+        :param dndt_thresh: The threshold density residual between subsequent s which defines whether equilibrium has been reached, defaults to 1e-5
+        :type dndt_thresh: float, optional
+        :param max_steps: The maximum number of s to evolve if `evolve` is true, defaults to 1000
+        :type max_steps: int, optional
+        :param frac_imp_dens: The fractional impurity density at initialisation, defaults to 0.05
+        :type frac_imp_dens: float, optional
+        :param resolve_l: _description_, defaults to True
+        :type resolve_l: bool, optional
+        :param resolve_j: _description_, defaults to True
+        :type resolve_j: bool, optional
+        :param ionization: Include collisional ionisation and three-body recombination processes, defaults to True
+        :type ionization: bool, optional
+        :param radiative_recombination: Include radiative recombination process, defaults to True
+        :type radiative_recombination: bool, optional
+        :param excitation: Include collisional excitation and deexcitation processes, defaults to True
+        :type excitation: bool, optional
+        :param emission: Include spontaneous emission process, defaults to True
+        :type emission: bool, optional
+        :param autoionization: Include autoionization process, defaults to True
+        :type autoionization: bool, optional
+        :param fixed_fraction_init: Specify whether to initialise impurity densities to fixed fraction of electron density. If false, use flat impurity density profiles., defaults to True
+        :type fixed_fraction_init: bool, optional
+        :param saha_boltzmann_init: Specify whether to initialise impurity state densities to Saha-Boltzmann equilibrium, defaults to True
+        :type saha_boltzmann_init: bool, optional
+        :param state_ids: A specific list of state IDs to evolve. If None then all states in levels.json will be evolved., defaults to None
+        :type state_ids: list[int] | None, optional
+        :raises ValueError: If input is incorrectly specified (must specify either electron distribution and vgrid or electron temperature and density profiles)
+        """
+        # TODO: Change fe so that spatial index comes first (like everywhere else)
+
+        # Save input options
+        self.modelled_impurities = modelled_impurities
+        self.delta_t = delta_t
+        self.evolve = evolve
+        self.kinetic_electrons = kinetic_electrons
+        self.maxwellian_electrons = maxwellian_electrons
+        self.dndt_thresh = dndt_thresh
+        self.max_steps = max_steps
+        self.frac_imp_dens = frac_imp_dens
+        self.resolve_l = resolve_l
+        self.resolve_j = resolve_j
+        self.ionization = ionization
+        self.radiative_recombination = radiative_recombination
+        self.excitation = excitation
+        self.emission = emission
+        self.autoionization = autoionization
+        self.fixed_fraction_init = fixed_fraction_init
+        self.saha_boltzmann_init = saha_boltzmann_init
+        self.state_ids = state_ids
+
+        # Save simulation set-up
         if xgrid is not None:
             self.xgrid = xgrid.copy()
         else:
@@ -144,33 +157,42 @@ class SIKERun(object):
             )
 
         # Initialise species
-        if self.rank == 0:
-            print("Initialising the impurity species to be modelled...")
+        print("Initialising the impurity species to be modelled...")
         self.impurities = {}
         for el in self.opts["modelled_impurities"]:
             self.impurities[el] = Impurity(
-                self.rank,
-                self.num_procs,
-                el,
-                self.opts,
-                self.vgrid,
-                self.Egrid,
-                self.ne,
-                self.Te,
-                self.collrate_const,
-                self.tbrec_norm,
-                self.sigma_0,
-                self.t_norm,
-                self.T_norm,
-                self.n_norm,
+                name=el,
+                resolve_l=self.resolve_l,
+                resolve_j=self.resolve_j,
+                state_ids=self.state_ids,
+                kinetic_electrons=self.kinetic_electrons,
+                maxwellian_electrons=self.maxwellian_electrons,
+                saha_boltzmann_init=self.saha_boltzmann_init,
+                fixed_fraction_init=self.fixed_fraction_init,
+                frac_imp_dens=self.frac_imp_dens,
+                ionization=self.ionization,
+                autoionization=self.autoionization,
+                emission=self.emission,
+                radiative_recombination=self.radiative_recombination,
+                excitation=self.excitation,
+                collrate_const=self.collrate_const,
+                tbrec_norm=self.tbrec_norm,
+                sigma_norm=self.sigma_0,
+                time_norm=self.t_norm,
+                T_norm=self.T_norm,
+                n_norm=self.n_norm,
+                vgrid=self.vgrid,
+                Egrid=self.Egrid,
+                ne=self.ne,
+                Te=self.Te,
             )
-        if self.rank == 0:
-            print("Finished initialising impurity species objects.")
+        print("Finished initialising impurity species objects.")
 
         self.rate_mats = {}
         self.rate_mats_Max = {}
 
     def init_from_dist(self):
+        """Initialise simulation from electron distributions"""
         self.num_x = len(self.fe[0, :])
         if self.xgrid is None:
             self.xgrid = np.linspace(0, 1, self.num_x)
@@ -214,10 +236,17 @@ class SIKERun(object):
         if self.opts["maxwellian_electrons"]:
             self.fe_Max = physics_tools.get_maxwellians(self.ne, self.Te, self.vgrid)
 
-    def init_from_profiles(self, vgrid=None):
-        self.opts["kinetic_electrons"] = False
-        self.opts["maxwellian_electrons"] = True
+    def init_from_profiles(self, vgrid: np.ndarray | None = None):
+        """Initialise simulation from electron temperature and density profiles
 
+        :param vgrid: Electron velocity grid, defaults to None
+        :type vgrid: np.ndarray or None, optional
+        """
+        # Rate equations will be solved for Maxwellian electrons only
+        self.kinetic_electrons = False
+        self.maxwellian_electrons = True
+
+        # Save/create the velocity grid
         if vgrid is None:
             self.vgrid = physics_tools.default_vgrid.copy()
         else:
@@ -228,8 +257,6 @@ class SIKERun(object):
         self.num_v = len(self.vgrid)
         self.generate_grid_widths()
 
-        self.num_procs = PETSc.COMM_WORLD.Get_size()
-        self.rank = PETSc.COMM_WORLD.Get_rank()
         loc_x = self.num_x / self.num_procs
         self.min_x = int(self.rank * loc_x)
         if self.rank == self.num_procs - 1:
@@ -249,10 +276,10 @@ class SIKERun(object):
         self.fe_Max = physics_tools.get_maxwellians(self.ne, self.Te, self.vgrid)
 
     def init_norms(self):
-        # self.T_norm = 10.0
-        # self.n_norm = 5e19
+        """Initialise the normalisation constants for the simulation"""
+
         self.T_norm = np.mean(self.Te)  # eV
-        self.n_norm = np.mean(self.ne) * self.opts["frac_imp_dens"]  # m^-3
+        self.n_norm = np.mean(self.ne) * self.frac_imp_dens  # m^-3
         self.v_th = np.sqrt(
             2 * self.T_norm * physics_tools.el_charge / physics_tools.el_mass
         )  # m/s
@@ -287,6 +314,7 @@ class SIKERun(object):
         )
 
     def apply_normalisation(self):
+        """Normalise all physical values in the simulation"""
         # Apply normalisation
         self.Te /= self.T_norm
         self.ne /= self.n_norm
@@ -294,10 +322,12 @@ class SIKERun(object):
         self.dvc /= self.v_th
         self.xgrid /= self.x_norm
         self.dxc /= self.x_norm
-        if self.opts["kinetic_electrons"]:
+        self.delta_t /= self.t_norm
+        if self.kinetic_electrons:
             self.fe /= self.n_norm / (self.v_th**3)
 
     def generate_grid_widths(self):
+        """Generate spatial and velocity grid widths"""
         # Spatial grid widths
         self.dxc = np.zeros(self.num_x)
         self.dxc[0] = 2.0 * self.xgrid[1]
@@ -314,21 +344,21 @@ class SIKERun(object):
     def run(self):
         """Run the program to find equilibrium impurity densities on the provided background plasma."""
 
-        if self.opts["kinetic_electrons"]:
+        if self.kinetic_electrons:
             self.build_matrix(kinetic=True)
             self.compute_densities(
-                self.opts["delta_t"] / self.t_norm,
-                int(self.opts["max_steps"]),
-                self.opts["evolve"],
+                dt=self.delta_t,
+                num_t=self.max_steps,
+                evolve=self.evolve,
                 kinetic=True,
             )
             # del self.rate_mats
-        if self.opts["maxwellian_electrons"]:
+        if self.maxwellian_electrons:
             self.build_matrix(kinetic=False)
             self.compute_densities(
-                self.opts["delta_t"] / self.t_norm,
-                int(self.opts["max_steps"]),
-                self.opts["evolve"],
+                dt=self.delta_t,
+                num_t=self.max_steps,
+                evolve=self.evolve,
                 kinetic=False,
             )
             # del self.rate_mats_Max
