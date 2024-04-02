@@ -1,5 +1,5 @@
 import numpy as np
-import physics_tools
+import core
 import core
 import os
 import json
@@ -72,7 +72,7 @@ def get_cooling_curves(run, element, kinetic=True):
 
         # cooling_curves[np.where(Z_dens[:,Z] < 0.0), Z] = 0.0
 
-    cooling_curves *= physics_tools.el_charge * run.T_norm / (run.t_norm * run.n_norm)
+    cooling_curves *= EL_CHARGE * run.T_norm / (run.t_norm * run.n_norm)
 
     eff_cooling_curve = np.zeros(run.num_x)
     for Z in range(num_Z):

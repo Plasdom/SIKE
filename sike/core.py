@@ -213,13 +213,13 @@ class SIKERun(object):
         # Generate temperature and density profiles
         self.ne = np.array(
             [
-                physics_tools.density_moment(self.fe[:, i], self.vgrid, self.dvc)
+                density_moment(self.fe[:, i], self.vgrid, self.dvc)
                 for i in range(self.num_x)
             ]
         )
         self.Te = np.array(
             [
-                physics_tools.temperature_moment(
+                temperature_moment(
                     self.fe[:, i], self.vgrid, self.dvc, normalised=False
                 )
                 for i in range(self.num_x)
@@ -235,7 +235,7 @@ class SIKERun(object):
 
         # Generate Maxwellians if required
         if self.opts["maxwellian_electrons"]:
-            self.fe_Max = physics_tools.get_maxwellians(self.ne, self.Te, self.vgrid)
+            self.fe_Max = get_maxwellians(self.ne, self.Te, self.vgrid)
 
     def init_from_profiles(self, vgrid: np.ndarray | None = None):
         """Initialise simulation from electron temperature and density profiles
@@ -249,7 +249,7 @@ class SIKERun(object):
 
         # Save/create the velocity grid
         if vgrid is None:
-            self.vgrid = physics_tools.default_vgrid.copy()
+            self.vgrid = DEFAULT_VGRID.copy()
         else:
             self.vgrid = vgrid
         self.num_x = len(self.Te)
@@ -274,26 +274,22 @@ class SIKERun(object):
         self.Egrid = self.T_norm * self.vgrid**2
 
         # Generature Maxwellians
-        self.fe_Max = physics_tools.get_maxwellians(self.ne, self.Te, self.vgrid)
+        self.fe_Max = get_maxwellians(self.ne, self.Te, self.vgrid)
 
     def init_norms(self):
         """Initialise the normalisation constants for the simulation"""
 
         self.T_norm = np.mean(self.Te)  # eV
         self.n_norm = np.mean(self.ne) * self.frac_imp_dens  # m^-3
-        self.v_th = np.sqrt(
-            2 * self.T_norm * physics_tools.el_charge / physics_tools.el_mass
-        )  # m/s
+        self.v_th = np.sqrt(2 * self.T_norm * EL_CHARGE / EL_MASS)  # m/s
 
         Z = 1
-        gamma_ee_0 = physics_tools.el_charge**4 / (
-            4 * np.pi * (physics_tools.el_mass * physics_tools.epsilon_0) ** 2
-        )
+        gamma_ee_0 = EL_CHARGE**4 / (4 * np.pi * (EL_MASS * EPSILON_0) ** 2)
         gamma_ei_0 = Z**2 * gamma_ee_0
         self.t_norm = self.v_th**3 / (
             gamma_ei_0
             * self.n_norm
-            * physics_tools.lambda_ei(1.0, 1.0, self.T_norm, self.n_norm, Z)
+            * lambda_ei(1.0, 1.0, self.T_norm, self.n_norm, Z)
             / Z
         )  # s
         self.x_norm = self.v_th * self.t_norm  # m
@@ -301,16 +297,7 @@ class SIKERun(object):
         self.collrate_const = self.n_norm * self.v_th * self.sigma_0 * self.t_norm
         self.tbrec_norm = (
             self.n_norm
-            * np.sqrt(
-                (physics_tools.planck_h**2)
-                / (
-                    2
-                    * np.pi
-                    * physics_tools.el_mass
-                    * self.T_norm
-                    * physics_tools.el_charge
-                )
-            )
+            * np.sqrt((PLANCK_H**2) / (2 * np.pi * EL_MASS * self.T_norm * EL_CHARGE))
             ** 3
         )
 

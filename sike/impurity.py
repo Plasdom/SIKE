@@ -1,11 +1,11 @@
 import numpy as np
 import os
+import json
+import post_processing
+
 from transition import *
 from atomic_state import State
-import json
-import math
-import post_processing
-from scipy import interpolate
+import core
 
 
 class Impurity:
@@ -343,7 +343,7 @@ class Impurity:
         from_ids = np.array([t.from_id for t in self.transitions], dtype=int)
         to_ids = np.array([t.to_id for t in self.transitions], dtype=int)
         for i, state in enumerate(self.states):
-            associated_transitions = physics_tools.get_associated_transitions(
+            associated_transitions = core.get_associated_transitions(
                 state.id, from_ids, to_ids
             )
             if len(associated_transitions) == 0:
@@ -391,7 +391,7 @@ class Impurity:
             Z_dens = np.zeros([len(ne), self.num_Z])
             for i in range(len(ne)):
                 Z_dens[i, :] = (
-                    physics_tools.saha_dist(
+                    core.saha_dist(
                         Te[i] * self.T_norm, ne[i] * self.n_norm, self.n_norm, self
                     )
                     / self.n_norm
@@ -406,7 +406,7 @@ class Impurity:
                 for i in range(len(ne)):
                     Z_dens_loc = Z_dens[i, Z]
 
-                    rel_dens = physics_tools.boltzmann_dist(
+                    rel_dens = core.boltzmann_dist(
                         Te[i] * self.T_norm, energies, stat_weights, gnormalise=False
                     )
 
