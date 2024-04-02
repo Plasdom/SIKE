@@ -2,8 +2,8 @@ from scipy import interpolate
 import numpy as np
 from numpy.typing import ArrayLike
 from numba import jit
+import aurora
 
-import atomic_state
 import physics_tools
 
 
@@ -407,18 +407,27 @@ def calc_rate(
 
 
 @jit(nopython=True)
-def get_sigma_tbr(vgrid, vgrid_inv, sigma_interp, g_ratio, Te):
-    """Calculate the three-body recombination cross-section
+def get_sigma_tbr(
+    vgrid: np.ndarray,
+    vgrid_inv: np.ndarray,
+    sigma_interp: np.ndarray,
+    g_ratio: float,
+    Te: float,
+) -> np.ndarray:
+    """Get three-body recombination cross-section via detailed balance
 
-    Args:
-        vgrid (nd.ndarray): velocity grid
-        vgrid_inv (nd.ndarray): post-collision velocity grid
-        sigma_interp (np.ndarray): Ionization cross-section interpolated to vgrid_inv
-        g_ratio (float): ratio of statistical weights
-        Te (float): local electron temperature
-
-    Returns:
-        _type_: _description_
+    :param vgrid: Velocity grid
+    :type vgrid: np.ndarray
+    :param vgrid_inv: Post-collision velocity grid
+    :type vgrid_inv: np.ndarray
+    :param sigma_interp: Ionisation cross-section interpolated to vgrid_inv
+    :type sigma_interp: np.ndarray
+    :param g_ratio: Ratio of statistical weights
+    :type g_ratio: float
+    :param Te: Electron temperature
+    :type Te: float
+    :return: Three-body recombination cross-section
+    :rtype: np.ndarray
     """
     sigma_tbrec = (
         0.5
@@ -431,33 +440,40 @@ def get_sigma_tbr(vgrid, vgrid_inv, sigma_interp, g_ratio, Te):
 
 
 @jit(nopython=True)
-def get_sigma_deex(vgrid, vgrid_inv, sigma_interp, g_ratio):
-    """Calculate the deexcitation cross-section
+def get_sigma_deex(
+    vgrid: np.ndarray, vgrid_inv: np.ndarray, sigma_interp: np.ndarray, g_ratio: float
+) -> np.ndarray:
+    """_summary_
 
-    Args:
-        vgrid (nd.ndarray): velocity grid
-        vgrid_inv (nd.ndarray): post-collision velocity grid
-        sigma_interp (np.ndarray): Excitation cross-section interpolated to vgrid_inv
-        g_ratio (float): ratio of statistical weights
-
-    Returns:
-        nd.ndarray: deexcitation cross-section
+    :param vgrid: Velocity grid
+    :type vgrid: np.ndarray
+    :param vgrid_inv: Post-collision velocity grid
+    :type vgrid_inv: np.ndarray
+    :param sigma_interp: Excitation cross-section interpolated to vgrid_inv
+    :type sigma_interp: np.ndarray
+    :param g_ratio: Ratio of statistical weights
+    :type g_ratio: float
+    :return: De-excitation cross-section
+    :rtype: np.ndarray
     """
     sigma_deex = g_ratio * sigma_interp * ((vgrid_inv / vgrid) ** 2)
     return sigma_deex
 
 
 @jit(nopython=True)
-def get_associated_transitions(state_id, from_ids, to_ids):
+def get_associated_transitions(
+    state_id: int, from_ids: list[int], to_ids: list[int]
+) -> list[int]:
     """Efficiently find the positions of all transitions associated with a given state ID
 
-    Args:
-        state_id (int): ID for a given state
-        from_ids (np.ndarray): list of all from IDs for each transition
-        to_ids (np.ndarray): list of all to IDs for each transition
-
-    Returns:
-        list: a list of the indices of all associated transitions
+    :param state_id: ID for a given state
+    :type state_id: int
+    :param from_ids: list of all from IDs for each transition
+    :type from_ids: list[int]
+    :param to_ids: list of all to IDs for each transition
+    :type to_ids: list[int]
+    :return: A list of the indices of all associated transitions
+    :rtype: list[int]
     """
     associated_transition_indices = []
     for i in range(len(from_ids)):
@@ -466,7 +482,23 @@ def get_associated_transitions(state_id, from_ids, to_ids):
     return associated_transition_indices
 
 
-def interpolate_adf11_data(adas_file, Te, ne, num_z):
+def interpolate_adf11_data(
+    adas_file: aurora.adas_file, Te: np.ndarray, ne: np.ndarray, num_z: int
+) -> np.ndarray:
+    """Interpolate ADAS adf11 data to a given array of input electron temperatures and densities
+
+    :param adas_file: Aurora adas_file object containing rates for a range of densities and temperatures for a given impurity species
+    :type adas_file: aurora.adas_file
+    :param Te: List of new electron temperatures
+    :type Te: float
+    :param ne: List of new electron densities
+    :type ne: float
+    :param num_z: Number of ionisation stages for the impurity species in question
+    :type num_z: int
+    :return: Rates interpolated to the input temperatures and densities
+    :rtype: np.ndarray
+    """
+
     num_x = len(Te)
     interp_data = np.zeros([num_x, num_z - 1])
     for z in range(num_z - 1):
