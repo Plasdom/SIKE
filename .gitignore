@@ -11,3 +11,4 @@ legacy/*
 .idea/*
 *.egg-info
 atomic_data/*
+*.json

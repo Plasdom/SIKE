@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sike"
+authors = [
+    {name = "Dominic Power", email = "power8@llnl.gov"}
+]
+description = "Scrape-off Layer Impurities with Kinetic Electrons."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["numpy", "scipy", "requests"]
+
+version = "0.1"
