@@ -1,3 +1,23 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:64e698193a6027ffc5daa6f92ddb49219d978af77749455368fcbc0ea493f885
-size 1264
+Done
+- Add to setup.py: download atomic data from Zenodo and put somewhere sensible
+- Finish sorting docstrings and type hints in transition.py (got up to ExTrans, next one to do is IzTrans)
+
+To do
+- Provide a config file API as well as/instead of python API to launch simulations
+- Create a json schema for atomic states, transitions and (maybe) input files
+- Do docstrings and type hints in other files (got to calc_eff_rate_mats in core.py)
+- Decide where things like calc_eff_rate_mats should go - in particular, how to deal with the question of full vs. partial rate equations (i.e. full set vs. Greenland-style)
+- Make better names for each module
+- Decide whether/how we're going to handle sources/sinks
+- Decide whether/how we're going to handle impurity transport
+- Remove petsc4py and MPI references
+- Finish redistributing some of the tools functions into other modules so total number of modules can be released (e.g. physics_tools, matrix_utils)
+- Check setup.py works now you've moved it up a directory
+- Get a minimal working example (will need to do pip install -e SIKE first)
+- Readme
+- Tests
+- Some demo scripts
+- License
+- Push to ICL repo
+- Handle different velocity grids provided at input
+- Work out how to deal with atomic data (mostly done)
