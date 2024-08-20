@@ -3,6 +3,7 @@ Done
 - Finish sorting docstrings and type hints in transition.py (got up to ExTrans, next one to do is IzTrans)
 
 To do
+- Switch from ICL to personal repo
 - Provide a config file API as well as/instead of python API to launch simulations
 - Create a json schema for atomic states, transitions and (maybe) input files
 - Do docstrings and type hints in other files (got to calc_eff_rate_mats in core.py)
@@ -10,6 +11,7 @@ To do
 - Make better names for each module
 - Decide whether/how we're going to handle sources/sinks
 - Decide whether/how we're going to handle impurity transport
+- Answer to above two points is probably that we don't try and handle transport (maybe do sources/sinks) - purpose of SIKE is to be a simple, lightweight standalone tool. 
 - Remove petsc4py and MPI references
 - Finish redistributing some of the tools functions into other modules so total number of modules can be released (e.g. physics_tools, matrix_utils)
 - Check setup.py works now you've moved it up a directory
@@ -18,6 +20,7 @@ To do
 - Tests
 - Some demo scripts
 - License
-- Push to ICL repo
+- Merge with main branch
 - Handle different velocity grids provided at input
 - Work out how to deal with atomic data (mostly done)
+- Add small diagonal (~1e-10?) to matrix before inversion to improve stability
