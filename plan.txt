@@ -1,10 +1,11 @@
 Done
 - Add to setup.py: download atomic data from Zenodo and put somewhere sensible
 - Finish sorting docstrings and type hints in transition.py (got up to ExTrans, next one to do is IzTrans)
+- Get rid of types in docstrings
 
 To do
-- Get rid of types in docstrings
 - Switch from ICL to personal repo
+- Simpler parallelisation, perhaps with mpi4py. Add as an OPTIONAL dependency (see e.g. uetools for optional dependency example)
 - Provide a config file API as well as/instead of python API to launch simulations
 - Create a json schema for atomic states, transitions and (maybe) input files
 - Do docstrings and type hints in other files (got to calc_eff_rate_mats in core.py)

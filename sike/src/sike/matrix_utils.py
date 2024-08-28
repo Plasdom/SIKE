@@ -109,91 +109,7 @@ def get_loc_pos(rows, cols, row, col):
     return 0
 
 
-def build_petsc_matrix(loc_num_x, min_x, max_x, num_states, transitions, num_x, evolve):
-    """Construct a petsc matrix for the problem
-
-    Args:
-        num_states (int): number of evolved states
-        num_x (int): number of spatial cells
-        evolve (bool): whether problem is evolved in time or solved assuming d/dt = 0
-
-    Returns:
-        _type_: _description_
-    """
-
-    # Calculate non-zeros per row from transitions
-    if evolve is True:
-        trans_mat = np.zeros([num_states, num_states])
-        for trans in transitions:
-            from_pos = trans.from_pos
-            to_pos = trans.to_pos
-            type = trans.type
-
-            # # Calculate the value to be added to the matrix
-            val = 1.0
-
-            # Add the loss term
-            row = from_pos
-            col = from_pos
-            trans_mat[row, col] = val
-
-            # Add the gain term
-            row = to_pos
-            col = from_pos
-            trans_mat[row, col] = val
-
-            if type == "excitation":
-                val = 1.0
-
-                # Add the loss term
-                row = to_pos
-                col = to_pos
-                trans_mat[row, col] = val
-
-                # Add the gain term
-                row = from_pos
-                col = to_pos
-                trans_mat[row, col] = val
-
-            elif type == "ionization":
-                val = 1.0
-
-                # Add the loss term
-                row = to_pos
-                col = to_pos
-                trans_mat[row, col] = val
-
-                # Add the gain term
-                row = from_pos
-                col = to_pos
-                trans_mat[row, col] = val
-        # nnz_per_row = int(np.sum(trans_mat) / num_states)
-        nnz_per_row = int(max(np.sum(trans_mat, 1)))
-    else:
-        nnz_per_row = num_states
-
-    loc_num_rows = num_states * loc_num_x
-    rate_mat = PETSc.Mat().createAIJ(
-        [loc_num_rows, loc_num_rows], nnz=nnz_per_row, comm=PETSc.COMM_SELF
-    )
-    # rate_mat = PETSc.Mat().createAIJ(
-    #     [num_states * num_x, num_states * num_x], [num_states*loc_num_x, num_states*loc_num_x], nnz=nnz_per_row,comm=PETSc.COMM_WORLD)
-
-    if evolve is False:
-        # Initialise diagonals
-        for row in range(num_states * loc_num_x):
-            rate_mat.setValue(row, row, 0.0, addv=True)
-        # Initialise bottom row of each submatrix
-        for i in range(min_x, max_x):
-            offset = (i - min_x) * num_states
-            row = num_states - 1 + offset
-            for col in range(offset, offset + num_states):
-                rate_mat.setValue(row, col, 0.0, addv=True)
-
-    return rate_mat
-
-
-def build_np_matrix(min_x, max_x, num_states):
+def build_matrix(min_x, max_x, num_states):
     """Construct an array of local numpy matrices for the problem
 
     Args:
@@ -264,91 +180,7 @@ def fill_local_mat(transitions, num_states, fe, ne, Te, vgrid, dvc):
     return local_mat
 
 
-def fill_petsc_rate_matrix(
-    loc_num_x: int,
-    min_x: int,
-    max_x: int,
-    mat: PETSc.Mat,
-    impurity: Impurity,
-    fe: np.ndarray,
-    ne: np.ndarray,
-    Te: np.ndarray,
-    vgrid: np.ndarray,
-    dvc: np.ndarray,
-):
-    """Fill the rate matrix with rates calculated by each transition object
-
-    Args:
-        mat (PETSc.Mat): the implicit matrix
-        impurity (Impurity): the impurity being modelled (contains all transitions)
-        fe (np.ndarray): electron distributions in each cell
-        ne (np.ndarray): electron density profile
-        Te (np.ndarray): electron temperature profile
-        vgrid (np.ndarray): velocity grid
-        dvc (np.ndarray): velocity grid widths
-    """
-
-    num_states = impurity.tot_states
-
-    # Next, calculate the values
-    rank = PETSc.COMM_WORLD.Get_rank()
-    for i in range(min_x, max_x):
-        if rank == 0:
-            print(" {:.1f}%".format(100 * float(i / loc_num_x)), end="\r")
-        offset = (i - min_x) * num_states
-
-        for j, trans in enumerate(impurity.transitions):
-            from_pos = trans.from_pos
-            to_pos = trans.to_pos
-            typ = trans.type
-
-            # # Calculate the value to be added to the matrix
-            val = trans.get_mat_value(fe[:, i], vgrid, dvc)
-
-            # Add the loss term
-            row = from_pos + offset
-            col = from_pos + offset
-            mat.setValue(row, col, -val, addv=True)
-
-            # Add the gain term
-            row = to_pos + offset
-            col = from_pos + offset
-            mat.setValue(row, col, val, addv=True)
-
-            # # Calculate inverse process matrix entries (3-body recombination & de-excitation)
-            if typ == "excitation":
-                val = trans.get_mat_value_inv(fe[:, i], vgrid, dvc)
-
-                # Add the loss term
-                row = to_pos + offset
-                col = to_pos + offset
-                mat.setValue(row, col, -val, addv=True)
-
-                # Add the gain term
-                row = from_pos + offset
-                col = to_pos + offset
-                mat.setValue(row, col, val, addv=True)
-
-            elif typ == "ionization":
-                val = trans.get_mat_value_inv(fe[:, i], vgrid, dvc, ne[i], Te[i])
-
-                # Add the loss term
-                row = to_pos + offset
-                col = to_pos + offset
-                mat.setValue(row, col, -val, addv=True)
-
-                # Add the gain term
-                row = from_pos + offset
-                col = to_pos + offset
-                mat.setValue(row, col, val, addv=True)
-
-    if rank == 0:
-        print(" {:.1f}%".format(100))
-
-    return mat
-
-
-def fill_np_rate_matrix(
+def fill_rate_matrix(
     loc_num_x: int,
     min_x: int,
     max_x: int,
@@ -375,7 +207,7 @@ def fill_np_rate_matrix(
     num_states = impurity.tot_states
 
     # Next, calculate the values
-    rank = PETSc.COMM_WORLD.Get_rank()
+    rank = 0  # TODO: Implement parallelisation
     for i in range(loc_num_x):
         if rank == 0:
             print(" {:.1f}%".format(100 * float(i / loc_num_x)), end="\r")

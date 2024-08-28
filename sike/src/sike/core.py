@@ -4,6 +4,7 @@ from numba import jit
 from sike.impurity import Impurity
 from sike.constants import *
 from sike.matrix_utils import *
+from sike.solver import *
 
 # TODO: Do we ever want to actually evolve all states? Or only build M_eff and get derived coefficients? Opportunity to massively simplify by removing petsc & mpi dependency
 # TODO: I guess we should only ever really be evolving the P states, so all that code is still useful, but could probably do it with dense numpy matrices rather than petsc, and probably don't need MPI!
@@ -115,6 +116,9 @@ class SIKERun(object):
         self.saha_boltzmann_init = saha_boltzmann_init
         self.state_ids = state_ids
 
+        self.num_procs = 1  # TODO: Parallelisation
+        self.rank = 0  # TODO: Parallelisation
+
         # Save simulation set-up
         if xgrid is not None:
             self.xgrid = xgrid.copy()
@@ -137,7 +141,7 @@ class SIKERun(object):
         # Initialise species
         print("Initialising the impurity species to be modelled...")
         self.impurities = {}
-        for el in self.opts["modelled_impurities"]:
+        for el in self.modelled_impurities:
             self.impurities[el] = Impurity(
                 name=el,
                 resolve_l=self.resolve_l,
@@ -177,8 +181,7 @@ class SIKERun(object):
         self.num_v = len(self.vgrid)
         self.generate_grid_widths()
 
-        self.num_procs = PETSc.COMM_WORLD.Get_size()
-        self.rank = PETSc.COMM_WORLD.Get_rank()
+        self.rank = 0  # TODO: Implement parallelisation
         loc_x = self.num_x / self.num_procs
         self.min_x = int(self.rank * loc_x)
         if self.rank == self.num_procs - 1:
@@ -211,7 +214,7 @@ class SIKERun(object):
         self.Egrid = self.T_norm * self.vgrid**2
 
         # Generate Maxwellians if required
-        if self.opts["maxwellian_electrons"]:
+        if self.maxwellian_electrons:
             self.fe_Max = get_maxwellians(self.ne, self.Te, self.vgrid)
 
     def init_from_profiles(self, vgrid: np.ndarray | None = None):
@@ -345,7 +348,7 @@ class SIKERun(object):
 
         eff_rate_mats = {}
 
-        for el in self.opts["modelled_impurities"]:
+        for el in self.modelled_impurities:
             # TODO: Implement Greenland P-state validation checker
             self.impurities[el].reorder_PQ_states(P_states)
 
@@ -390,89 +393,43 @@ class SIKERun(object):
         :param kinetic: whether to compute kinetic rate matrices, defaults to False
         """
         # Build the rate matrices
-        for el in self.opts["modelled_impurities"]:
+        for el in self.modelled_impurities:
             if kinetic:
                 if self.rank == 0:
                     print("Filling kinetic transition matrix for " + el + "...")
-                if self.opts["use_petsc"]:
-                    petsc_mat = matrix_utils.build_petsc_matrix(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        self.impurities[el].tot_states,
-                        self.impurities[el].transitions,
-                        self.num_x,
-                        self.opts["evolve"],
-                    )
-                    self.rate_mats[el] = matrix_utils.fill_petsc_rate_matrix(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        petsc_mat,
-                        self.impurities[el],
-                        self.fe,
-                        self.ne,
-                        self.Te,
-                        self.vgrid,
-                        self.dvc,
-                    )
-                else:
-                    np_mat = matrix_utils.build_np_matrix(
-                        self.min_x, self.max_x, self.impurities[el].tot_states
-                    )
-                    self.rate_mats[el] = matrix_utils.fill_np_rate_matrix(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        np_mat,
-                        self.impurities[el],
-                        self.fe,
-                        self.ne,
-                        self.Te,
-                        self.vgrid,
-                        self.dvc,
-                    )
+                np_mat = build_matrix(
+                    self.min_x, self.max_x, self.impurities[el].tot_states
+                )
+                self.rate_mats[el] = fill_rate_matrix(
+                    self.loc_num_x,
+                    self.min_x,
+                    self.max_x,
+                    np_mat,
+                    self.impurities[el],
+                    self.fe,
+                    self.ne,
+                    self.Te,
+                    self.vgrid,
+                    self.dvc,
+                )
             else:
                 if self.rank == 0:
                     print("Filling Maxwellian transition matrix for " + el + "...")
-                if self.opts["use_petsc"]:
-                    petsc_mat = matrix_utils.build_petsc_matrix(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        self.impurities[el].tot_states,
-                        self.impurities[el].transitions,
-                        self.num_x,
-                        self.opts["evolve"],
-                    )
-                    self.rate_mats_Max[el] = matrix_utils.fill_petsc_rate_matrix(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        petsc_mat,
-                        self.impurities[el],
-                        self.fe_Max,
-                        self.ne,
-                        self.Te,
-                        self.vgrid,
-                        self.dvc,
-                    )
-                else:
-                    np_mat = matrix_utils.build_np_matrix(
-                        self.min_x, self.max_x, self.impurities[el].tot_states
-                    )
-                    self.rate_mats_Max[el] = matrix_utils.fill_np_rate_matrix(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        np_mat,
-                        self.impurities[el],
-                        self.fe_Max,
-                        self.ne,
-                        self.Te,
-                        self.vgrid,
-                        self.dvc,
-                    )
+                np_mat = build_matrix(
+                    self.min_x, self.max_x, self.impurities[el].tot_states
+                )
+                self.rate_mats_Max[el] = fill_rate_matrix(
+                    self.loc_num_x,
+                    self.min_x,
+                    self.max_x,
+                    np_mat,
+                    self.impurities[el],
+                    self.fe_Max,
+                    self.ne,
+                    self.Te,
+                    self.vgrid,
+                    self.dvc,
+                )
 
     def compute_densities(
         self,
@@ -490,7 +447,7 @@ class SIKERun(object):
         """
         # Solve or evolve the matrix equation to find the equilibrium densities
         if evolve:
-            for el in self.opts["modelled_impurities"]:
+            for el in self.modelled_impurities:
                 if kinetic:
                     if self.rank == 0:
                         print(
@@ -498,40 +455,19 @@ class SIKERun(object):
                             + el
                             + "..."
                         )
-                    if self.opts["use_petsc"]:
-                        n_solved = solver.evolve_petsc(
-                            self.loc_num_x,
-                            self.min_x,
-                            self.max_x,
-                            self.rate_mats[el],
-                            self.impurities[el].dens,
-                            self.num_x,
-                            dt,
-                            num_t,
-                            self.opts["dndt_thresh"],
-                            self.n_norm,
-                            self.t_norm,
-                            self.opts["ksp_solver"],
-                            self.opts["ksp_pc"],
-                            self.opts["ksp_tol"],
-                        )
-                    else:
-                        n_solved = solver.evolve_np(
-                            self.loc_num_x,
-                            self.min_x,
-                            self.max_x,
-                            self.rate_mats[el],
-                            self.impurities[el].dens,
-                            self.num_x,
-                            dt,
-                            num_t,
-                            self.opts["dndt_thresh"],
-                            self.n_norm,
-                            self.t_norm,
-                            self.opts["ksp_solver"],
-                            self.opts["ksp_pc"],
-                            self.opts["ksp_tol"],
-                        )
+                    n_solved = evolve(
+                        self.loc_num_x,
+                        self.min_x,
+                        self.max_x,
+                        self.rate_mats[el],
+                        self.impurities[el].dens,
+                        self.num_x,
+                        dt,
+                        num_t,
+                        self.dndt_thresh,
+                        self.n_norm,
+                        self.t_norm,
+                    )
                     if n_solved is not None:
                         self.impurities[el].dens = n_solved
                         self.success = True
@@ -544,47 +480,26 @@ class SIKERun(object):
                             + el
                             + "..."
                         )
-                    if self.opts["use_petsc"]:
-                        n_solved = solver.evolve_petsc(
-                            self.loc_num_x,
-                            self.min_x,
-                            self.max_x,
-                            self.rate_mats_Max[el],
-                            self.impurities[el].dens_Max,
-                            self.num_x,
-                            dt,
-                            num_t,
-                            self.opts["dndt_thresh"],
-                            self.n_norm,
-                            self.t_norm,
-                            self.opts["ksp_solver"],
-                            self.opts["ksp_pc"],
-                            self.opts["ksp_tol"],
-                        )
-                    else:
-                        n_solved = solver.evolve_np(
-                            self.loc_num_x,
-                            self.min_x,
-                            self.max_x,
-                            self.rate_mats_Max[el],
-                            self.impurities[el].dens_Max,
-                            self.num_x,
-                            dt,
-                            num_t,
-                            self.opts["dndt_thresh"],
-                            self.n_norm,
-                            self.t_norm,
-                            self.opts["ksp_solver"],
-                            self.opts["ksp_pc"],
-                            self.opts["ksp_tol"],
-                        )
+                    n_solved = evolve(
+                        self.loc_num_x,
+                        self.min_x,
+                        self.max_x,
+                        self.rate_mats_Max[el],
+                        self.impurities[el].dens_Max,
+                        self.num_x,
+                        dt,
+                        num_t,
+                        self.dndt_thresh,
+                        self.n_norm,
+                        self.t_norm,
+                    )
                     if n_solved is not None:
                         self.impurities[el].dens_Max = n_solved
                         self.success = True
                     else:
                         self.success = False
         else:
-            for el in self.opts["modelled_impurities"]:
+            for el in self.modelled_impurities:
                 if kinetic:
                     if self.rank == 0:
                         print(
@@ -592,30 +507,14 @@ class SIKERun(object):
                             + el
                             + "..."
                         )
-                    if self.opts["use_petsc"]:
-                        n_solved = solver.solve_petsc(
-                            self.loc_num_x,
-                            self.min_x,
-                            self.max_x,
-                            self.rate_mats[el],
-                            self.impurities[el].dens,
-                            self.num_x,
-                            self.opts["ksp_solver"],
-                            self.opts["ksp_pc"],
-                            self.opts["ksp_tol"],
-                        )
-                    else:
-                        n_solved = solver.solve_np(
-                            self.loc_num_x,
-                            self.min_x,
-                            self.max_x,
-                            self.rate_mats[el],
-                            self.impurities[el].dens,
-                            self.num_x,
-                            self.opts["ksp_solver"],
-                            self.opts["ksp_pc"],
-                            self.opts["ksp_tol"],
-                        )
+                    n_solved = solve(
+                        self.loc_num_x,
+                        self.min_x,
+                        self.max_x,
+                        self.rate_mats[el],
+                        self.impurities[el].dens,
+                        self.num_x,
+                    )
 
                     if n_solved is not None:
                         self.impurities[el].dens = n_solved
@@ -630,30 +529,14 @@ class SIKERun(object):
                             + el
                             + "..."
                         )
-                    if self.opts["use_petsc"]:
-                        n_solved = solver.solve_petsc(
-                            self.loc_num_x,
-                            self.min_x,
-                            self.max_x,
-                            self.rate_mats_Max[el],
-                            self.impurities[el].dens_Max,
-                            self.num_x,
-                            self.opts["ksp_solver"],
-                            self.opts["ksp_pc"],
-                            self.opts["ksp_tol"],
-                        )
-                    else:
-                        n_solved = solver.solve_np(
-                            self.loc_num_x,
-                            self.min_x,
-                            self.max_x,
-                            self.rate_mats_Max[el],
-                            self.impurities[el].dens_Max,
-                            self.num_x,
-                            self.opts["ksp_solver"],
-                            self.opts["ksp_pc"],
-                            self.opts["ksp_tol"],
-                        )
+                    n_solved = solve(
+                        self.loc_num_x,
+                        self.min_x,
+                        self.max_x,
+                        self.rate_mats_Max[el],
+                        self.impurities[el].dens_Max,
+                        self.num_x,
+                    )
 
                     if n_solved is not None:
                         self.impurities[el].dens_Max = n_solved

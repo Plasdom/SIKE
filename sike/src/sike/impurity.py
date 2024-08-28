@@ -5,6 +5,7 @@ import json
 from sike.transition import *
 from sike.atomic_state import State
 
+
 class Impurity:
     """Impurity class to hold information on the states and transitions for a given modelled impurity species."""
 
