@@ -1,9 +1,3 @@
-from scipy import interpolate
-import numpy as np
-import re
-import matplotlib.pyplot as plt
-
-
 class State:
     """Atomc state class"""
 
@@ -48,7 +42,7 @@ class State:
         self.stat_weight = stat_weight
         self.metastable = metastable
 
-    def equals(self, other: State) -> bool:
+    def equals(self, other) -> bool:
         """Check for equality between this state and another
 
         :param other: The other atomic state

@@ -9,7 +9,7 @@ authors = [
 ]
 description = "Scrape-off Layer Impurities with Kinetic Electrons."
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = ["numpy", "scipy", "requests"]
+requires-python = ">=3.11"
+dependencies = ["numpy>=2.0", "scipy>=1.14", "requests", "numba>=0.60"]
 
 version = "0.1"

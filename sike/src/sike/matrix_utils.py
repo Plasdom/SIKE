@@ -1,6 +1,5 @@
-from petsc4py import PETSc
 import numpy as np
-from impurity import Impurity
+from sike.impurity import Impurity
 from numba import jit
 
 

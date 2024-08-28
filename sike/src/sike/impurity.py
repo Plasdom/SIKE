@@ -1,12 +1,9 @@
 import numpy as np
 import os
 import json
-import post_processing
 
-from transition import *
-from atomic_state import State
-import core
-
+from sike.transition import *
+from sike.atomic_state import State
 
 class Impurity:
     """Impurity class to hold information on the states and transitions for a given modelled impurity species."""

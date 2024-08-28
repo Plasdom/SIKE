@@ -18,6 +18,7 @@ To do
 - Check setup.py works now you've moved it up a directory
 - Get a minimal working example (will need to do pip install -e SIKE first)
 - Readme
+- Remove dependency on aurora
 - Tests
 - Remove option to handle multiple impurities (each run should be associated with a single set of atomic data)
 - Fix the Maxwellian/kinetic variable names, seems a janky way to do it and must be a better approach. Could just provide Maxwellian as input option and change how rates are calculated? In the interest of separation of concerns, difference between Maxwellian/kinetic densities is a question for analysis so both sets don't need to be stored by solver 
