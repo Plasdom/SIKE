@@ -24,27 +24,16 @@ class State:
         """Initialise
 
         :param id: Unique ID for the state
-        :type id: int
         :param nuc_chg: Nuclear charge
-        :type nuc_chg: int
         :param num_el: Number of electrons
-        :type num_el: int
         :param config: Electronic configuration (valence shell)
-        :type config: str
         :param energy: Energy of the state
-        :type energy: float
         :param stat_weight: Statistical weight
-        :type stat_weight: int
         :param n: Principal quantum number of the state
-        :type n: int
         :param l: Orbital angular momentum quantum number of the state, defaults to None
-        :type l: int | None, optional
         :param j: Total angular momentum quantum number of the state, defaults to None
-        :type j: int | None, optional
         :param config_full: Full electronic configuration (all shells), defaults to None
-        :type config_full: str | None, optional
         :param metastable: Whether the state is metastable, defaults to True
-        :type metastable: bool, optional
         """
         self.id = id
         self.nuc_chg = nuc_chg
@@ -63,9 +52,7 @@ class State:
         """Check for equality between this state and another
 
         :param other: The other atomic state
-        :type other: State
         :return: True if states are equal
-        :rtype: bool
         """
         if (
             self.nuc_chg == other.nuc_chg

@@ -17,15 +17,10 @@ class Transition:
         """Initialise
 
         :param type: Type of transition (e.g. "excitation"))
-        :type type: str
         :param element: Atomic element
-        :type element: str
         :param from_id: ID of the initial state
-        :type from_id: int
         :param to_id: ID of the final state
-        :type to_id: int
         :param delta_E: Transition energy
-        :type delta_E: float
         """
         self.type = type
         self.element = element
@@ -49,17 +44,11 @@ class ExTrans(Transition):
         """Initialise
 
         :param sigma: Cross-sections
-        :type sigma: np.ndarray
         :param collrate_const: Normalisation constant for collision rate calculation
-        :type collrate_const: float
         :param sigma_norm: Normalisation constant for cross-section
-        :type sigma_norm: float
         :param from_stat_weight: Statistical weight of the initial state, defaults to None
-        :type from_stat_weight: float | None, optional
         :param born_bethe_coeffs: Born-Bethe coefficients, defaults to None
-        :type born_bethe_coeffs: np.ndarray | None, optional
         :param transition_kwargs: Arguments for base Transition class
-        :type: Keyword arguments
         """
         self.super().__init__(self, transition_kwargs)
 
@@ -73,11 +62,8 @@ class ExTrans(Transition):
         """Calculate the de-excitation cross-section
 
         :param g_ratio: the ratio of statistical weights of from/to states
-        :type g_ratio: float
         :param vgrid: Velocity grid
-        :type vgrid: np.ndarray
         :return: De-excitation cross-sections
-        :rtype: np.ndarray
         """
         vgrid_inv = np.sqrt(vgrid**2 + self.delta_E)
         sigma_interp_func = interpolate.interp1d(
@@ -92,13 +78,9 @@ class ExTrans(Transition):
         """Get the matrix value for this transition. For excitation transitions, this is ne * rate coefficient
 
         :param fe: local electron distribution
-        :type fe: np.ndarray
         :param vgrid: velocity grid
-        :type vgrid: np.ndarray
         :param dvc: velocity grid widths
-        :type dvc: np.ndarray
         :return: Matrix value
-        :rtype: float
         """
         K_ex = core.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_ex
@@ -109,13 +91,9 @@ class ExTrans(Transition):
         """Get the matrix value for the inverse of transition. For excitation transitions, this is three-body recombination
 
         :param fe: local electron distribution
-        :type fe: np.ndarray
         :param vgrid: velocity grid
-        :type vgrid: np.ndarray
         :param dvc: velocity grid widths
-        :type dvc: np.ndarray
         :return: electron density multiplied by three-body recombination rate coefficient
-        :rtype: float
         """
         K_deex = core.calc_rate(vgrid, dvc, fe, self.sigma_deex, self.collrate_const)
         return K_deex
@@ -130,15 +108,10 @@ class ExTrans(Transition):
         """Get the de-excitation cross-section, assuming detailed balance
 
         :param vgrid: velocity grid
-        :type vgrid: np.ndarray
         :param vgrid_inv: velocity grid of post-collision electrons
-        :type vgrid_inv: np.ndarray
         :param sigma_interp: excitation cross-section interpolated on to vgrid_inv
-        :type sigma_interp: np.ndarray
         :param g_ratio: the ratio of statistical weights (free / bound)
-        :type g_ratio: float
         :return: local de-excitation cross-section
-        :rtype: np.ndarray
         """
         sigma_deex = core.get_sigma_deex(vgrid, vgrid_inv, sigma_interp, g_ratio)
 
@@ -161,19 +134,12 @@ class IzTrans(Transition):
         """Initialise
 
         :param sigma: Cross-sections
-        :type sigma: np.ndarray
         :param collrate_const: Normalisation constant for collision rate calculation
-        :type collrate_const: float
         :param tbrec_norm: Normalisation constant for three-body recombination rate
-        :type tbrec_norm: float
         :param sigma_norm: Normalisation constant for cross-section
-        :type sigma_norm: float
         :param from_stat_weight: Statistical weight of the initial state, defaults to None, defaults to None
-        :type from_stat_weight: float | None, optional
         :param fit_params: Parameters for the high-energy cross-section fit, defaults to None
-        :type fit_params: np.ndarray | None, optional
         :param transition_kwargs: Arguments for base Transition class
-        :type: Keyword arguments
         """
         self.super().__init__(self, transition_kwargs)
         self.sigma = 1e-4 * np.array(sigma) / sigma_norm
@@ -187,9 +153,7 @@ class IzTrans(Transition):
         """Store some useful data for calculating the inverse (3b-recombination) cross-sections
 
         :param g_ratio: statistical weight ratio of from/to states
-        :type g_ratio: float
         :param vgrid: the velocity grid
-        :type vgrid: np.ndarray
         """
         self.g_ratio = g_ratio
         self.vgrid_inv = np.sqrt(vgrid**2 + self.delta_E)
@@ -204,13 +168,9 @@ class IzTrans(Transition):
         """Get the matrix value for this transition. For ionization transitions, this is ne * rate coefficient
 
         :param fe: local electron distribution
-        :type fe: np.ndarray
         :param vgrid: velocity grid
-        :type vgrid: np.ndarray
         :param dvc: velocity grid widths
-        :type dvc: np.ndarray
         :return: Matrix value
-        :rtype: float
         """
         K_ion = core.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_ion
@@ -221,17 +181,11 @@ class IzTrans(Transition):
         """Get the matrix value for the inverse of transition. For ionization transitions, this is three-body recombination
 
         :param fe: local electron distribution
-        :type fe: np.ndarray
         :param vgrid: velocity grid
-        :type vgrid: np.ndarray
         :param dvc: velocity grid widths
-        :type dvc: np.ndarray
         :param ne: Electron density
-        :type ne: float
         :param Te: Electron temperature
-        :type Te: float
         :return: electron density multiplied by three-body recombination rate coefficient
-        :rtype: float
         """
         sigma_tbrec = self.get_sigma_tbrec(vgrid, Te)
         K_tbrec = core.calc_rate(
@@ -243,11 +197,8 @@ class IzTrans(Transition):
         """Get the three-body recombination cross-section, assuming detailed balance
 
         :param vgrid: Velocity grid
-        :type vgrid: np.ndarray
         :param Te: Electron temperature
-        :type Te: float
         :return: Three-body recombination cross-section
-        :rtype: np.ndarray
         """
         sigma_tbrec = core.get_sigma_tbr(
             vgrid, self.vgrid_inv, self.sigma_interp, self.g_ratio, Te
@@ -273,19 +224,12 @@ class RRTrans(Transition):
         """Initialise
 
         :param sigma: Cross-sections
-        :type sigma: np.ndarray
         :param collrate_const: Normalisation constant for collision rate calculation
-        :type collrate_const: float
         :param sigma_norm: Normalisation constant for cross-section
-        :type sigma_norm: float
         :param from_stat_weight: Statistical weight of the initial state, defaults to None
-        :type from_stat_weight: float | None
         :param to_stat_weight: Statistical weight of the final state, defaults to None
-        :type to_stat_weight: float | None
         :param l: Orbital angular momentum quantum number of final state (TODO: Check this)
-        :type l: int | None
         :param fit_params: Parameters for high-energy cross-section fit
-        :type fit_params: np.ndarray | None
         """
         self.super().__init__(self, transition_kwargs)
 
@@ -302,13 +246,9 @@ class RRTrans(Transition):
         """Get the matrix value for this transition.
 
         :param fe: local electron distribution
-        :type fe: np.ndarray
         :param vgrid: velocity grid
-        :type vgrid: np.ndarray
         :param dvc: velocity grid widths
-        :type dvc: np.ndarray
         :return: Matrix value
-        :rtype: float
         """
         K_radrec = core.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_radrec
@@ -327,13 +267,9 @@ class EmTrans(Transition):
         """Initialise
 
         :param rate: Spontaneous emission rate (TODO: units?)
-        :type rate: float
         :param time_norm: Time units normalisation constant
-        :type time_norm: float
         :param gf: _description_ (TODO: check), defaults to None
-        :type gf: float | None, optional
         :param transition_kwargs: Arguments for base Transition class
-        :type: Keyword arguments
         """
         self.super().__init__(self, transition_kwargs)
 
@@ -344,7 +280,6 @@ class EmTrans(Transition):
         """Get the matrix value for this transition. For spontaneous emission, this is the emission rate
 
         :return: Matrix value
-        :rtype: float
         """
         A_em = self.rate
         return A_em
@@ -357,11 +292,8 @@ class AiTrans(Transition):
         """Initialise
 
         :param rate: Autoionization rate (TODO: units?)
-        :type rate: float
         :param time_norm: Time units normalisation constant
-        :type time_norm: float
         :param transition_kwargs: Arguments for base Transition class
-        :type: Keyword arguments
         """
         self.super().__init__(self, transition_kwargs)
         self.rate = rate * time_norm
@@ -370,7 +302,6 @@ class AiTrans(Transition):
         """Get the matrix value for this transition. For spontaneous emission, this is the emission rate
 
         :return: Matrix value
-        :rtype: float
         """
         A_ai = self.rate
         return A_ai
@@ -387,17 +318,11 @@ def calc_rate(
     """Efficiently compute the collisional rate for a given process
 
     :param vgrid: velocity grid
-    :type vgrid: np.ndarray
     :param dvc: velocity grid widths
-    :type dvc: np.ndarray
     :param fe: local electron velocity distribution
-    :type fe: np.ndarray
     :param sigma: cross-section
-    :type sigma: np.ndarray
     :param const: normalisation cross-section (defaults to 1), defaults to 1.0
-    :type const: float, optional
     :return: _description_
-    :rtype: float
     """
     rate = 0.0
     for i in range(len(vgrid)):
@@ -417,17 +342,11 @@ def get_sigma_tbr(
     """Get three-body recombination cross-section via detailed balance
 
     :param vgrid: Velocity grid
-    :type vgrid: np.ndarray
     :param vgrid_inv: Post-collision velocity grid
-    :type vgrid_inv: np.ndarray
     :param sigma_interp: Ionisation cross-section interpolated to vgrid_inv
-    :type sigma_interp: np.ndarray
     :param g_ratio: Ratio of statistical weights
-    :type g_ratio: float
     :param Te: Electron temperature
-    :type Te: float
     :return: Three-body recombination cross-section
-    :rtype: np.ndarray
     """
     sigma_tbrec = (
         0.5
@@ -446,15 +365,10 @@ def get_sigma_deex(
     """_summary_
 
     :param vgrid: Velocity grid
-    :type vgrid: np.ndarray
     :param vgrid_inv: Post-collision velocity grid
-    :type vgrid_inv: np.ndarray
     :param sigma_interp: Excitation cross-section interpolated to vgrid_inv
-    :type sigma_interp: np.ndarray
     :param g_ratio: Ratio of statistical weights
-    :type g_ratio: float
     :return: De-excitation cross-section
-    :rtype: np.ndarray
     """
     sigma_deex = g_ratio * sigma_interp * ((vgrid_inv / vgrid) ** 2)
     return sigma_deex
@@ -467,13 +381,9 @@ def get_associated_transitions(
     """Efficiently find the positions of all transitions associated with a given state ID
 
     :param state_id: ID for a given state
-    :type state_id: int
     :param from_ids: list of all from IDs for each transition
-    :type from_ids: list[int]
     :param to_ids: list of all to IDs for each transition
-    :type to_ids: list[int]
     :return: A list of the indices of all associated transitions
-    :rtype: list[int]
     """
     associated_transition_indices = []
     for i in range(len(from_ids)):
@@ -488,15 +398,10 @@ def interpolate_adf11_data(
     """Interpolate ADAS adf11 data to a given array of input electron temperatures and densities
 
     :param adas_file: Aurora adas_file object containing rates for a range of densities and temperatures for a given impurity species
-    :type adas_file: aurora.adas_file
     :param Te: List of new electron temperatures
-    :type Te: float
     :param ne: List of new electron densities
-    :type ne: float
     :param num_z: Number of ionisation stages for the impurity species in question
-    :type num_z: int
     :return: Rates interpolated to the input temperatures and densities
-    :rtype: np.ndarray
     """
 
     num_x = len(Te)

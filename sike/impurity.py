@@ -41,53 +41,29 @@ class Impurity:
         """Initialise
 
         :param name: Name of the impurity
-        :type name: str
         :param resolve_l: Whether to resolve states by orbital angular momentum quantum number l
-        :type resolve_l: bool
         :param resolve_j: Whether to resolve by total angular momentum quantum number j
-        :type resolve_j: bool
         :param state_ids: List of state IDs to evolve (default is for all states to be included)
-        :type state_ids: list[int]
         :param kinetic_electrons: Whether to solve rate equations for arbitrary electron distributions
-        :type kinetic_electrons: bool
         :param maxwellian_electrons: Whether to solve rate equations for Maxwellian electron distributions
-        :type maxwellian_electrons: bool
         :param saha_boltzmann_init: Whether to initialise state distribution to Saha-Boltzmann equilibria
-        :type saha_boltzmann_init: bool
         :param fixed_fraction_init: Whether to initialise total impurity density to a fixed fraction of the electron density
-        :type fixed_fraction_init: bool
         :param frac_imp_dens: Fractional impurity density to initialise (total) impurity densities with, if fixed_fraction_init is True
-        :type frac_imp_dens: float
         :param ionization: Whether to include ionization transitions and inverse
-        :type ionization: bool
         :param autoionization: Whether to include autoionization transitions
-        :type autoionization: bool
         :param emission: Whether to include spontaneous emission transitions
-        :type emission: bool
         :param radiative_recombination: Whether to include radiative recombination transitions
-        :type radiative_recombination: bool
         :param excitation: Whether to include collisional excitation transitions and inverse
-        :type excitation: bool
         :param collrate_const: Collision rate normalisation constant
-        :type collrate_const: float
         :param tbrec_norm: Three-body recombination rate normalisation constant
-        :type tbrec_norm: float
         :param sigma_norm: Cross-section normalisation constant
-        :type sigma_norm: float
         :param time_norm: Time normalisation constant
-        :type time_norm: float
         :param T_norm: Temperature normalisation constant
-        :type T_norm: float
         :param n_norm: Density normalisation constant
-        :type n_norm: float
         :param vgrid: Electron velocity grid
-        :type vgrid: np.ndarray
         :param Egrid: Electron energy grid
-        :type Egrid: np.ndarray
         :param ne: Electron densities
-        :type ne: np.ndarray
         :param Te: Electron temperatures
-        :type Te: np.ndarray
         """
 
         # Save settings
@@ -237,9 +213,7 @@ class Impurity:
         """Initialise all transitions between evolved atomic states
 
         :param vgrid: Electron velocity grid
-        :type vgrid: np.ndarray
         :param Egrid: Electron energy grid
-        :type Egrid: np.ndarray
         """
         if self.resolve_j:
             trans_f = os.path.join(
@@ -325,9 +299,7 @@ class Impurity:
         """Perform some checks on states and transitions belonging to the impurity. Removes orphaned states, transitions where one or more associated states are not evolved, etc
 
         :param Egrid: Default electron energy grid
-        :type Egrid: np.ndarray
         :param trans_Egrid: Electron energy grid on which transition rates will be calculated
-        :type trans_Egrid: np.ndarray
         :raises ValueError: If the default electron energy grid and the transition energy grid are not the same (will be fixed in future to allow them to differ)
         """
 
@@ -376,9 +348,7 @@ class Impurity:
         """Initialise densities of impurity states
 
         :param ne: Electron densities
-        :type ne: np.ndarray
         :param Te: Electron temperatures
-        :type Te: np.ndarray
         """
         if self.kinetic_electrons:
             self.dens = np.zeros((len(ne), self.tot_states))
@@ -453,7 +423,6 @@ class Impurity:
         """Ensure evolved and non-evolved atomic states are in the correct order
 
         :param P_states: Which atomic states are evolved, defaults to "ground"
-        :type P_states: str, optional
         """
         if P_states == "ground":
             ground_states = [s for s in self.states if s.ground is True]

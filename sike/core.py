@@ -18,11 +18,11 @@ class SIKERun(object):
     Initialisation: option 1
     ________________________
     Provide electron distribution functions on an x-grid. Temperatures and densities will be evaluated from electron distribution.
-        fe: np.array(num_v, num_x)
+        fe: np.ndarray(num_v, num_x)
             isotropic part of electron distribution function as a function of velocity magnitude (units [m^-6 s^-3])
-        vgrid: np.array(num_v)
+        vgrid: np.ndarray(num_v)
             velocity grid on which fe is defined (units [m/s])
-        xgrid: np.array(num_x)
+        xgrid: np.ndarray(num_x)
             x-grid on which to evolve impurity densities (units [m])
         **kwargs: run options (see __init__() documentation for details)
 
@@ -31,11 +31,11 @@ class SIKERun(object):
     Initialisation: option 2
     ________________________
     Provide electron temperature and density profiles (assuming Maxwellian electrons) on an x-grid.
-        Te: np.array(num_x)
+        Te: np.ndarray(num_x)
             electron temperature profile (units [eV])
-        ne: np.array(num_x)
+        ne: np.ndarray(num_x)
             electron density profile (units [m^-3])
-        xgrid: np.array(num_x)
+        xgrid: np.ndarray(num_x)
             x-grid on which to evolve impurity densities (units [m])
         **kwargs: run options (see __init__() documentation for details)
     """
@@ -69,51 +69,28 @@ class SIKERun(object):
         """Initialise
 
         :param fe: Isotropic part of electron distribution function as a function of velocity magnitude (units [m^-6 s^-3]), defaults to None
-        :type fe: np.ndarray | None, optional
         :param vgrid: Velocity grid on which fe is defined (units [m/s]), defaults to None
-        :type vgrid: np.ndarray | None, optional
         :param Te: electron temperature profile (units [eV]), defaults to None
-        :type Te: np.ndarray | None, optional
         :param ne: electron density profile (units [m^-3]), defaults to None
-        :type ne: np.ndarray | None, optional
         :param xgrid: x-grid on which to evolve impurity densities (units [m]), defaults to None
-        :type xgrid: np.ndarray | None, optional
         :param modelled_impurities: A list of the impurity species to evolve (use chemical symbols), defaults to ["Li"]
-        :type modelled_impurities: list[str], optional
         :param delta_t: The time step to use in seconds if `evolve` option is true, defaults to 1.0e-3
-        :type delta_t: float, optional
         :param evolve: Specify whether to evolve the state density equations in time. If false, simply invert the rate matrix (this method sometimes suffers from numerical instabilities), defaults to True
-        :type evolve: bool, optional
         :param kinetic_electrons: Solve rate equations for Maxwellian electrons at given density and temperatures, defaults to False
-        :type kinetic_electrons: bool, optional
         :param maxwellian_electrons: Solve rate equations for kinetic electrons with given distribution functions, defaults to True
-        :type maxwellian_electrons: bool, optional
         :param dndt_thresh: The threshold density residual between subsequent s which defines whether equilibrium has been reached, defaults to 1e-5
-        :type dndt_thresh: float, optional
         :param max_steps: The maximum number of s to evolve if `evolve` is true, defaults to 1000
-        :type max_steps: int, optional
         :param frac_imp_dens: The fractional impurity density at initialisation, defaults to 0.05
-        :type frac_imp_dens: float, optional
-        :param resolve_l: _description_, defaults to True
-        :type resolve_l: bool, optional
-        :param resolve_j: _description_, defaults to True
-        :type resolve_j: bool, optional
+        :param resolve_l: Reolve states by orbital angular momentum quantum number, defaults to True
+        :param resolve_j: Reolve states by total angular momentum quantum number, defaults to True
         :param ionization: Include collisional ionisation and three-body recombination processes, defaults to True
-        :type ionization: bool, optional
         :param radiative_recombination: Include radiative recombination process, defaults to True
-        :type radiative_recombination: bool, optional
         :param excitation: Include collisional excitation and deexcitation processes, defaults to True
-        :type excitation: bool, optional
         :param emission: Include spontaneous emission process, defaults to True
-        :type emission: bool, optional
         :param autoionization: Include autoionization process, defaults to True
-        :type autoionization: bool, optional
         :param fixed_fraction_init: Specify whether to initialise impurity densities to fixed fraction of electron density. If false, use flat impurity density profiles., defaults to True
-        :type fixed_fraction_init: bool, optional
         :param saha_boltzmann_init: Specify whether to initialise impurity state densities to Saha-Boltzmann equilibrium, defaults to True
-        :type saha_boltzmann_init: bool, optional
         :param state_ids: A specific list of state IDs to evolve. If None then all states in levels.json will be evolved., defaults to None
-        :type state_ids: list[int] | None, optional
         :raises ValueError: If input is incorrectly specified (must specify either electron distribution and vgrid or electron temperature and density profiles)
         """
         # TODO: Change fe so that spatial index comes first (like everywhere else)
@@ -192,7 +169,7 @@ class SIKERun(object):
         self.rate_mats = {}
         self.rate_mats_Max = {}
 
-    def init_from_dist(self):
+    def init_from_dist(self) -> None:
         """Initialise simulation from electron distributions"""
         self.num_x = len(self.fe[0, :])
         if self.xgrid is None:
@@ -241,7 +218,6 @@ class SIKERun(object):
         """Initialise simulation from electron temperature and density profiles
 
         :param vgrid: Electron velocity grid, defaults to None
-        :type vgrid: np.ndarray or None, optional
         """
         # Rate equations will be solved for Maxwellian electrons only
         self.kinetic_electrons = False
@@ -276,7 +252,7 @@ class SIKERun(object):
         # Generature Maxwellians
         self.fe_Max = get_maxwellians(self.ne, self.Te, self.vgrid)
 
-    def init_norms(self):
+    def init_norms(self) -> None:
         """Initialise the normalisation constants for the simulation"""
 
         self.T_norm = np.mean(self.Te)  # eV
@@ -301,7 +277,7 @@ class SIKERun(object):
             ** 3
         )
 
-    def apply_normalisation(self):
+    def apply_normalisation(self) -> None:
         """Normalise all physical values in the simulation"""
         # Apply normalisation
         self.Te /= self.T_norm
@@ -329,7 +305,7 @@ class SIKERun(object):
         for i in range(1, self.num_v):
             self.dvc[i] = 2 * (self.vgrid[i] - self.vgrid[i - 1]) - self.dvc[i - 1]
 
-    def run(self):
+    def run(self) -> None:
         """Run the program to find equilibrium impurity densities on the provided background plasma."""
 
         if self.kinetic_electrons:
@@ -351,12 +327,13 @@ class SIKERun(object):
             )
             # del self.rate_mats_Max
 
-    def calc_eff_rate_mats(self, kinetic=False, P_states="ground"):
+    def calc_eff_rate_mats(
+        self, kinetic: bool = False, P_states: str = "ground"
+    ) -> None:
         """Calculate the effective rate matrix at each spatial location, for the given P states ("metastables")
 
-        Args:
-            kinetic (bool, optional): whether to plot for kinetic or Maxwellian electrons. Defaults to False.
-            P_states (str, optional): choice of P states (i.e. metastables). Defaults to "ground", meaning ground states of all ionization stages will be treated as evolved states..
+        :param kinetic: whether to plot for kinetic or Maxwellian electrons. Defaults to False., defaults to False
+        :param P_states: choice of P states (i.e. metastables). Defaults to "ground", meaning ground states of all ionization stages will be treated as evolved states.
         """
 
         # TODO: Add functions (probably in post_processing) to extract ionization, recombination coeffs etc from M_eff
@@ -407,7 +384,11 @@ class SIKERun(object):
         else:
             self.eff_rate_mats_Max = eff_rate_mats
 
-    def build_matrix(self, kinetic=False):
+    def build_matrix(self, kinetic: bool = False) -> None:
+        """Build the rate matrices
+
+        :param kinetic: whether to compute kinetic rate matrices, defaults to False
+        """
         # Build the rate matrices
         for el in self.opts["modelled_impurities"]:
             if kinetic:
@@ -493,7 +474,20 @@ class SIKERun(object):
                         self.dvc,
                     )
 
-    def compute_densities(self, dt=None, num_t=None, evolve=True, kinetic=False):
+    def compute_densities(
+        self,
+        num_t: int | None = None,
+        evolve: bool = True,
+        dt: float | None = None,
+        kinetic: bool = False,
+    ) -> None:
+        """Solve or evolve the matrix equation to find the equilibrium densities
+
+        :param evolve: Whether to solve densities directly or evolve until equilibrium is reached, defaults to True
+        :param dt: Timestep to use if evolve=True, defaults to None
+        :param num_t: Number of timesteps to use if evolve=True, defaults to None
+        :param kinetic: Whether to compute kinetic or Maxwellian rates, defaults to False
+        """
         # Solve or evolve the matrix equation to find the equilibrium densities
         if evolve:
             for el in self.opts["modelled_impurities"]:
@@ -669,19 +663,17 @@ class SIKERun(object):
 
 
 @jit(nopython=True)
-def lambda_ei(n, T, T_0, n_0, Z_0):
+def lambda_ei(n: float, T: float, T_0: float, n_0: float, Z_0: float) -> float:
     """e-i Coulomb logarithm
 
-    Args:
-        n (float): density
-        T (float): temperature
-        T_0 (float): temperature normalisation
-        n_0 (float): density normalisation
-        Z_0 (float): Ion charge
-
-    Returns:
-        float: lambda_ei
+    :param n: density
+    :param T: temperature
+    :param T_0: temperature normalisation
+    :param n_0: density normalisation
+    :param Z_0: ion charge
+    :return: lambda_ei
     """
+
     if T * T_0 < 10.00 * Z_0**2:
         return 23.00 - np.log(
             np.sqrt(n * n_0 * 1.00e-6) * Z_0 * (T * T_0) ** (-3.00 / 2.00)
@@ -691,16 +683,13 @@ def lambda_ei(n, T, T_0, n_0, Z_0):
 
 
 @jit(nopython=True)
-def maxwellian(T, n, vgrid):
+def maxwellian(T: float, n: float, vgrid: np.ndarray) -> np.ndarray:
     """Return a normalised (to n_0 / v_th,0 ** 3) Maxwellian electron distribution (isotropic, as function of velocity magnitude).
 
-    Args:
-        T (float): Normalised electron temperature
-        n (float): Normalised electron density
-        vgrid (np.array, optional): Normalised velocity grid on which to define Maxwellian distribution. If None, create using vgrid = np.arange(0.00001, 10, 1. / 1000.)
-
-    Returns:
-        np.array(num_v): numpy array of Maxwellian
+    :param T: Normalised electron temperature
+    :param n: Normalised electron density
+    :param vgrid: Normalised velocity grid on which to define Maxwellian distribution. If None, create using vgrid = np.arange(0.00001, 10, 1. / 1000.)
+    :return: numpy array of Maxwellian
     """
 
     f = [0.0 for i in range(len(vgrid))]
@@ -712,18 +701,17 @@ def maxwellian(T, n, vgrid):
 
 
 @jit(nopython=True)
-def bimaxwellian(T1, n1, T2, n2, vgrid):
+def bimaxwellian(
+    T1: float, n1: float, T2: float, n2: float, vgrid: np.ndarray
+) -> np.ndarray:
     """Return a normalised (to n_0 / v_th,0 ** 3) Maxwellian electron distribution (isotropic, as function of velocity magnitude).
 
-    Args:
-        T1 (float): First population electron temperature
-        n1 (float): First population electron density
-        T2 (float): Second population electron temperature
-        n2 (float): Second population electron density
-        vgrid (np.array, optional): Velocity grid on which to define Maxwellian distribution
-
-    Returns:
-        np.array(num_v): numpy array of Maxwellian
+    :param T1: First population electron temperature
+    :param n1: First population electron density
+    :param T2: Second population electron temperature
+    :param n2: Second population electron density
+    :param vgrid: Velocity grid on which to define Maxwellian distribution
+    :return: numpy array of Maxwellian
     """
 
     f = [0.0 for i in range(len(vgrid))]
@@ -736,17 +724,16 @@ def bimaxwellian(T1, n1, T2, n2, vgrid):
     return f
 
 
-def boltzmann_dist(Te, energies, stat_weights, gnormalise=False):
+def boltzmann_dist(
+    Te: float, energies: np.ndarray, stat_weights: np.ndarray, gnormalise: bool = False
+) -> np.ndarray:
     """Generate a boltzmann distribution for the given set of energies and statistical weights
 
-    Args:
-        Te (np.ndarray): Electron temperature array [eV]
-        energies (np.ndarray): Atomic state energies [eV]
-        stat_weights (np.ndarray): Atomic state staistical weights
-        gnormalise (bool, optional): Option to normalise output densities by their statistical weights. Defaults to False.
-
-    Returns:
-        np.ndarray: Boltzmann-distributed densities, relative to ground state
+    :param Te: Electron temperature array [eV]
+    :param energies: Atomic state energies [eV]
+    :param stat_weights: Atomic state statistical weights
+    :param gnormalise: Option to normalise output densities by their statistical weights. Defaults to False
+    :return: Boltzmann-distributed densities, relative to ground state
     """
     rel_dens = np.zeros(len(energies))
     for i in range(len(energies)):
@@ -758,24 +745,21 @@ def boltzmann_dist(Te, energies, stat_weights, gnormalise=False):
     return rel_dens
 
 
-def saha_dist(Te, ne, imp_dens_tot, impurity):
+def saha_dist(
+    Te: float, ne: float, imp_dens_tot: float, impurity: Impurity
+) -> np.ndarray:
     """Generate a Saha distribution of ionization stage densities for the given electron temperature
 
-    Args:
-        Te (_type_): _description_
-        ne (_type_): _description_
-        imp_dens_tot (_type_): _description_
-        r (_type_): _description_
-        el (_type_): _description_
+    :param Te: Electron temperature [eV]
+    :param ne: Electron density [m^-3]
+    :param imp_dens_tot: Total impurity species density [m^-3]
+    :param impurity: Impurity species
+    :return: Numpy array of Saha distribution of ionisation stage densities
     """
-    el_mass = 9.10938e-31
-    el_charge = 1.602189e-19
-    planck_h = 6.62607004e-34
-
     ground_states = [s for s in impurity.states if s.ground is True]
     ground_states = list(reversed(sorted(ground_states, key=lambda x: x.num_el)))
 
-    de_broglie_l = np.sqrt((planck_h**2) / (2 * np.pi * el_mass * el_charge * Te))
+    de_broglie_l = np.sqrt((PLANCK_H**2) / (2 * np.pi * EL_MASS * EL_CHARGE * Te))
 
     # Compute ratios
     dens_ratios = np.zeros(impurity.num_Z - 1)
@@ -800,16 +784,16 @@ def saha_dist(Te, ne, imp_dens_tot, impurity):
     return dens_saha
 
 
-def get_maxwellians(ne, Te, vgrid, normalised=True):
+def get_maxwellians(
+    ne: np.ndarray, Te: np.ndarray, vgrid: np.ndarray, normalised: bool = True
+) -> np.ndarray:
     """Return an array of Maxwellian electron distributions with the given densities and temperatures.
 
-    Args:
-        ne (np.array): Normalised electron densities
-        Te (np.array): Normalised electron temperatures
-        vgrid (np.array): Normalised velocity grid on which to calculate Maxwellians
-
-    Returns:
-        np.array(num_v, num_x): 2d numpy array of Maxwellians at each location in x
+    :param ne: Electron densities
+    :param Te: Electron temperatures
+    :param vgrid: Velocity grid on which to calculate Maxwellians
+    :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
+    :return: 2d numpy array of Maxwellians at each location in x
     """
 
     if normalised is False:
@@ -834,19 +818,23 @@ def get_maxwellians(ne, Te, vgrid, normalised=True):
     return f0_max
 
 
-def get_bimaxwellians(n1, n2, T1, T2, vgrid, normalised=True):
+def get_bimaxwellians(
+    n1: np.ndarray,
+    n2: np.ndarray,
+    T1: np.ndarray,
+    T2: np.ndarray,
+    vgrid: np.ndarray,
+    normalised: bool = True,
+) -> np.ndarray:
     """Return an array of bi-Maxwellian electron distributions with the given densities and temperatures.
 
-    Args:
-        T1 (np.ndarray): First population electron temperatures
-        n1 (np.ndarray): First population electron densities
-        T2 (np.ndarray): Second population electron temperatures
-        n2 (np.ndarray): Second population electron densities
-        vgrid (np.array): Velocity grid on which to calculate bi-Maxwellians
-        normalised (bool):
-
-    Returns:
-        np.array(num_v, num_x): 2d numpy array of Maxwellians at each location in x
+    :param n1: First population electron densities
+    :param n2: Second population electron densities
+    :param T1: First population electron temperatures
+    :param T2: Second population electron temperatures
+    :param vgrid: Velocity grid on which to calculate Maxwellians
+    :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
+    :return: 2d numpy array of bi-Maxwellians at each location in x
     """
 
     if normalised is False:
@@ -878,36 +866,31 @@ def get_bimaxwellians(n1, n2, T1, T2, vgrid, normalised=True):
 
 
 @jit(nopython=True)
-def density_moment(f0, vgrid, dvc):
+def density_moment(f0: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray) -> float:
     """Calculate density moment of input electron distribution
 
-    Args:
-        f0 (np.array): Electron distribution
-        vgrid (_type_): Velocity grid
-        dvc (_type_): Velocity grid widths
-        normalised (bool, optional): Specify if inputs and output are normalised. Defaults to False.
-
-    Returns:
-        float: density. Units are normalised or m**-3 depending on whether inputs are normalised.
+    :param f0: Electron distribution
+    :param vgrid: Velocity grid
+    :param dvc: Velocity grid widths
+    :return: Density. Units are normalised or m**-3 depending on whether inputs are normalised.
+    TODO: Should be a normalised argument here?
     """
     n = 4 * np.pi * np.sum(f0 * vgrid**2 * dvc)
     return n
 
 
 @jit(nopython=True)
-def temperature_moment(f0, vgrid, dvc, normalised=True):
-    """_summary_
+def temperature_moment(
+    f0: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray, normalised: bool = True
+) -> float:
+    """Calculate the temperature moment of input electron distribution
 
-    Args:
-        f0 (_type_): _description_
-        vgrid (_type_): _description_
-        dvc (_type_): _description_
-        normalised (bool, optional): _description_. Defaults to True.
-
-    Returns:
-        float: temperature. Units are dimensionless or eV depending on normalised argument
+    :param f0: Electron distribution
+    :param vgrid: Velocity grid
+    :param dvc: Velocity grid widths
+    :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
+    :return: temperature. Units are dimensionless or eV depending on normalised argument
     """
-
     n = density_moment(f0, vgrid, dvc)
     if normalised:
         T = (2 / 3) * 4 * np.pi * np.sum(f0 * vgrid**4 * dvc) / n
