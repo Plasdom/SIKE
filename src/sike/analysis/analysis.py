@@ -4,7 +4,7 @@ import json
 import copy
 
 from sike.core import *
-from sike.impurity_utils import *
+from sike.analysis.impurity_utils import *
 
 
 def load_sikerun_from_dir(rdir, el, check_for_cr_coeffs=True):

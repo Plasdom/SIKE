@@ -6,7 +6,7 @@ import shutil
 import os
 from pathlib import Path
 
-from sike import constants as c
+from sike.utils import constants as c
 
 
 def verify_elements(elements: list[str]) -> list[str]:

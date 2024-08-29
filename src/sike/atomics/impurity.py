@@ -2,9 +2,9 @@ import numpy as np
 import os
 import json
 
-from sike.transition import *
-from sike.atomic_state import State
-from sike.impurity_utils import saha_dist, boltzmann_dist, gather_states
+from sike.atomics.transition import *
+from sike.atomics.atomic_state import State
+from sike.analysis.impurity_utils import saha_dist, boltzmann_dist, gather_states
 
 
 class Impurity:

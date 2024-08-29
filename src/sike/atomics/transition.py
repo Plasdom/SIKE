@@ -4,7 +4,7 @@ from numba import jit
 
 # import aurora
 
-from sike.constants import *
+from sike.utils.constants import *
 
 
 class Transition:

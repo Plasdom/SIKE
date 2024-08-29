@@ -1,6 +1,7 @@
 import numpy as np
-from sike.impurity import Impurity
 from numba import jit
+
+from sike.atomics.impurity import Impurity
 
 
 # TODO: Tidy this module up. Could do with sparse local matrices instead? May be necessary for adding transport

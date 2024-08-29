@@ -1,2 +1,2 @@
 from sike.core import *
-from sike.setup import setup
+from sike.utils.setup import setup

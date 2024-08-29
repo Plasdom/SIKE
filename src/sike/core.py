@@ -2,11 +2,11 @@ import numpy as np
 from numba import jit
 import os
 
-from sike.impurity import Impurity
-from sike.constants import *
-from sike.matrix_utils import *
-from sike import solver
-from sike.plasma_utils import *
+from sike.atomics.impurity import Impurity
+from sike.utils.constants import *
+from sike.solver.matrix_utils import *
+from sike.solver import solver
+from sike.analysis.plasma_utils import *
 
 # TODO: Do we ever want to actually evolve all states? Or only build M_eff and get derived coefficients? Opportunity to massively simplify by removing petsc & mpi dependency
 # TODO: I guess we should only ever really be evolving the P states, so all that code is still useful, but could probably do it with dense numpy matrices rather than petsc, and probably don't need MPI!

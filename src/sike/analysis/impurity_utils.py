@@ -1,8 +1,8 @@
 import numpy as np
 
-from sike.constants import *
-from sike.atomic_state import State
-from sike.transition import Transition
+from sike.utils.constants import *
+from sike.atomics.atomic_state import State
+from sike.atomics.transition import Transition
 
 
 def boltzmann_dist(

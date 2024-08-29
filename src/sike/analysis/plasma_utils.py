@@ -1,7 +1,7 @@
 import numpy as np
 from numba import jit
 
-from sike.constants import *
+from sike.utils.constants import *
 
 
 @jit(nopython=True)
