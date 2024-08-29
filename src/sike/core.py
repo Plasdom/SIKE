@@ -1,10 +1,11 @@
 import numpy as np
 from numba import jit
+import os
 
 from sike.impurity import Impurity
 from sike.constants import *
 from sike.matrix_utils import *
-from sike.solver import *
+from sike import solver
 
 # TODO: Do we ever want to actually evolve all states? Or only build M_eff and get derived coefficients? Opportunity to massively simplify by removing petsc & mpi dependency
 # TODO: I guess we should only ever really be evolving the P states, so all that code is still useful, but could probably do it with dense numpy matrices rather than petsc, and probably don't need MPI!
@@ -48,7 +49,7 @@ class SIKERun(object):
         Te: np.ndarray | None = None,
         ne: np.ndarray | None = None,
         xgrid: np.ndarray | None = None,
-        modelled_impurities: list[str] = ["Li"],
+        element: str = "Li",
         delta_t: float = 1.0e-3,
         evolve: bool = True,
         kinetic_electrons: bool = False,
@@ -74,7 +75,7 @@ class SIKERun(object):
         :param Te: electron temperature profile (units [eV]), defaults to None
         :param ne: electron density profile (units [m^-3]), defaults to None
         :param xgrid: x-grid on which to evolve impurity densities (units [m]), defaults to None
-        :param modelled_impurities: A list of the impurity species to evolve (use chemical symbols), defaults to ["Li"]
+        :param impurity: The impurity species to evolve (use chemical symbols), defaults to "Li"
         :param delta_t: The time step to use in seconds if `evolve` option is true, defaults to 1.0e-3
         :param evolve: Specify whether to evolve the state density equations in time. If false, simply invert the rate matrix (this method sometimes suffers from numerical instabilities), defaults to True
         :param kinetic_electrons: Solve rate equations for Maxwellian electrons at given density and temperatures, defaults to False
@@ -97,7 +98,6 @@ class SIKERun(object):
         # TODO: Change fe so that spatial index comes first (like everywhere else)
 
         # Save input options
-        self.modelled_impurities = modelled_impurities
         self.delta_t = delta_t
         self.evolve = evolve
         self.kinetic_electrons = kinetic_electrons
@@ -115,6 +115,7 @@ class SIKERun(object):
         self.fixed_fraction_init = fixed_fraction_init
         self.saha_boltzmann_init = saha_boltzmann_init
         self.state_ids = state_ids
+        self.atom_data_savedir = self.get_atom_data_savedir()
 
         self.num_procs = 1  # TODO: Parallelisation
         self.rank = 0  # TODO: Parallelisation
@@ -140,38 +141,57 @@ class SIKERun(object):
 
         # Initialise species
         print("Initialising the impurity species to be modelled...")
-        self.impurities = {}
-        for el in self.modelled_impurities:
-            self.impurities[el] = Impurity(
-                name=el,
-                resolve_l=self.resolve_l,
-                resolve_j=self.resolve_j,
-                state_ids=self.state_ids,
-                kinetic_electrons=self.kinetic_electrons,
-                maxwellian_electrons=self.maxwellian_electrons,
-                saha_boltzmann_init=self.saha_boltzmann_init,
-                fixed_fraction_init=self.fixed_fraction_init,
-                frac_imp_dens=self.frac_imp_dens,
-                ionization=self.ionization,
-                autoionization=self.autoionization,
-                emission=self.emission,
-                radiative_recombination=self.radiative_recombination,
-                excitation=self.excitation,
-                collrate_const=self.collrate_const,
-                tbrec_norm=self.tbrec_norm,
-                sigma_norm=self.sigma_0,
-                time_norm=self.t_norm,
-                T_norm=self.T_norm,
-                n_norm=self.n_norm,
-                vgrid=self.vgrid,
-                Egrid=self.Egrid,
-                ne=self.ne,
-                Te=self.Te,
-            )
+        self.impurity = Impurity(
+            name=element,
+            resolve_l=self.resolve_l,
+            resolve_j=self.resolve_j,
+            state_ids=self.state_ids,
+            kinetic_electrons=self.kinetic_electrons,
+            maxwellian_electrons=self.maxwellian_electrons,
+            saha_boltzmann_init=self.saha_boltzmann_init,
+            fixed_fraction_init=self.fixed_fraction_init,
+            frac_imp_dens=self.frac_imp_dens,
+            ionization=self.ionization,
+            autoionization=self.autoionization,
+            emission=self.emission,
+            radiative_recombination=self.radiative_recombination,
+            excitation=self.excitation,
+            collrate_const=self.collrate_const,
+            tbrec_norm=self.tbrec_norm,
+            sigma_norm=self.sigma_0,
+            time_norm=self.t_norm,
+            T_norm=self.T_norm,
+            n_norm=self.n_norm,
+            vgrid=self.vgrid,
+            Egrid=self.Egrid,
+            ne=self.ne,
+            Te=self.Te,
+            atom_data_savedir=self.atom_data_savedir,
+        )
         print("Finished initialising impurity species objects.")
 
         self.rate_mats = {}
         self.rate_mats_Max = {}
+
+    def get_atom_data_savedir(self) -> Path:
+        """Open the config file to find the location of the saved atomic data
+
+        :return: Path to atomic data savedir
+        """
+        config_file = Path(os.getenv("HOME")) / CONFIG_FILENAME
+        if config_file.exists():
+            with open(config_file, "r+") as f:
+                l = f.readlines()
+            atom_data_savepath = Path(l[0])
+            if not atom_data_savepath.exists():
+                raise FileNotFoundError(
+                    "The atomic data savedir specified in the config file does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions."
+                )
+            return atom_data_savepath
+        else:
+            raise FileNotFoundError(
+                "No config file found. Have you run setup to download the atomic data? See readme ofr instructions."
+            )
 
     def init_from_dist(self) -> None:
         """Initialise simulation from electron distributions"""
@@ -348,39 +368,38 @@ class SIKERun(object):
 
         eff_rate_mats = {}
 
-        for el in self.modelled_impurities:
-            # TODO: Implement Greenland P-state validation checker
-            self.impurities[el].reorder_PQ_states(P_states)
+        # TODO: Implement Greenland P-state validation checker
+        self.impurity.reorder_PQ_states(P_states)
 
-            eff_rate_mats[el] = [None] * self.loc_num_x
+        eff_rate_mats = [None] * self.loc_num_x
 
-            num_P = self.impurities[el].num_P_states
-            num_Q = self.impurities[el].num_Q_states
+        num_P = self.impurity.num_P_states
+        num_Q = self.impurity.num_Q_states
 
-            for i in range(self.min_x, self.max_x):
-                print("{:.1f}%".format(100 * i / self.loc_num_x), end="\r")
+        for i in range(self.min_x, self.max_x):
+            print("{:.1f}%".format(100 * i / self.loc_num_x), end="\r")
 
-                # Build the local matrix
-                M = matrix_utils.fill_local_mat(
-                    self.impurities[el].transitions,
-                    self.impurities[el].tot_states,
-                    fe[:, i],
-                    self.ne[i],
-                    self.Te[i],
-                    self.vgrid,
-                    self.dvc,
-                )
+            # Build the local matrix
+            M = fill_local_mat(
+                self.impurity.transitions,
+                self.impurity.tot_states,
+                fe[:, i],
+                self.ne[i],
+                self.Te[i],
+                self.vgrid,
+                self.dvc,
+            )
 
-                # Calculate M_eff
-                M_P = M[:num_P, :num_P]
-                M_Q = M[num_P + 1 :, num_P + 1 :]
-                M_PQ = M[:num_P, num_P + 1 :]
-                M_QP = M[num_P + 1 :, :num_P]
-                M_eff = -(M_P - M_PQ @ np.linalg.inv(M_Q) @ M_QP)
+            # Calculate M_eff
+            M_P = M[:num_P, :num_P]
+            M_Q = M[num_P + 1 :, num_P + 1 :]
+            M_PQ = M[:num_P, num_P + 1 :]
+            M_QP = M[num_P + 1 :, :num_P]
+            M_eff = -(M_P - M_PQ @ np.linalg.inv(M_Q) @ M_QP)
 
-                eff_rate_mats[el][i - self.min_x] = M_eff
+            eff_rate_mats[i - self.min_x] = M_eff
 
-            print("{:.1f}%".format(100))
+        print("{:.1f}%".format(100))
 
         if kinetic:
             self.eff_rate_mats = eff_rate_mats
@@ -393,43 +412,38 @@ class SIKERun(object):
         :param kinetic: whether to compute kinetic rate matrices, defaults to False
         """
         # Build the rate matrices
-        for el in self.modelled_impurities:
-            if kinetic:
-                if self.rank == 0:
-                    print("Filling kinetic transition matrix for " + el + "...")
-                np_mat = build_matrix(
-                    self.min_x, self.max_x, self.impurities[el].tot_states
-                )
-                self.rate_mats[el] = fill_rate_matrix(
-                    self.loc_num_x,
-                    self.min_x,
-                    self.max_x,
-                    np_mat,
-                    self.impurities[el],
-                    self.fe,
-                    self.ne,
-                    self.Te,
-                    self.vgrid,
-                    self.dvc,
-                )
-            else:
-                if self.rank == 0:
-                    print("Filling Maxwellian transition matrix for " + el + "...")
-                np_mat = build_matrix(
-                    self.min_x, self.max_x, self.impurities[el].tot_states
-                )
-                self.rate_mats_Max[el] = fill_rate_matrix(
-                    self.loc_num_x,
-                    self.min_x,
-                    self.max_x,
-                    np_mat,
-                    self.impurities[el],
-                    self.fe_Max,
-                    self.ne,
-                    self.Te,
-                    self.vgrid,
-                    self.dvc,
-                )
+        if kinetic:
+            if self.rank == 0:
+                print("Filling kinetic transition matrix for...")
+            np_mat = build_matrix(self.min_x, self.max_x, self.impurity.tot_states)
+            self.rate_mats = fill_rate_matrix(
+                self.loc_num_x,
+                self.min_x,
+                self.max_x,
+                np_mat,
+                self.impurity,
+                self.fe,
+                self.ne,
+                self.Te,
+                self.vgrid,
+                self.dvc,
+            )
+        else:
+            if self.rank == 0:
+                print("Filling Maxwellian transition matrix...")
+            np_mat = build_matrix(self.min_x, self.max_x, self.impurity.tot_states)
+            self.rate_mats_Max = fill_rate_matrix(
+                self.loc_num_x,
+                self.min_x,
+                self.max_x,
+                np_mat,
+                self.impurity,
+                self.fe_Max,
+                self.ne,
+                self.Te,
+                self.vgrid,
+                self.dvc,
+            )
 
     def compute_densities(
         self,
@@ -447,102 +461,80 @@ class SIKERun(object):
         """
         # Solve or evolve the matrix equation to find the equilibrium densities
         if evolve:
-            for el in self.modelled_impurities:
-                if kinetic:
-                    if self.rank == 0:
-                        print(
-                            "Computing densities with kinetic electrons for "
-                            + el
-                            + "..."
-                        )
-                    n_solved = evolve(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        self.rate_mats[el],
-                        self.impurities[el].dens,
-                        self.num_x,
-                        dt,
-                        num_t,
-                        self.dndt_thresh,
-                        self.n_norm,
-                        self.t_norm,
-                    )
-                    if n_solved is not None:
-                        self.impurities[el].dens = n_solved
-                        self.success = True
-                    else:
-                        self.success = False
+            if kinetic:
+                if self.rank == 0:
+                    print("Computing densities with kinetic electrons for...")
+                n_solved = solver.evolve(
+                    self.loc_num_x,
+                    self.min_x,
+                    self.max_x,
+                    self.rate_mats,
+                    self.impurity.dens,
+                    dt,
+                    num_t,
+                    self.dndt_thresh,
+                    self.n_norm,
+                    self.t_norm,
+                )
+                if n_solved is not None:
+                    self.impurity.dens = n_solved
+                    self.success = True
                 else:
-                    if self.rank == 0:
-                        print(
-                            "Computing densities with Maxwellian electrons for "
-                            + el
-                            + "..."
-                        )
-                    n_solved = evolve(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        self.rate_mats_Max[el],
-                        self.impurities[el].dens_Max,
-                        self.num_x,
-                        dt,
-                        num_t,
-                        self.dndt_thresh,
-                        self.n_norm,
-                        self.t_norm,
-                    )
-                    if n_solved is not None:
-                        self.impurities[el].dens_Max = n_solved
-                        self.success = True
-                    else:
-                        self.success = False
+                    self.success = False
+            else:
+                if self.rank == 0:
+                    print("Computing densities with Maxwellian electrons for...")
+                n_solved = solver.evolve(
+                    self.loc_num_x,
+                    self.min_x,
+                    self.max_x,
+                    self.rate_mats_Max,
+                    self.impurity.dens_Max,
+                    dt,
+                    num_t,
+                    self.dndt_thresh,
+                    self.n_norm,
+                    self.t_norm,
+                )
+                if n_solved is not None:
+                    self.impurity.dens_Max = n_solved
+                    self.success = True
+                else:
+                    self.success = False
         else:
-            for el in self.modelled_impurities:
-                if kinetic:
-                    if self.rank == 0:
-                        print(
-                            "Computing densities with kinetic electrons for "
-                            + el
-                            + "..."
-                        )
-                    n_solved = solve(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        self.rate_mats[el],
-                        self.impurities[el].dens,
-                        self.num_x,
-                    )
+            if kinetic:
+                if self.rank == 0:
+                    print("Computing densities with kinetic electrons for...")
+                n_solved = solver.solve(
+                    self.loc_num_x,
+                    self.min_x,
+                    self.max_x,
+                    self.rate_mats,
+                    self.impurity.dens,
+                )
 
-                    if n_solved is not None:
-                        self.impurities[el].dens = n_solved
-                        self.success = True
-                    else:
-                        self.success = False
-
+                if n_solved is not None:
+                    self.impurity.dens = n_solved
+                    self.success = True
                 else:
-                    if self.rank == 0:
-                        print(
-                            "Computing densities with Maxwellian electrons for "
-                            + el
-                            + "..."
-                        )
-                    n_solved = solve(
-                        self.loc_num_x,
-                        self.min_x,
-                        self.max_x,
-                        self.rate_mats_Max[el],
-                        self.impurities[el].dens_Max,
-                        self.num_x,
-                    )
+                    self.success = False
 
-                    if n_solved is not None:
-                        self.impurities[el].dens_Max = n_solved
-                        self.success = True
-                    else:
-                        self.success = False
+            else:
+                if self.rank == 0:
+                    print("Computing densities with Maxwellian electrons for...")
+                n_solved = solver.solve(
+                    self.loc_num_x,
+                    self.min_x,
+                    self.max_x,
+                    self.rate_mats_Max,
+                    self.impurity.dens_Max,
+                )
+
+                if n_solved is not None:
+                    self.impurity.dens_Max = n_solved
+                    self.success = True
+                else:
+                    self.success = False
 
 
 @jit(nopython=True)

@@ -5,6 +5,7 @@ Done
 
 To do
 - Switch from ICL to personal repo
+- Generate n-resolved data for Hydrogen, Helium, Lithium, Beryllium, Boron, Oxygen, Nitrogen
 - Simpler parallelisation, perhaps with mpi4py. Add as an OPTIONAL dependency (see e.g. uetools for optional dependency example)
 - Provide a config file API as well as/instead of python API to launch simulations
 - Create a json schema for atomic states, transitions and (maybe) input files

@@ -137,7 +137,7 @@ def fill_local_mat(transitions, num_states, fe, ne, Te, vgrid, dvc):
         to_pos = trans.to_pos
         typ = trans.type
 
-        # # Calculate the value to be added to the matrix
+        # Calculate the value to be added to the matrix
         val = trans.get_mat_value(fe, vgrid, dvc)
 
         # Add the loss term

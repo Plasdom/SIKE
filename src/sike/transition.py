@@ -4,7 +4,6 @@ from numba import jit
 
 # import aurora
 
-import sike.core
 from sike.constants import *
 
 
@@ -12,7 +11,7 @@ class Transition:
     """Base transition class"""
 
     def __init__(
-        self, type: str, element: str, from_id: int, to_id: int, delta_E: float
+        self, type: str, element: str, from_id: int, to_id: int, delta_E: float, **_
     ):
         # TODO: delta_E was previously passed un-normalised, then divided by T_norm. Now T_norm is not provided so will need to make sure this step happens when the transitions are initialised
         """Initialise
@@ -51,7 +50,7 @@ class ExTrans(Transition):
         :param born_bethe_coeffs: Born-Bethe coefficients, defaults to None
         :param transition_kwargs: Arguments for base Transition class
         """
-        self.super().__init__(self, transition_kwargs)
+        super().__init__(**transition_kwargs)
 
         self.sigma = 1e-4 * np.array(sigma) / sigma_norm
         self.sigma[np.where(self.sigma < 0.0)] = 0.0
@@ -83,7 +82,7 @@ class ExTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        K_ex = core.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        K_ex = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_ex
 
     def get_mat_value_inv(
@@ -96,7 +95,7 @@ class ExTrans(Transition):
         :param dvc: velocity grid widths
         :return: electron density multiplied by three-body recombination rate coefficient
         """
-        K_deex = core.calc_rate(vgrid, dvc, fe, self.sigma_deex, self.collrate_const)
+        K_deex = calc_rate(vgrid, dvc, fe, self.sigma_deex, self.collrate_const)
         return K_deex
 
     def get_sigma_deex(
@@ -114,7 +113,7 @@ class ExTrans(Transition):
         :param g_ratio: the ratio of statistical weights (free / bound)
         :return: local de-excitation cross-section
         """
-        sigma_deex = core.get_sigma_deex(vgrid, vgrid_inv, sigma_interp, g_ratio)
+        sigma_deex = get_sigma_deex(vgrid, vgrid_inv, sigma_interp, g_ratio)
 
         return sigma_deex
 
@@ -142,7 +141,7 @@ class IzTrans(Transition):
         :param fit_params: Parameters for the high-energy cross-section fit, defaults to None
         :param transition_kwargs: Arguments for base Transition class
         """
-        self.super().__init__(self, transition_kwargs)
+        super().__init__(**transition_kwargs)
         self.sigma = 1e-4 * np.array(sigma) / sigma_norm
         self.sigma[np.where(self.sigma < 0.0)] = 0.0
         self.collrate_const = collrate_const
@@ -173,7 +172,7 @@ class IzTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        K_ion = core.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        K_ion = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_ion
 
     def get_mat_value_inv(
@@ -189,7 +188,7 @@ class IzTrans(Transition):
         :return: electron density multiplied by three-body recombination rate coefficient
         """
         sigma_tbrec = self.get_sigma_tbrec(vgrid, Te)
-        K_tbrec = core.calc_rate(
+        K_tbrec = calc_rate(
             vgrid, dvc, fe, sigma_tbrec, ne * self.tbrec_norm * self.collrate_const
         )
         return K_tbrec
@@ -201,7 +200,7 @@ class IzTrans(Transition):
         :param Te: Electron temperature
         :return: Three-body recombination cross-section
         """
-        sigma_tbrec = core.get_sigma_tbr(
+        sigma_tbrec = get_sigma_tbr(
             vgrid, self.vgrid_inv, self.sigma_interp, self.g_ratio, Te
         )
 
@@ -232,7 +231,7 @@ class RRTrans(Transition):
         :param l: Orbital angular momentum quantum number of final state (TODO: Check this)
         :param fit_params: Parameters for high-energy cross-section fit
         """
-        self.super().__init__(self, transition_kwargs)
+        super().__init__(**transition_kwargs)
 
         self.sigma = 1e-4 * np.array(sigma) / sigma_norm
         self.collrate_const = collrate_const
@@ -251,7 +250,7 @@ class RRTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        K_radrec = core.calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        K_radrec = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return K_radrec
 
 
@@ -272,12 +271,12 @@ class EmTrans(Transition):
         :param gf: _description_ (TODO: check), defaults to None
         :param transition_kwargs: Arguments for base Transition class
         """
-        self.super().__init__(self, transition_kwargs)
+        super().__init__(**transition_kwargs)
 
         self.gf = gf
         self.rate = rate * time_norm
 
-    def get_mat_value(self) -> float:
+    def get_mat_value(self, *_) -> float:
         """Get the matrix value for this transition. For spontaneous emission, this is the emission rate
 
         :return: Matrix value
@@ -296,10 +295,10 @@ class AiTrans(Transition):
         :param time_norm: Time units normalisation constant
         :param transition_kwargs: Arguments for base Transition class
         """
-        self.super().__init__(self, transition_kwargs)
+        super().__init__(**transition_kwargs)
         self.rate = rate * time_norm
 
-    def get_mat_value(self) -> float:
+    def get_mat_value(self, *_) -> float:
         """Get the matrix value for this transition. For spontaneous emission, this is the emission rate
 
         :return: Matrix value

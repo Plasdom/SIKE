@@ -1,6 +1,5 @@
 import numpy as np
-import core
-import core
+from sike.core import *
 import os
 import json
 import copy

@@ -14,6 +14,7 @@ class State:
         j: int | None = None,
         config_full: str | None = None,
         metastable: bool = True,
+        **_,
     ):
         """Initialise
 

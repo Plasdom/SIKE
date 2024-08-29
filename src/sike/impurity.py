@@ -4,6 +4,8 @@ import json
 
 from sike.transition import *
 from sike.atomic_state import State
+import sike.post_processing as spp
+from sike.core import saha_dist, boltzmann_dist
 
 
 class Impurity:
@@ -35,6 +37,7 @@ class Impurity:
         Egrid: np.ndarray,
         ne: np.ndarray,
         Te: np.ndarray,
+        atom_data_savedir: Path,
     ):
         """Initialise
 
@@ -66,28 +69,30 @@ class Impurity:
 
         # Save settings
         self.name = name
-        self.resolve_j = (resolve_j,)
-        self.resolve_l = (resolve_l,)
-        self.state_ids = (state_ids,)
-        self.kinetic_electrons = (kinetic_electrons,)
-        self.maxwellian_electrons = (maxwellian_electrons,)
-        self.saha_boltzmann_init = (saha_boltzmann_init,)
-        self.fixed_fraction_init = (fixed_fraction_init,)
-        self.frac_imp_dens = (frac_imp_dens,)
-        self.ionization = (ionization,)
-        self.autoionization = (autoionization,)
-        self.emission = (emission,)
-        self.radiative_recombination = (radiative_recombination,)
-        self.excitation = (excitation,)
-        self.collrate_const = (collrate_const,)
+        self.resolve_j = resolve_j
+        self.resolve_l = resolve_l
+        self.state_ids = state_ids
+        self.kinetic_electrons = kinetic_electrons
+        self.maxwellian_electrons = maxwellian_electrons
+        self.saha_boltzmann_init = saha_boltzmann_init
+        self.fixed_fraction_init = fixed_fraction_init
+        self.frac_imp_dens = frac_imp_dens
+        self.ionization = ionization
+        self.autoionization = autoionization
+        self.emission = emission
+        self.radiative_recombination = radiative_recombination
+        self.excitation = excitation
+        self.collrate_const = collrate_const
         self.tbrec_norm = tbrec_norm
-        self.sigma_norm = (sigma_norm,)
-        self.time_norm = (time_norm,)
+        self.sigma_norm = sigma_norm
+        self.time_norm = time_norm
         self.T_norm = T_norm
         self.n_norm = n_norm
+        self.atom_data_savedir = atom_data_savedir
 
         # Initialise impurity data
         self.get_element_data()
+        self.check_data_exists()
         print(" Initialising states...")
         self.init_states()
         print(" Initialising transitions...")
@@ -97,6 +102,87 @@ class Impurity:
         print(" Finalising states...")
         self.set_state_positions()
         self.set_transition_positions()
+
+    def check_data_exists(self):
+        """Check that the atomic data for the given species and level of state resolution exists.
+
+        :raises FileNotFoundError: If requested atomic data does not exist.
+        :raises Exception: If some other unhandled exception occurs.
+        """
+        if not (self.atom_data_savedir / self.longname).exists():
+            raise FileNotFoundError(
+                "No atomic data was found for "
+                + self.longname
+                + ". Please run setup, including '"
+                + self.name
+                + "' in the list of elements to ensure atomic data is downloaded (see readme for instructions)."
+            )
+
+        # Find what data exists
+        levels_filepath_nlj = (
+            self.atom_data_savedir / self.longname / (self.name + "_levels_nlj.json")
+        )
+        levels_filepath_nl = (
+            self.atom_data_savedir / self.longname / (self.name + "_levels_nl.json")
+        )
+        levels_filepath_n = (
+            self.atom_data_savedir / self.longname / (self.name + "_levels_n.json")
+        )
+        j_resolved_exists = levels_filepath_nlj.exists()
+        l_resolved_exists = levels_filepath_nl.exists()
+        n_resolved_exists = levels_filepath_n.exists()
+
+        # Compare with input options
+        if self.resolve_j and self.resolve_l:
+            # Resolved in both l and j
+            if j_resolved_exists:
+                return
+            else:
+                if l_resolved_exists and not n_resolved_exists:
+                    # Set resolve_j = False and resolve_l = True
+                    raise FileNotFoundError(
+                        "Data for "
+                        + self.longname
+                        + " resolved in both l and j was not found. Set resolve_j=False."
+                    )
+                elif not l_resolved_exists and n_resolved_exists:
+                    # Set resolve_j = False and resolve_l = False
+                    raise FileNotFoundError(
+                        "Data for "
+                        + self.longname
+                        + " resolved in both l and j was not found. Set resolve_j=False and resolve_l=False."
+                    )
+                else:
+                    raise Exception
+        elif self.resolve_j and not self.resolve_l:
+            # Resolved in j but not l - this does not make sense
+            raise Exception("resolve_j=True is not compatible with resolve_l=False.")
+        elif not self.resolve_j and self.resolve_l:
+            # Resolved in l but not j
+            if l_resolved_exists:
+                return
+            else:
+                if n_resolved_exists:
+                    raise FileNotFoundError(
+                        "Data for "
+                        + self.longname
+                        + " resolved in l was not found. Set resolve_l=False."
+                    )
+                else:
+                    raise Exception
+        elif not self.resolve_j and not self.resolve_j:
+            # Resolved in n only
+            if n_resolved_exists:
+                return
+            else:
+                if l_resolved_exists:
+                    raise FileNotFoundError(
+                        "Data for "
+                        + self.longname
+                        + " resolved in only n was not found. Set resolve_l=True."
+                    )
+                else:
+                    raise Exception
 
     def get_element_data(self):
         """Set the nuclear charge and number of ionisation stages"""
@@ -133,32 +219,29 @@ class Impurity:
     def init_states(self):
         """Initialise the evolved atomic states"""
         if self.resolve_j:
-            levels_f = os.path.join(
-                os.path.dirname(__file__),
-                "atom_data",
-                self.longname,
-                self.name + "_levels_nlj.json",
+            levels_f = (
+                self.atom_data_savedir
+                / self.longname
+                / (self.name + "_levels_nlj.json")
             )
         else:
             if self.resolve_l:
-                levels_f = os.path.join(
-                    os.path.dirname(__file__),
-                    "atom_data",
-                    self.longname,
-                    self.name + "_levels_nl.json",
+                levels_f = (
+                    self.atom_data_savedir
+                    / self.longname
+                    / (self.name + "_levels_nl.json")
                 )
             else:
-                levels_f = os.path.join(
-                    os.path.dirname(__file__),
-                    "atom_data",
-                    self.longname,
-                    self.name + "_levels_n.json",
+                levels_f = (
+                    self.atom_data_savedir
+                    / self.longname
+                    / (self.name + "_levels_n.json")
                 )
         with open(levels_f) as f:
             levels_dict = json.load(f)
             self.states = [None] * len(levels_dict)
             for i, level_dict in enumerate(levels_dict):
-                self.states[i] = State(id=i, **level_dict)
+                self.states[i] = State(**level_dict)
 
         # Keep only user-specified states
         if self.state_ids is not None:
@@ -214,26 +297,23 @@ class Impurity:
         :param Egrid: Electron energy grid
         """
         if self.resolve_j:
-            trans_f = os.path.join(
-                os.path.dirname(__file__),
-                "atom_data",
-                self.longname,
-                self.name + "_transitions_nlj.json",
+            trans_f = (
+                self.atom_data_savedir
+                / self.longname
+                / (self.name + "_transitions_nlj.json")
             )
         else:
             if self.resolve_l:
-                trans_f = os.path.join(
-                    os.path.dirname(__file__),
-                    "atom_data",
-                    self.longname,
-                    self.name + "_transitions_nl.json",
+                trans_f = (
+                    self.atom_data_savedir
+                    / self.longname
+                    / (self.name + "_transitions_nl.json")
                 )
             else:
-                trans_f = os.path.join(
-                    os.path.dirname(__file__),
-                    "atom_data",
-                    self.longname,
-                    self.name + "_transitions_n.json",
+                trans_f = (
+                    self.atom_data_savedir
+                    / self.longname
+                    / (self.name + "_transitions_n.json")
                 )
         print("  Loading transitions from json...")
         with open(trans_f) as f:
@@ -251,18 +331,31 @@ class Impurity:
                 ):
                     continue
             if trans["type"] == "ionization" and self.ionization:
-                transitions[i] = IzTrans(**trans)
+                transitions[i] = IzTrans(
+                    **trans,
+                    collrate_const=self.collrate_const,
+                    sigma_norm=self.sigma_norm,
+                    tbrec_norm=self.tbrec_norm,
+                )
             elif trans["type"] == "autoionization" and self.autoionization:
-                transitions[i] = AiTrans(**trans)
+                transitions[i] = AiTrans(**trans, time_norm=self.time_norm)
             elif (
                 trans["type"] == "radiative_recombination"
                 and self.radiative_recombination
             ):
-                transitions[i] = RRTrans(**trans)
+                transitions[i] = RRTrans(
+                    **trans,
+                    collrate_const=self.collrate_const,
+                    sigma_norm=self.sigma_norm,
+                )
             elif trans["type"] == "emission" and self.emission:
-                transitions[i] = EmTrans(**trans)
+                transitions[i] = EmTrans(**trans, time_norm=self.time_norm)
             elif trans["type"] == "excitation" and self.excitation:
-                transitions[i] = ExTrans(**trans)
+                transitions[i] = ExTrans(
+                    **trans,
+                    collrate_const=self.collrate_const,
+                    sigma_norm=self.sigma_norm,
+                )
         transitions = [t for t in transitions if t is not None]
 
         self.transitions = transitions
@@ -313,7 +406,7 @@ class Impurity:
         from_ids = np.array([t.from_id for t in self.transitions], dtype=int)
         to_ids = np.array([t.to_id for t in self.transitions], dtype=int)
         for i, state in enumerate(self.states):
-            associated_transitions = core.get_associated_transitions(
+            associated_transitions = get_associated_transitions(
                 state.id, from_ids, to_ids
             )
             if len(associated_transitions) == 0:
@@ -359,14 +452,14 @@ class Impurity:
             Z_dens = np.zeros([len(ne), self.num_Z])
             for i in range(len(ne)):
                 Z_dens[i, :] = (
-                    core.saha_dist(
+                    saha_dist(
                         Te[i] * self.T_norm, ne[i] * self.n_norm, self.n_norm, self
                     )
                     / self.n_norm
                 )
 
             for Z in range(self.num_Z):
-                Z_states = post_processing.gather_states(self.states, Z)
+                Z_states = spp.gather_states(self.states, Z)
 
                 energies = [s.energy for s in Z_states]
                 stat_weights = [s.stat_weight for s in Z_states]
@@ -374,7 +467,7 @@ class Impurity:
                 for i in range(len(ne)):
                     Z_dens_loc = Z_dens[i, Z]
 
-                    rel_dens = core.boltzmann_dist(
+                    rel_dens = boltzmann_dist(
                         Te[i] * self.T_norm, energies, stat_weights, gnormalise=False
                     )
 
