@@ -3,7 +3,7 @@ __pycache__/ImpZeff.cpython-39.pyc
 __pycache__/rates.cpython-39.pyc
 *.xml
 settings.json
-__pycache__/*
+__pycache__
 *.pyc
 *.iml
 legacy/*

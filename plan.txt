@@ -28,6 +28,7 @@ To do
 - Change np.ndarray type hints to something more specifiec, e.g. 1D, 2D, xarray with correct dimensions?
 - Some demo scripts
 - License
+- Sphinx documentation
 - Merge with main branch
 - Handle different velocity grids provided at input
 - Work out how to deal with atomic data (mostly done)
