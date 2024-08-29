@@ -10,5 +10,5 @@ legacy/*
 .idea
 .idea/*
 *.egg-info
-atomic_data/*
+sike_atomic_data/*
 *.json

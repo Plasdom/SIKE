@@ -1,20 +1,22 @@
 from pathlib import Path
 import numpy as np
 
-ATOMIC_DATA_LOCATION = Path(".")
+ATOMIC_DATA_LOCATION = "sike_atomic_data"
 ATOM_DATA_BASE_URL = "https://zenodo.org/records/10614179/files/"
-ELEMENT_LIST = [
-    "Hydrogen",
-    "Helium",
-    "Lithium",
-    "Beryllium",
-    "Boron",
-    "Carbon",
-    "Nitrogen",
-    "Oxygen",
-    "Neon",
-    "Argon",
-]
+SYMBOL2ELEMENT = {
+    "H": "Hydrogen",
+    "He": "Helium",
+    "Li": "Lithium",
+    "Be": "Beryllium",
+    "B": "Boron",
+    "C": "Carbon",
+    "O": "Oxygen",
+    "N": "Nitrogen",
+    "Ne": "Neon",
+    "Ar": "Argon",
+}
+ELEMENT2SYMBOL = {v: k for k, v in SYMBOL2ELEMENT.items()}
+CONFIG_FILENAME = ".sike_config"
 
 # Physical constants
 EL_MASS = 9.10938e-31
