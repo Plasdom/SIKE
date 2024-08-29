@@ -4,8 +4,7 @@ import json
 
 from sike.transition import *
 from sike.atomic_state import State
-import sike.post_processing as spp
-from sike.core import saha_dist, boltzmann_dist
+from sike.impurity_utils import saha_dist, boltzmann_dist, gather_states
 
 
 class Impurity:
@@ -453,13 +452,17 @@ class Impurity:
             for i in range(len(ne)):
                 Z_dens[i, :] = (
                     saha_dist(
-                        Te[i] * self.T_norm, ne[i] * self.n_norm, self.n_norm, self
+                        Te[i] * self.T_norm,
+                        ne[i] * self.n_norm,
+                        self.n_norm,
+                        self.states,
+                        self.num_Z,
                     )
                     / self.n_norm
                 )
 
             for Z in range(self.num_Z):
-                Z_states = spp.gather_states(self.states, Z)
+                Z_states = gather_states(self.states, Z)
 
                 energies = [s.energy for s in Z_states]
                 stat_weights = [s.stat_weight for s in Z_states]
