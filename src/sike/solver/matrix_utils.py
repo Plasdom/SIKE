@@ -8,106 +8,106 @@ from sike.atomics.impurity import Impurity
 # TODO: Is this module necessary if not using petsc? If we're throwing out petsc, can we still do impurity transport, etc?
 
 
-class LocalMat:
-    """A local dense matrix class for storing values to be inserted into petsc sparse matrix"""
+# class LocalMat:
+#     """A local dense matrix class for storing values to be inserted into petsc sparse matrix"""
 
-    def __init__(self, x_idx, num_states):
-        self.rows = np.array(
-            [x_idx * num_states + k for k in range(num_states)], dtype=np.int32
-        )
-        self.cols = np.array(
-            [x_idx * num_states + k for k in range(num_states)], dtype=np.int32
-        )
-        self.values = np.zeros([num_states, num_states])
-
-
-class MatrixTerm:
-    def __init__(self):
-        self.rows = np.array([], dtype=int)
-        self.cols = np.array([], dtype=int)
-        self.values = np.array([], dtype=int)
-        self.mat_loc_positions = np.array([], dtype=int)
-        self.nnz = 0
-        self.x_positions = np.array([], dtype=int)
-        self.mults = np.array([], dtype=int)
+#     def __init__(self, x_idx, num_states):
+#         self.rows = np.array(
+#             [x_idx * num_states + k for k in range(num_states)], dtype=np.int32
+#         )
+#         self.cols = np.array(
+#             [x_idx * num_states + k for k in range(num_states)], dtype=np.int32
+#         )
+#         self.values = np.zeros([num_states, num_states])
 
 
-class TransitionTerm(MatrixTerm):
-    def __init__(self, transition):
-        super().__init__()
-        self.transition = transition
-        self.inverse = np.array([], dtype=int)
-
-    def add_nonzero(self, loc_row, loc_col, num_states, num_x, mult, inverse=False):
-        """Add a non-zero matrix entry to this term
-
-        Args:
-            loc_row (int): The spatially local row of the nonzero
-            loc_col (int):  The spatially local column of the nonzero
-            num_states (int):  The number of states being evolved (gives size of local matrix)
-            num_x (int): The number of spatial cells
-            mult (float): A multiplier for each matrix entry
-        """
-
-        self.rows = np.concatenate(
-            [
-                self.rows,
-                np.array([loc_row + i * num_states for i in range(num_x)], dtype=int),
-            ]
-        )
-        self.cols = np.concatenate(
-            [
-                self.cols,
-                np.array([loc_col + i * num_states for i in range(num_x)], dtype=int),
-            ]
-        )
-        self.values = np.concatenate([self.values, np.zeros(num_x)])
-        self.mat_loc_positions = np.concatenate(
-            [self.mat_loc_positions, np.zeros(num_x, dtype=int)]
-        )
-        self.x_positions = np.concatenate(
-            [self.x_positions, np.arange(num_x, dtype=int)]
-        )
-        self.mults = np.concatenate([self.mults, mult * np.ones(num_x)])
-        if inverse is True:
-            self.inverse = np.concatenate([self.inverse, np.ones(num_x)])
-        else:
-            self.inverse = np.concatenate([self.inverse, np.zeros(num_x)])
-
-        self.nnz += num_x
+# class MatrixTerm:
+#     def __init__(self):
+#         self.rows = np.array([], dtype=int)
+#         self.cols = np.array([], dtype=int)
+#         self.values = np.array([], dtype=int)
+#         self.mat_loc_positions = np.array([], dtype=int)
+#         self.nnz = 0
+#         self.x_positions = np.array([], dtype=int)
+#         self.mults = np.array([], dtype=int)
 
 
-class SparseMat:
-    def __init__(self):
-        self.locs = []
-        self.rows = np.array([], dtype=int)
-        self.cols = np.array([], dtype=int)
-        self.values = []
-        self.nnz = 0
+# class TransitionTerm(MatrixTerm):
+#     def __init__(self, transition):
+#         super().__init__()
+#         self.transition = transition
+#         self.inverse = np.array([], dtype=int)
 
-    def add_nonzeros(self, terms):
-        for term in terms:
-            self.locs += [(term.rows[j], term.cols[j]) for j in range(term.nnz)]
-        self.locs = list(dict.fromkeys(self.locs))
-        self.values += [0.0 for _ in range(len(self.locs))]
-        self.nnz = len(self.locs)
+#     def add_nonzero(self, loc_row, loc_col, num_states, num_x, mult, inverse=False):
+#         """Add a non-zero matrix entry to this term
 
-    def set_rows(self):
-        self.rows = np.array([loc[0] for loc in self.locs], dtype=int)
+#         Args:
+#             loc_row (int): The spatially local row of the nonzero
+#             loc_col (int):  The spatially local column of the nonzero
+#             num_states (int):  The number of states being evolved (gives size of local matrix)
+#             num_x (int): The number of spatial cells
+#             mult (float): A multiplier for each matrix entry
+#         """
 
-    def set_cols(self):
-        self.cols = np.array([loc[1] for loc in self.locs], dtype=int)
+#         self.rows = np.concatenate(
+#             [
+#                 self.rows,
+#                 np.array([loc_row + i * num_states for i in range(num_x)], dtype=int),
+#             ]
+#         )
+#         self.cols = np.concatenate(
+#             [
+#                 self.cols,
+#                 np.array([loc_col + i * num_states for i in range(num_x)], dtype=int),
+#             ]
+#         )
+#         self.values = np.concatenate([self.values, np.zeros(num_x)])
+#         self.mat_loc_positions = np.concatenate(
+#             [self.mat_loc_positions, np.zeros(num_x, dtype=int)]
+#         )
+#         self.x_positions = np.concatenate(
+#             [self.x_positions, np.arange(num_x, dtype=int)]
+#         )
+#         self.mults = np.concatenate([self.mults, mult * np.ones(num_x)])
+#         if inverse is True:
+#             self.inverse = np.concatenate([self.inverse, np.ones(num_x)])
+#         else:
+#             self.inverse = np.concatenate([self.inverse, np.zeros(num_x)])
 
-    def get_nonzero_position(self, row, col):
-        return get_loc_pos(self.rows, self.cols, row, col)
+#         self.nnz += num_x
 
 
-@jit(nopython=True)
-def get_loc_pos(rows, cols, row, col):
-    for i in range(len(rows)):
-        if row == rows[i] and col == cols[i]:
-            return i
-    return 0
+# class SparseMat:
+#     def __init__(self):
+#         self.locs = []
+#         self.rows = np.array([], dtype=int)
+#         self.cols = np.array([], dtype=int)
+#         self.values = []
+#         self.nnz = 0
+
+#     def add_nonzeros(self, terms):
+#         for term in terms:
+#             self.locs += [(term.rows[j], term.cols[j]) for j in range(term.nnz)]
+#         self.locs = list(dict.fromkeys(self.locs))
+#         self.values += [0.0 for _ in range(len(self.locs))]
+#         self.nnz = len(self.locs)
+
+#     def set_rows(self):
+#         self.rows = np.array([loc[0] for loc in self.locs], dtype=int)
+
+#     def set_cols(self):
+#         self.cols = np.array([loc[1] for loc in self.locs], dtype=int)
+
+#     def get_nonzero_position(self, row, col):
+#         return get_loc_pos(self.rows, self.cols, row, col)
+
+
+# @jit(nopython=True)
+# def get_loc_pos(rows, cols, row, col):
+#     for i in range(len(rows)):
+#         if row == rows[i] and col == cols[i]:
+#             return i
+#     return 0
 
 
 def build_matrix(min_x, max_x, num_states):
@@ -130,6 +130,7 @@ def build_matrix(min_x, max_x, num_states):
 
 
 def fill_local_mat(transitions, num_states, fe, ne, Te, vgrid, dvc):
+    # TODO: Is this function necessary?
     local_mat = np.zeros([num_states, num_states])
 
     # Calculate the values

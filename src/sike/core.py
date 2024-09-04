@@ -1,12 +1,14 @@
 import numpy as np
 from numba import jit
 import os
+import xarray as xr
 
 from sike.atomics.impurity import Impurity
 from sike.utils.constants import *
 from sike.solver.matrix_utils import *
 from sike.solver import solver
 from sike.analysis.plasma_utils import *
+from sike.io.generate_output import generate_output
 
 # TODO: Do we ever want to actually evolve all states? Or only build M_eff and get derived coefficients? Opportunity to massively simplify by removing petsc & mpi dependency
 # TODO: I guess we should only ever really be evolving the P states, so all that code is still useful, but could probably do it with dense numpy matrices rather than petsc, and probably don't need MPI!
@@ -312,14 +314,39 @@ class SIKERun(object):
         for i in range(1, self.num_v):
             self.dvc[i] = 2 * (self.vgrid[i] - self.vgrid[i - 1]) - self.dvc[i - 1]
 
-    def run(self) -> None:
-        """Run the program to find equilibrium impurity densities on the provided background plasma."""
+    def run(self) -> xr.Dataset:
+        """Run the program to find equilibrium impurity densities on the provided background plasma.
+
+        :return: xarray dataset containing densities, states, transitions and other relevant information for the case
+        """
 
         self.build_matrix()
         self.compute_densities(
             dt=self.delta_t,
             num_t=self.max_steps,
             evolve=self.evolve,
+        )
+        return generate_output(
+            self.impurity,
+            self.xgrid,
+            self.vgrid,
+            self.x_norm,
+            self.t_norm,
+            self.n_norm,
+            self.v_th,
+            self.T_norm,
+            self.Te,
+            self.ne,
+            self.fe,
+            self.rate_mats,
+            self.resolve_l,
+            self.resolve_j,
+            self.ionization,
+            self.radiative_recombination,
+            self.excitation,
+            self.emission,
+            self.autoionization,
+            self.atom_data_savedir,
         )
 
     def calc_eff_rate_mats(self, P_states: str = "ground") -> None:

@@ -67,7 +67,7 @@ def bimaxwellian(
 
 
 def get_maxwellians(
-    ne: np.ndarray, Te: np.ndarray, vgrid: np.ndarray, normalised: bool = True
+    ne_in: np.ndarray, Te_in: np.ndarray, vgrid_in: np.ndarray, normalised: bool = True
 ) -> np.ndarray:
     """Return an array of Maxwellian electron distributions with the given densities and temperatures.
 
@@ -77,6 +77,9 @@ def get_maxwellians(
     :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
     :return: 2d numpy array of Maxwellians at each location in x
     """
+    ne = ne_in.copy()
+    Te = Te_in.copy()
+    vgrid = vgrid_in.copy()
 
     if normalised is False:
         T_norm = 10
@@ -84,7 +87,6 @@ def get_maxwellians(
         v_th = np.sqrt(2 * EL_CHARGE * T_norm / EL_MASS)
         ne /= n_norm
         Te /= T_norm
-        vgrid = vgrid.copy()
         vgrid /= v_th
 
     f0_max = [[0.0 for i in range(len(ne))] for j in range(len(vgrid))]
