@@ -49,8 +49,8 @@ def generate_densities_output(case: SIKERun) -> xr.Dataset:
     states_ds["density"] = dens_da
 
     # Add Te and ne arrays
-    Te_da = xr.DataArray(case.Te, coords={"x": x, "k": k})
-    ne_da = xr.DataArray(case.ne, coords={"x": x, "k": k})
+    Te_da = xr.DataArray(case.Te, coords={"x": x})
+    ne_da = xr.DataArray(case.ne, coords={"x": x})
     states_ds["Te"] = Te_da
     states_ds["ne"] = ne_da
 
