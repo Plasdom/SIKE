@@ -82,8 +82,8 @@ class ExTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        K_ex = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
-        return K_ex
+        self.rate = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        return self.rate
 
     def get_mat_value_inv(
         self, fe: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray
@@ -95,8 +95,8 @@ class ExTrans(Transition):
         :param dvc: velocity grid widths
         :return: electron density multiplied by three-body recombination rate coefficient
         """
-        K_deex = calc_rate(vgrid, dvc, fe, self.sigma_deex, self.collrate_const)
-        return K_deex
+        self.rate_inv = calc_rate(vgrid, dvc, fe, self.sigma_deex, self.collrate_const)
+        return self.rate_inv
 
     def get_sigma_deex(
         self,
@@ -172,8 +172,8 @@ class IzTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        K_ion = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
-        return K_ion
+        self.rate = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        return self.rate
 
     def get_mat_value_inv(
         self, fe: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray, ne: float, Te: float
@@ -188,10 +188,10 @@ class IzTrans(Transition):
         :return: electron density multiplied by three-body recombination rate coefficient
         """
         sigma_tbrec = self.get_sigma_tbrec(vgrid, Te)
-        K_tbrec = calc_rate(
+        self.rate_inv = calc_rate(
             vgrid, dvc, fe, sigma_tbrec, ne * self.tbrec_norm * self.collrate_const
         )
-        return K_tbrec
+        return self.rate_inv
 
     def get_sigma_tbrec(self, vgrid: np.ndarray, Te: float) -> np.ndarray:
         """Get the three-body recombination cross-section, assuming detailed balance
@@ -250,8 +250,8 @@ class RRTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        K_radrec = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
-        return K_radrec
+        self.rate = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        return self.rate
 
 
 class EmTrans(Transition):
@@ -281,8 +281,8 @@ class EmTrans(Transition):
 
         :return: Matrix value
         """
-        A_em = self.rate
-        return A_em
+        self.rate = self.rate
+        return self.rate
 
 
 class AiTrans(Transition):
@@ -303,8 +303,8 @@ class AiTrans(Transition):
 
         :return: Matrix value
         """
-        A_ai = self.rate
-        return A_ai
+        self.rate = self.rate
+        return self.rate
 
 
 @jit(nopython=True)
