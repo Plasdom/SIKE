@@ -64,10 +64,23 @@ def plot_Z_dens(
     Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max())
     for Z in Zs:
         (l,) = ax.plot([], [])
+        label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
         if normalise:
-            ax.plot(x, Z_dens.sel(state_Z=Z), color=l.get_color(), **mpl_kwargs)
+            ax.plot(
+                x,
+                Z_dens.sel(state_Z=Z),
+                color=l.get_color(),
+                label=label,
+                **mpl_kwargs,
+            )
         else:
-            ax.plot(x, Z_dens.sel(state_Z=Z), color=l.get_color(), **mpl_kwargs)
+            ax.plot(
+                x,
+                Z_dens.sel(state_Z=Z),
+                color=l.get_color(),
+                label=label,
+                **mpl_kwargs,
+            )
     ax.legend()
     ax.set_xlabel(xlabel)
     if normalise:

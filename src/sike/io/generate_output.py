@@ -158,7 +158,8 @@ def get_metadata(
     """
     # Generate dictionary
     metadata_dict = {
-        "element": impurity.longname,
+        "element": impurity.name,
+        "longname": impurity.longname,
         "resolve_l_states": resolve_l,
         "resolve_j_states": resolve_j,
         "ionization": ionization,
