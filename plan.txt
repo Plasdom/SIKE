@@ -2,6 +2,8 @@ Done
 - Add to setup.py: download atomic data from Zenodo and put somewhere sensible
 - Finish sorting docstrings and type hints in transition.py (got up to ExTrans, next one to do is IzTrans)
 - Get rid of types in docstrings
+- Fix the Maxwellian/kinetic variable names, seems a janky way to do it and must be a better approach. Could just provide Maxwellian as input option and change how rates are calculated? In the interest of separation of concerns, difference between Maxwellian/kinetic densities is a question for analysis so both sets don't need to be stored by solver 
+
 
 To do
 - Switch from ICL to personal repo
@@ -21,9 +23,11 @@ To do
 - Get a minimal working example (will need to do pip install -e SIKE first)
 - Readme
 - Remove dependency on aurora
+- Expose an "update_fe" method. This can be used to recompute Maxwellian/kinetic equilibria without having to read in the atomic data again, and will be useful during coupling runs
+- Coupling may require adding a specific dt to evolve solution forward by, as opposed to setting dt and max_timesteps. Also, does timestep size matter? I'm not sure it should for this problem
+- Mangle/hide names of methods, classes etc we don't want to expose
 - Tests
 - Remove option to handle multiple impurities (each run should be associated with a single set of atomic data)
-- Fix the Maxwellian/kinetic variable names, seems a janky way to do it and must be a better approach. Could just provide Maxwellian as input option and change how rates are calculated? In the interest of separation of concerns, difference between Maxwellian/kinetic densities is a question for analysis so both sets don't need to be stored by solver 
 - Use xarrays for output?
 - Change np.ndarray type hints to something more specifiec, e.g. 1D, 2D, xarray with correct dimensions?
 - Some demo scripts

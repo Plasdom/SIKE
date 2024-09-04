@@ -16,8 +16,6 @@ class Impurity:
         resolve_l: bool,
         resolve_j: bool,
         state_ids: list[int],
-        kinetic_electrons: bool,
-        maxwellian_electrons: bool,
         saha_boltzmann_init: bool,
         fixed_fraction_init: bool,
         frac_imp_dens: float,
@@ -44,8 +42,6 @@ class Impurity:
         :param resolve_l: Whether to resolve states by orbital angular momentum quantum number l
         :param resolve_j: Whether to resolve by total angular momentum quantum number j
         :param state_ids: List of state IDs to evolve (default is for all states to be included)
-        :param kinetic_electrons: Whether to solve rate equations for arbitrary electron distributions
-        :param maxwellian_electrons: Whether to solve rate equations for Maxwellian electron distributions
         :param saha_boltzmann_init: Whether to initialise state distribution to Saha-Boltzmann equilibria
         :param fixed_fraction_init: Whether to initialise total impurity density to a fixed fraction of the electron density
         :param frac_imp_dens: Fractional impurity density to initialise (total) impurity densities with, if fixed_fraction_init is True
@@ -71,8 +67,6 @@ class Impurity:
         self.resolve_j = resolve_j
         self.resolve_l = resolve_l
         self.state_ids = state_ids
-        self.kinetic_electrons = kinetic_electrons
-        self.maxwellian_electrons = maxwellian_electrons
         self.saha_boltzmann_init = saha_boltzmann_init
         self.fixed_fraction_init = fixed_fraction_init
         self.frac_imp_dens = frac_imp_dens
@@ -440,10 +434,7 @@ class Impurity:
         :param ne: Electron densities
         :param Te: Electron temperatures
         """
-        if self.kinetic_electrons:
-            self.dens = np.zeros((len(ne), self.tot_states))
-        if self.maxwellian_electrons:
-            self.dens_Max = np.zeros((len(ne), self.tot_states))
+        self.dens = np.zeros((len(ne), self.tot_states))
 
         if self.saha_boltzmann_init:
             self.set_state_positions()
@@ -474,28 +465,16 @@ class Impurity:
                         Te[i] * self.T_norm, energies, stat_weights, gnormalise=False
                     )
 
-                    if self.kinetic_electrons:
-                        self.dens[i, locs] = rel_dens * Z_dens_loc / np.sum(rel_dens)
-                        if self.fixed_fraction_init:
-                            self.dens[i, locs] *= self.frac_imp_dens * ne[i]
-                    if self.maxwellian_electrons:
-                        self.dens_Max[i, locs] = (
-                            rel_dens * Z_dens_loc / np.sum(rel_dens)
-                        )
-                        if self.fixed_fraction_init:
-                            self.dens_Max[i, locs] *= self.frac_imp_dens * ne[i]
+                    self.dens[i, locs] = rel_dens * Z_dens_loc / np.sum(rel_dens)
+                    if self.fixed_fraction_init:
+                        self.dens[i, locs] *= self.frac_imp_dens * ne[i]
+
         else:
             if self.fixed_fraction_init:
-                if self.kinetic_electrons:
-                    self.dens[:, 0] = self.frac_imp_dens * ne
-                if self.maxwellian_electrons:
-                    self.dens_Max[:, 0] = self.frac_imp_dens * ne
+                self.dens[:, 0] = self.frac_imp_dens * ne
 
             else:
-                if self.kinetic_electrons:
-                    self.dens[:, 0] = 1.0
-                if self.maxwellian_electrons:
-                    self.dens_Max[:, 0] = 1.0
+                self.dens[:, 0] = 1.0
 
     def set_state_positions(self):
         """Store the positions of each state (which may be different from the state ID)"""

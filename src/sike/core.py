@@ -53,8 +53,6 @@ class SIKERun(object):
         element: str = "Li",
         delta_t: float = 1.0e-3,
         evolve: bool = True,
-        kinetic_electrons: bool = False,
-        maxwellian_electrons: bool = True,
         dndt_thresh: float = 1e-5,
         max_steps: int = 1000,
         frac_imp_dens: float = 0.05,
@@ -79,8 +77,6 @@ class SIKERun(object):
         :param impurity: The impurity species to evolve (use chemical symbols), defaults to "Li"
         :param delta_t: The time step to use in seconds if `evolve` option is true, defaults to 1.0e-3
         :param evolve: Specify whether to evolve the state density equations in time. If false, simply invert the rate matrix (this method sometimes suffers from numerical instabilities), defaults to True
-        :param kinetic_electrons: Solve rate equations for Maxwellian electrons at given density and temperatures, defaults to False
-        :param maxwellian_electrons: Solve rate equations for kinetic electrons with given distribution functions, defaults to True
         :param dndt_thresh: The threshold density residual between subsequent s which defines whether equilibrium has been reached, defaults to 1e-5
         :param max_steps: The maximum number of s to evolve if `evolve` is true, defaults to 1000
         :param frac_imp_dens: The fractional impurity density at initialisation, defaults to 0.05
@@ -101,8 +97,6 @@ class SIKERun(object):
         # Save input options
         self.delta_t = delta_t
         self.evolve = evolve
-        self.kinetic_electrons = kinetic_electrons
-        self.maxwellian_electrons = maxwellian_electrons
         self.dndt_thresh = dndt_thresh
         self.max_steps = max_steps
         self.frac_imp_dens = frac_imp_dens
@@ -147,8 +141,6 @@ class SIKERun(object):
             resolve_l=self.resolve_l,
             resolve_j=self.resolve_j,
             state_ids=self.state_ids,
-            kinetic_electrons=self.kinetic_electrons,
-            maxwellian_electrons=self.maxwellian_electrons,
             saha_boltzmann_init=self.saha_boltzmann_init,
             fixed_fraction_init=self.fixed_fraction_init,
             frac_imp_dens=self.frac_imp_dens,
@@ -234,18 +226,11 @@ class SIKERun(object):
         # Create the E_grid
         self.Egrid = self.T_norm * self.vgrid**2
 
-        # Generate Maxwellians if required
-        if self.maxwellian_electrons:
-            self.fe_Max = get_maxwellians(self.ne, self.Te, self.vgrid)
-
     def init_from_profiles(self, vgrid: np.ndarray | None = None):
         """Initialise simulation from electron temperature and density profiles
 
         :param vgrid: Electron velocity grid, defaults to None
         """
-        # Rate equations will be solved for Maxwellian electrons only
-        self.kinetic_electrons = False
-        self.maxwellian_electrons = True
 
         # Save/create the velocity grid
         if vgrid is None:
@@ -266,15 +251,15 @@ class SIKERun(object):
             self.max_x = int((self.rank + 1) * loc_x)
         self.loc_num_x = self.max_x - self.min_x
 
+        # Generature Maxwellians
+        self.fe = get_maxwellians(self.ne, self.Te, self.vgrid, normalised=False)
+
         # Generate normalisation constants and normalise everything
         self.init_norms()
         self.apply_normalisation()
 
         # Create the E_grid
         self.Egrid = self.T_norm * self.vgrid**2
-
-        # Generature Maxwellians
-        self.fe_Max = get_maxwellians(self.ne, self.Te, self.vgrid)
 
     def init_norms(self) -> None:
         """Initialise the normalisation constants for the simulation"""
@@ -311,8 +296,7 @@ class SIKERun(object):
         self.xgrid /= self.x_norm
         self.dxc /= self.x_norm
         self.delta_t /= self.t_norm
-        if self.kinetic_electrons:
-            self.fe /= self.n_norm / (self.v_th**3)
+        self.fe /= self.n_norm / (self.v_th**3)
 
     def generate_grid_widths(self):
         """Generate spatial and velocity grid widths"""
@@ -332,40 +316,22 @@ class SIKERun(object):
     def run(self) -> None:
         """Run the program to find equilibrium impurity densities on the provided background plasma."""
 
-        if self.kinetic_electrons:
-            self.build_matrix(kinetic=True)
-            self.compute_densities(
-                dt=self.delta_t,
-                num_t=self.max_steps,
-                evolve=self.evolve,
-                kinetic=True,
-            )
-            # del self.rate_mats
-        if self.maxwellian_electrons:
-            self.build_matrix(kinetic=False)
-            self.compute_densities(
-                dt=self.delta_t,
-                num_t=self.max_steps,
-                evolve=self.evolve,
-                kinetic=False,
-            )
-            # del self.rate_mats_Max
+        self.build_matrix()
+        self.compute_densities(
+            dt=self.delta_t,
+            num_t=self.max_steps,
+            evolve=self.evolve,
+        )
 
-    def calc_eff_rate_mats(
-        self, kinetic: bool = False, P_states: str = "ground"
-    ) -> None:
+    def calc_eff_rate_mats(self, P_states: str = "ground") -> None:
         """Calculate the effective rate matrix at each spatial location, for the given P states ("metastables")
 
-        :param kinetic: whether to plot for kinetic or Maxwellian electrons. Defaults to False., defaults to False
         :param P_states: choice of P states (i.e. metastables). Defaults to "ground", meaning ground states of all ionization stages will be treated as evolved states.
         """
 
         # TODO: Add functions (probably in post_processing) to extract ionization, recombination coeffs etc from M_eff
 
-        if kinetic:
-            fe = self.fe
-        else:
-            fe = self.fe_Max
+        fe = self.fe
 
         eff_rate_mats = {}
 
@@ -402,137 +368,73 @@ class SIKERun(object):
 
         print("{:.1f}%".format(100))
 
-        if kinetic:
-            self.eff_rate_mats = eff_rate_mats
-        else:
-            self.eff_rate_mats_Max = eff_rate_mats
+        self.eff_rate_mats = eff_rate_mats
 
-    def build_matrix(self, kinetic: bool = False) -> None:
-        """Build the rate matrices
-
-        :param kinetic: whether to compute kinetic rate matrices, defaults to False
-        """
+    def build_matrix(self) -> None:
+        """Build the rate matrices"""
         # Build the rate matrices
-        if kinetic:
-            if self.rank == 0:
-                print("Filling kinetic transition matrix for...")
-            np_mat = build_matrix(self.min_x, self.max_x, self.impurity.tot_states)
-            self.rate_mats = fill_rate_matrix(
-                self.loc_num_x,
-                self.min_x,
-                self.max_x,
-                np_mat,
-                self.impurity,
-                self.fe,
-                self.ne,
-                self.Te,
-                self.vgrid,
-                self.dvc,
-            )
-        else:
-            if self.rank == 0:
-                print("Filling Maxwellian transition matrix...")
-            np_mat = build_matrix(self.min_x, self.max_x, self.impurity.tot_states)
-            self.rate_mats_Max = fill_rate_matrix(
-                self.loc_num_x,
-                self.min_x,
-                self.max_x,
-                np_mat,
-                self.impurity,
-                self.fe_Max,
-                self.ne,
-                self.Te,
-                self.vgrid,
-                self.dvc,
-            )
+        if self.rank == 0:
+            print("Filling transition matrix for...")
+        np_mat = build_matrix(self.min_x, self.max_x, self.impurity.tot_states)
+        self.rate_mats = fill_rate_matrix(
+            self.loc_num_x,
+            self.min_x,
+            self.max_x,
+            np_mat,
+            self.impurity,
+            self.fe,
+            self.ne,
+            self.Te,
+            self.vgrid,
+            self.dvc,
+        )
 
     def compute_densities(
         self,
         num_t: int | None = None,
         evolve: bool = True,
         dt: float | None = None,
-        kinetic: bool = False,
     ) -> None:
         """Solve or evolve the matrix equation to find the equilibrium densities
 
         :param evolve: Whether to solve densities directly or evolve until equilibrium is reached, defaults to True
         :param dt: Timestep to use if evolve=True, defaults to None
         :param num_t: Number of timesteps to use if evolve=True, defaults to None
-        :param kinetic: Whether to compute kinetic or Maxwellian rates, defaults to False
         """
         # Solve or evolve the matrix equation to find the equilibrium densities
         if evolve:
-            if kinetic:
-                if self.rank == 0:
-                    print("Computing densities with kinetic electrons for...")
-                n_solved = solver.evolve(
-                    self.loc_num_x,
-                    self.min_x,
-                    self.max_x,
-                    self.rate_mats,
-                    self.impurity.dens,
-                    dt,
-                    num_t,
-                    self.dndt_thresh,
-                    self.n_norm,
-                    self.t_norm,
-                )
-                if n_solved is not None:
-                    self.impurity.dens = n_solved
-                    self.success = True
-                else:
-                    self.success = False
+            if self.rank == 0:
+                print("Computing densities for...")
+            n_solved = solver.evolve(
+                self.loc_num_x,
+                self.min_x,
+                self.max_x,
+                self.rate_mats,
+                self.impurity.dens,
+                dt,
+                num_t,
+                self.dndt_thresh,
+                self.n_norm,
+                self.t_norm,
+            )
+            if n_solved is not None:
+                self.impurity.dens = n_solved
+                self.success = True
             else:
-                if self.rank == 0:
-                    print("Computing densities with Maxwellian electrons for...")
-                n_solved = solver.evolve(
-                    self.loc_num_x,
-                    self.min_x,
-                    self.max_x,
-                    self.rate_mats_Max,
-                    self.impurity.dens_Max,
-                    dt,
-                    num_t,
-                    self.dndt_thresh,
-                    self.n_norm,
-                    self.t_norm,
-                )
-                if n_solved is not None:
-                    self.impurity.dens_Max = n_solved
-                    self.success = True
-                else:
-                    self.success = False
+                self.success = False
         else:
-            if kinetic:
-                if self.rank == 0:
-                    print("Computing densities with kinetic electrons for...")
-                n_solved = solver.solve(
-                    self.loc_num_x,
-                    self.min_x,
-                    self.max_x,
-                    self.rate_mats,
-                    self.impurity.dens,
-                )
+            if self.rank == 0:
+                print("Computing densities with for...")
+            n_solved = solver.solve(
+                self.loc_num_x,
+                self.min_x,
+                self.max_x,
+                self.rate_mats,
+                self.impurity.dens,
+            )
 
-                if n_solved is not None:
-                    self.impurity.dens = n_solved
-                    self.success = True
-                else:
-                    self.success = False
-
+            if n_solved is not None:
+                self.impurity.dens = n_solved
+                self.success = True
             else:
-                if self.rank == 0:
-                    print("Computing densities with Maxwellian electrons for...")
-                n_solved = solver.solve(
-                    self.loc_num_x,
-                    self.min_x,
-                    self.max_x,
-                    self.rate_mats_Max,
-                    self.impurity.dens_Max,
-                )
-
-                if n_solved is not None:
-                    self.impurity.dens_Max = n_solved
-                    self.success = True
-                else:
-                    self.success = False
+                self.success = False
