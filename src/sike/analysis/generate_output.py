@@ -12,8 +12,9 @@ def generate_densities_output(case: SIKERun) -> xr.Dataset:
     """
     # Extract relevant information (densities & states) from the SIKERun object
     dens = case.impurity.dens
-    x = case.xgrid
+    x = case.xgrid * case.x_norm
     k = [s.id for s in case.impurity.states]
+    v = case.vgrid * case.v_th
     selected_cols = [
         "id",
         "Z",
@@ -29,39 +30,40 @@ def generate_densities_output(case: SIKERun) -> xr.Dataset:
         for s in case.impurity.states
     ]
 
-    # Generate the densities DataArray
-    dens_da = xr.DataArray(dens, coords={"x": x, "k": k})
-    dens_da.attrs["long_name"] = "Density"
-    dens_da.attrs["units"] = "[n_0]"
-    dens_da.attrs["description"] = "Atomic state density in normalised units"
-    dens_da.x.attrs["long_name"] = "x"
-    dens_da.x.attrs["units"] = "[x_0]"
-    dens_da.x.attrs["description"] = "Spatial coordinate in normalised units"
-    dens_da.k.attrs["long_name"] = "k"
-    dens_da.k.attrs["units"] = "N/A"
-    dens_da.k.attrs["description"] = "Atomic state index"
+    # Generate Dataarrays
+    dens_da = xr.DataArray(dens * case.n_norm, coords={"x": x, "k": k})
+    Te_da = xr.DataArray(case.Te * case.T_norm, coords={"x": x})
+    ne_da = xr.DataArray(case.ne * case.n_norm, coords={"x": x})
+    fe_da = xr.DataArray(
+        case.fe * case.n_norm / (case.v_th**3), coords={"v": v, "x": x}
+    )
 
     # Generate the states Dataset from a pandas dataframe
     states_df = pd.DataFrame(states).rename(columns={"id": "k"}).set_index("k")
-    states_ds = xr.Dataset.from_dataframe(states_df)
+    output_ds = xr.Dataset.from_dataframe(states_df)
 
-    # Add the densities to this Dataset
-    states_ds["density"] = dens_da
+    # Combine with other dataarrays
+    output_ds["nk"] = dens_da
+    output_ds["Te"] = Te_da
+    output_ds["ne"] = ne_da
+    output_ds["fe"] = fe_da
 
-    # Add Te and ne arrays
-    Te_da = xr.DataArray(case.Te, coords={"x": x})
-    ne_da = xr.DataArray(case.ne, coords={"x": x})
-    states_ds["Te"] = Te_da
-    states_ds["ne"] = ne_da
+    # Add metadata and other info
+    output_ds.attrs["metadata"] = get_metadata(case)
+    output_ds = add_coordinate_info(output_ds)
+    output_ds = add_data_info(output_ds)
 
-    # Add vgrid and v coordinate?
+    return output_ds
 
+
+def get_metadata(case: SIKERun) -> dict:
+    """Generate a dictionary of metadata from the SIKERun case
+
+    :param case: SIKERun case containing metadata attributes
+    :return: Dictionary of metadata
+    """
     # Add metadata
     metadata_dict = {
-        "x_norm": case.x_norm,
-        "T_norm": case.T_norm,
-        "n_norm": case.T_norm,
-        "time_norm": case.t_norm,
         "resolve_l": case.resolve_l,
         "resolve_j": case.resolve_j,
         "ionization": case.ionization,
@@ -70,13 +72,54 @@ def generate_densities_output(case: SIKERun) -> xr.Dataset:
         "emission": case.emission,
         "autoionization": case.autoionization,
         "atom_data_savedir": case.atom_data_savedir,
-        "min_x": 0,
-        "max_x": 100,
-        "v_th": case.v_th,
-        "sigma_0": case.sigma_0,
-        "collrate_const": case.collrate_const,
-        "tbrec_norm": case.tbrec_norm,
     }
-    states_ds.attrs["metadata"] = metadata_dict
+    metadata_dict
 
-    return states_ds
+    return metadata_dict
+
+
+def add_data_info(ds: xr.Dataset) -> xr.Dataset:
+    """Add information on the dataarrays to the dataset
+
+    :param ds: Xarray dataset built from SIKERun
+    :return: Modified xarray dataset
+    """
+    # Densities
+    ds.nk.attrs["long_name"] = "nk"
+    ds.nk.attrs["units"] = "[m^-3]"
+    ds.nk.attrs["description"] = "Impurity atomic state density"
+    ds.ne.attrs["long_name"] = "ne"
+    ds.ne.attrs["units"] = "[m^-3]"
+    ds.ne.attrs["description"] = "Electron density"
+
+    # Te
+    ds.Te.attrs["long_name"] = "Te"
+    ds.Te.attrs["units"] = "[eV]"
+    ds.Te.attrs["description"] = "Electron temperature"
+
+    # fe
+    ds.fe.attrs["long_name"] = "fe"
+    ds.fe.attrs["units"] = "[m^-6 s^-3]"
+    ds.fe.attrs["description"] = "Electron velocity distribution (isotropic part)"
+
+    return ds
+
+
+def add_coordinate_info(ds: xr.Dataset) -> xr.Dataset:
+    """Add information on coordinates (x, v, k) to output dataset
+
+    :param ds: Xarray dataset built from SIKERun
+    :return: Modified xarray dataset
+    """
+    # Add coordinate information
+    ds.x.attrs["long_name"] = "x"
+    ds.x.attrs["units"] = "[m]"
+    ds.x.attrs["description"] = "Spatial coordinate"
+    ds.k.attrs["long_name"] = "k"
+    ds.k.attrs["units"] = "N/A"
+    ds.k.attrs["description"] = "Atomic state index"
+    ds.v.attrs["long_name"] = "v"
+    ds.v.attrs["units"] = "[m/s]"
+    ds.v.attrs["description"] = "Velocity coordinate"
+
+    return ds

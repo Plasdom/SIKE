@@ -164,7 +164,6 @@ class SIKERun(object):
         print("Finished initialising impurity species objects.")
 
         self.rate_mats = {}
-        self.rate_mats_Max = {}
 
     def get_atom_data_savedir(self) -> Path:
         """Open the config file to find the location of the saved atomic data
