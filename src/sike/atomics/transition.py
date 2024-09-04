@@ -2,8 +2,6 @@ from scipy import interpolate
 import numpy as np
 from numba import jit
 
-# import aurora
-
 from sike.utils.constants import *
 
 
@@ -390,30 +388,3 @@ def get_associated_transitions(
         if from_ids[i] == state_id or to_ids[i] == state_id:
             associated_transition_indices.append(i)
     return associated_transition_indices
-
-
-# def interpolate_adf11_data(
-#     adas_file: aurora.adas_file, Te: np.ndarray, ne: np.ndarray, num_z: int
-# ) -> np.ndarray:
-#     """Interpolate ADAS adf11 data to a given array of input electron temperatures and densities
-
-#     :param adas_file: Aurora adas_file object containing rates for a range of densities and temperatures for a given impurity species
-#     :param Te: List of new electron temperatures
-#     :param ne: List of new electron densities
-#     :param num_z: Number of ionisation stages for the impurity species in question
-#     :return: Rates interpolated to the input temperatures and densities
-#     """
-
-#     num_x = len(Te)
-#     interp_data = np.zeros([num_x, num_z - 1])
-#     for z in range(num_z - 1):
-#         adas_file_interp = interpolate.interp2d(
-#             adas_file.logNe, adas_file.logT, adas_file.data[z], kind="linear"
-#         )
-#         for i in range(num_x):
-#             log_ne = np.log10(1e-6 * ne[i])
-#             log_Te = np.log10(Te[i])
-#             interp_result = adas_file_interp(log_ne, log_Te)
-#             interp_data[i, z] = 1e-6 * (10 ** interp_result[0])
-
-#     return interp_data

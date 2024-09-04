@@ -4,6 +4,17 @@ Done
 - Get rid of types in docstrings
 - Fix the Maxwellian/kinetic variable names, seems a janky way to do it and must be a better approach. Could just provide Maxwellian as input option and change how rates are calculated? In the interest of separation of concerns, difference between Maxwellian/kinetic densities is a question for analysis so both sets don't need to be stored by solver 
 - Use xarrays for output
+- Make better names for each module
+- Get a minimal working example (will need to do pip install -e SIKE first)
+- Do docstrings and type hints in other files (just need to do post_processing and plotting)
+- Decide whether/how we're going to handle impurity transport (we're not)
+- Decide whether/how we're going to handle sources/sinks (we're not)
+- Remove petsc4py and MPI references
+- Remove dependency on aurora
+- Remove option to handle multiple impurities (each run should be associated with a single set of atomic data)
+- Check setup.py works now you've moved it up a directory
+- Finish redistributing some of the tools functions into other modules so total number of modules can be reduced (e.g. physics_tools, matrix_utils)
+- Work out how to deal with atomic data
 
 
 To do
@@ -12,28 +23,16 @@ To do
 - Simpler parallelisation, perhaps with mpi4py. Add as an OPTIONAL dependency (see e.g. uetools for optional dependency example)
 - Provide a config file API as well as/instead of python API to launch simulations
 - Create a json schema for atomic states, transitions and (maybe) input files
-- Do docstrings and type hints in other files (just need to do post_processing and plotting)
 - Decide where things like calc_eff_rate_mats should go - in particular, how to deal with the question of full vs. partial rate equations (i.e. full set vs. Greenland-style)
-- Make better names for each module
-- Decide whether/how we're going to handle sources/sinks
-- Decide whether/how we're going to handle impurity transport
-- Answer to above two points is probably that we don't try and handle transport (maybe do sources/sinks) - purpose of SIKE is to be a simple, lightweight standalone tool. 
-- Remove petsc4py and MPI references
-- Finish redistributing some of the tools functions into other modules so total number of modules can be released (e.g. physics_tools, matrix_utils)
-- Check setup.py works now you've moved it up a directory
-- Get a minimal working example (will need to do pip install -e SIKE first)
 - Readme
-- Remove dependency on aurora
 - Expose an "update_fe" method. This can be used to recompute Maxwellian/kinetic equilibria without having to read in the atomic data again, and will be useful during coupling runs
 - Coupling may require adding a specific dt to evolve solution forward by, as opposed to setting dt and max_timesteps. Also, does timestep size matter? I'm not sure it should for this problem
 - Mangle/hide names of methods, classes etc we don't want to expose
 - Tests
-- Remove option to handle multiple impurities (each run should be associated with a single set of atomic data)
 - Change np.ndarray type hints to something more specifiec, e.g. 1D, 2D, xarray with correct dimensions?
 - Some demo scripts
 - License
 - Sphinx documentation
 - Merge with main branch
 - Handle different velocity grids provided at input
-- Work out how to deal with atomic data (mostly done)
 - Add small diagonal (~1e-10?) to matrix before inversion to improve stability
