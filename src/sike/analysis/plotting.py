@@ -35,7 +35,7 @@ def plot_Zavg(
         ax.set_xscale("log")
 
 
-def plot_Z_dens(
+def plot_nz(
     ds: xr.Dataset,
     xaxis: str = "Te",
     logx: bool = False,
@@ -43,18 +43,18 @@ def plot_Z_dens(
     ax: plt.Axes | None = None,
     **mpl_kwargs,
 ):
-    """Plot the density profiles of each ionization stage
+    """Plot the density profiles of each charge state
 
-    Args:
-        r (SIKERun): SIKERun object
-        el (str):the impurity species to plot
-        kinetic (bool, optional): whether to plot kinetic Z_avg profile. Defaults to True.
-        maxwellian (bool, optional): whether to plot Maxwellian Z_avg profile. Defaults to True.
-        xaxis (str,optional): choice of x-axis: 'Te', 'ne', 'x'. Defaults to 'Te'
+    :param ds: xarray dataset from SIKERun
+    :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
+    :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param normalise: Whether chanrge state densities should be normalised so that sum(nz) = 1, defaults to False
+    :param ax: Existing matplotlib axes, defaults to None
+    :return: Matplotlib axes
     """
-    Z_dens = spp.get_Z_dens(ds)
+    nz = spp.get_nz(ds)
     if normalise:
-        Z_dens = Z_dens / Z_dens.sum(dim="state_Z")
+        nz = nz / nz.sum(dim="state_Z")
 
     x, xlabel = get_xaxis(ds, xaxis)
 
@@ -68,7 +68,7 @@ def plot_Z_dens(
         if normalise:
             ax.plot(
                 x,
-                Z_dens.sel(state_Z=Z),
+                nz.sel(state_Z=Z),
                 color=l.get_color(),
                 label=label,
                 **mpl_kwargs,
@@ -76,7 +76,7 @@ def plot_Z_dens(
         else:
             ax.plot(
                 x,
-                Z_dens.sel(state_Z=Z),
+                nz.sel(state_Z=Z),
                 color=l.get_color(),
                 label=label,
                 **mpl_kwargs,
@@ -91,6 +91,200 @@ def plot_Z_dens(
     ax.grid()
     if logx:
         ax.set_xscale("log")
+
+    return ax
+
+
+def plot_Qz(
+    ds: xr.Dataset,
+    xaxis: str = "Te",
+    logx: bool = False,
+    normalise: bool = False,
+    ax: plt.Axes | None = None,
+    **mpl_kwargs,
+):
+    """Plot the radiation from spontaneous emission processes by charge state
+
+    :param ds: xarray dataset from SIKERun
+    :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
+    :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param normalise: Whether chanrge state densities should be normalised so that sum(nz) = 1, defaults to False
+    :param ax: Existing matplotlib axes, defaults to None
+    :return: Matplotlib axes
+    """
+    Qz = spp.get_Qz(ds)
+    if normalise:
+        Qz = Qz / Qz.sum(dim="state_Z")
+
+    x, xlabel = get_xaxis(ds, xaxis)
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+    Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max())
+    for Z in Zs:
+        (l,) = ax.plot([], [])
+        label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
+        if normalise:
+            ax.plot(
+                x,
+                Qz.sel(state_Z=Z),
+                color=l.get_color(),
+                label=label,
+                **mpl_kwargs,
+            )
+        else:
+            ax.plot(
+                x,
+                Qz.sel(state_Z=Z),
+                color=l.get_color(),
+                label=label,
+                **mpl_kwargs,
+            )
+    ax.legend()
+    ax.set_xlabel(xlabel)
+    if normalise:
+        ax.set_ylabel("$Q_Z / Q_Z^{tot}$")
+    else:
+        ax.set_ylabel("$Q_z$ [MWm$^{-3}$]")
+    ax.set_title("$Q_z$: " + ds.metadata["element"])
+    ax.grid()
+    if logx:
+        ax.set_xscale("log")
+
+    return ax
+
+
+def plot_Lz(
+    ds: xr.Dataset,
+    xaxis: str = "Te",
+    logx: bool = False,
+    logy: bool = True,
+    normalise: bool = False,
+    ax: plt.Axes | None = None,
+    **mpl_kwargs,
+):
+    """Plot the line emission coefficients for each charge state
+
+    :param ds: xarray dataset from SIKERun
+    :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
+    :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param logy: Whether y-axis scale should be logarithmic, defaults to True
+    :param normalise: Whether Lz should be normalised so that sum(Lz) = 1, defaults to False
+    :param normalise: Whether charge state densities should be normalised so that sum(nz) = 1, defaults to False
+    :param ax: Existing matplotlib axes, defaults to None
+    :return: Matplotlib axes
+    """
+    Lz = spp.get_Lz(ds)
+    if normalise:
+        Lz = Lz / Lz.sum(dim="state_Z")
+
+    x, xlabel = get_xaxis(ds, xaxis)
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+    Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max())
+    for Z in Zs:
+        (l,) = ax.plot([], [])
+        label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
+        if normalise:
+            ax.plot(
+                x,
+                Lz.sel(state_Z=Z),
+                color=l.get_color(),
+                label=label,
+                **mpl_kwargs,
+            )
+        else:
+            ax.plot(
+                x,
+                Lz.sel(state_Z=Z),
+                color=l.get_color(),
+                label=label,
+                **mpl_kwargs,
+            )
+    ax.legend()
+    ax.set_xlabel(xlabel)
+    if normalise:
+        ax.set_ylabel("$L_Z / L_Z^{tot}$")
+    else:
+        ax.set_ylabel("$L_z$ [MWm$^{3}$]")
+    ax.set_title("$L_z$: " + ds.metadata["element"])
+    ax.grid()
+    if logx:
+        ax.set_xscale("log")
+    if logy:
+        ax.set_yscale("log")
+
+    return ax
+
+
+def plot_Qz_tot(
+    ds: xr.Dataset,
+    xaxis: str = "Te",
+    logx: bool = False,
+    ax: plt.Axes | None = None,
+    **mpl_kwargs,
+) -> plt.Axes:
+    """Plot the total radiation from spontaneous emission across all charge states
+
+    :param ds: xarray dataset from SIKERun
+    :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
+    :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param ax: Existing matplotlib axes, defaults to None
+    :return: Matplotlib axes
+    """
+
+    Qz_tot = spp.get_Qz_tot(ds)
+    x, xlabel = get_xaxis(ds, xaxis)
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+    ax.plot(x, Qz_tot, **mpl_kwargs)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("$Q_{z,tot}$ [MWm$^{-3}$]")
+    ax.set_title("$Q_{z,tot}$: " + ds.metadata["element"])
+    ax.grid()
+    if logx:
+        ax.set_xscale("log")
+
+    return ax
+
+
+def plot_Lz_avg(
+    ds: xr.Dataset,
+    xaxis: str = "Te",
+    logx: bool = False,
+    logy: bool = True,
+    ax: plt.Axes | None = None,
+    **mpl_kwargs,
+) -> plt.Axes:
+    """Plot the total radiation from spontaneous emission across all charge states
+
+    :param ds: xarray dataset from SIKERun
+    :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
+    :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param ax: Existing matplotlib axes, defaults to None
+    :return: Matplotlib axes
+    """
+
+    Lz_tot = spp.get_Lz_avg(ds)
+    x, xlabel = get_xaxis(ds, xaxis)
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+    ax.plot(x, Lz_tot, **mpl_kwargs)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(r"$\bar{L}_{z}$ [MWm$^{-3}$]")
+    ax.set_title(r"$\bar{L}_{z}$: " + ds.metadata["element"])
+    ax.grid()
+    if logx:
+        ax.set_xscale("log")
+    if logy:
+        ax.set_yscale("log")
+
+    return ax
 
 
 # def plot_PLTs(

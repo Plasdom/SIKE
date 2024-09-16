@@ -71,7 +71,7 @@ def generate_output(
         {"state_" + k: v for k, v in s.__dict__.items() if k in selected_state_cols}
         for s in impurity.states
     ]
-    selected_trans_cols = ["from_id", "to_id", "type", "rate", "rate_inv"]
+    selected_trans_cols = ["from_id", "to_id", "type", "rate", "rate_inv", "delta_E"]
     transitions = [
         {
             "transition_" + k: v
@@ -104,6 +104,8 @@ def generate_output(
     output_ds = xr.Dataset.from_dataframe(states_df)
 
     # Generate transitions dataset and merge with the states dataset
+    transitions_df["transition_delta_E"] *= T_norm
+    transitions_df["transition_rate"] /= t_norm
     transitions_ds = xr.Dataset.from_dataframe(transitions_df)
     output_ds = output_ds.merge(transitions_ds)
 
