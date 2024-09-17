@@ -349,52 +349,52 @@ class SIKERun(object):
             self.atom_data_savedir,
         )
 
-    def calc_eff_rate_mats(self, P_states: str = "ground") -> None:
-        """Calculate the effective rate matrix at each spatial location, for the given P states ("metastables")
+    # def calc_eff_rate_mats(self, P_states: str = "ground") -> None:
+    #     """Calculate the effective rate matrix at each spatial location, for the given P states ("metastables")
 
-        :param P_states: choice of P states (i.e. metastables). Defaults to "ground", meaning ground states of all ionization stages will be treated as evolved states.
-        """
+    #     :param P_states: choice of P states (i.e. metastables). Defaults to "ground", meaning ground states of all ionization stages will be treated as evolved states.
+    #     """
 
-        # TODO: Add functions (probably in post_processing) to extract ionization, recombination coeffs etc from M_eff
+    #     # TODO: Add functions (probably in post_processing) to extract ionization, recombination coeffs etc from M_eff
 
-        fe = self.fe
+    #     fe = self.fe
 
-        eff_rate_mats = {}
+    #     eff_rate_mats = {}
 
-        # TODO: Implement Greenland P-state validation checker
-        self.impurity.reorder_PQ_states(P_states)
+    #     # TODO: Implement Greenland P-state validation checker
+    #     self.impurity.reorder_PQ_states(P_states)
 
-        eff_rate_mats = [None] * self.loc_num_x
+    #     eff_rate_mats = [None] * self.loc_num_x
 
-        num_P = self.impurity.num_P_states
-        num_Q = self.impurity.num_Q_states
+    #     num_P = self.impurity.num_P_states
+    #     num_Q = self.impurity.num_Q_states
 
-        for i in range(self.min_x, self.max_x):
-            print("{:.1f}%".format(100 * i / self.loc_num_x), end="\r")
+    #     for i in range(self.min_x, self.max_x):
+    #         print("{:.1f}%".format(100 * i / self.loc_num_x), end="\r")
 
-            # Build the local matrix
-            M = fill_local_mat(
-                self.impurity.transitions,
-                self.impurity.tot_states,
-                fe[:, i],
-                self.ne[i],
-                self.Te[i],
-                self.vgrid,
-                self.dvc,
-            )
+    #         # Build the local matrix
+    #         M = fill_local_mat(
+    #             self.impurity.transitions,
+    #             self.impurity.tot_states,
+    #             fe[:, i],
+    #             self.ne[i],
+    #             self.Te[i],
+    #             self.vgrid,
+    #             self.dvc,
+    #         )
 
-            # Calculate M_eff
-            M_P = M[:num_P, :num_P]
-            M_Q = M[num_P + 1 :, num_P + 1 :]
-            M_PQ = M[:num_P, num_P + 1 :]
-            M_QP = M[num_P + 1 :, :num_P]
-            M_eff = -(M_P - M_PQ @ np.linalg.inv(M_Q) @ M_QP)
+    #         # Calculate M_eff
+    #         M_P = M[:num_P, :num_P]
+    #         M_Q = M[num_P + 1 :, num_P + 1 :]
+    #         M_PQ = M[:num_P, num_P + 1 :]
+    #         M_QP = M[num_P + 1 :, :num_P]
+    #         M_eff = -(M_P - M_PQ @ np.linalg.inv(M_Q) @ M_QP)
 
-            eff_rate_mats[i - self.min_x] = M_eff
+    #         eff_rate_mats[i - self.min_x] = M_eff
 
-        print("{:.1f}%".format(100))
+    #     print("{:.1f}%".format(100))
 
-        self.eff_rate_mats = eff_rate_mats
+    #     self.eff_rate_mats = eff_rate_mats
 
     def build_matrix(self) -> None:
         """Build the rate matrices"""

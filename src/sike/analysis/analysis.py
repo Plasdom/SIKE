@@ -290,60 +290,60 @@ def get_cooling_curves(run, element, kinetic=True):
     return cooling_curves, eff_cooling_curve
 
 
-def get_cr_iz_coeffs(r, el, kinetic=False):
-    # TODO: Delete this function in favour of doing it the sensible way (M_eff)
-    """Calculate the collisional-radiative ionization coefficients, as per Summers, P. et al. PPCF (2006)
+# def get_cr_iz_coeffs(r, el, kinetic=False):
+#     # TODO: Delete this function in favour of doing it the sensible way (M_eff)
+#     """Calculate the collisional-radiative ionization coefficients, as per Summers, P. et al. PPCF (2006)
 
-    Args:
-        r (SIKERun): SIKERun object
-        el (str): element
-        kinetic (bool, optional): whether to calculate kinetic or maxwellian rates. Defaults to False.
+#     Args:
+#         r (SIKERun): SIKERun object
+#         el (str): element
+#         kinetic (bool, optional): whether to calculate kinetic or maxwellian rates. Defaults to False.
 
-    Returns:
-        np.ndarray: 2D array of CR ionization coefficients (num_x, num_Z-1)
-    """
+#     Returns:
+#         np.ndarray: 2D array of CR ionization coefficients (num_x, num_Z-1)
+#     """
 
-    r.calc_eff_rate_mats(kinetic=kinetic)
-    cr_iz_coeffs = np.zeros([r.loc_num_x, r.impurities[el].num_Z - 1])
+#     r.calc_eff_rate_mats(kinetic=kinetic)
+#     cr_iz_coeffs = np.zeros([r.loc_num_x, r.impurities[el].num_Z - 1])
 
-    for x_pos in range(r.min_x, r.max_x):
-        for Z in range(r.impurities[el].num_Z - 1):
-            if kinetic:
-                cr_iz_coeffs[x_pos - r.min_x, Z] = -r.eff_rate_mats[el][
-                    x_pos - r.min_x
-                ][Z + 1, Z] / (r.ne[x_pos] * r.n_norm * r.t_norm)
-            else:
-                cr_iz_coeffs[x_pos - r.min_x, Z] = -r.eff_rate_mats_Max[el][
-                    x_pos - r.min_x
-                ][Z + 1, Z] / (r.ne[x_pos] * r.n_norm * r.t_norm)
+#     for x_pos in range(r.min_x, r.max_x):
+#         for Z in range(r.impurities[el].num_Z - 1):
+#             if kinetic:
+#                 cr_iz_coeffs[x_pos - r.min_x, Z] = -r.eff_rate_mats[el][
+#                     x_pos - r.min_x
+#                 ][Z + 1, Z] / (r.ne[x_pos] * r.n_norm * r.t_norm)
+#             else:
+#                 cr_iz_coeffs[x_pos - r.min_x, Z] = -r.eff_rate_mats_Max[el][
+#                     x_pos - r.min_x
+#                 ][Z + 1, Z] / (r.ne[x_pos] * r.n_norm * r.t_norm)
 
-    return cr_iz_coeffs
+#     return cr_iz_coeffs
 
 
-def get_cr_rec_coeffs(r, el, kinetic=False):
-    """Calculate the collisional-radiative recombination coefficients
+# def get_cr_rec_coeffs(r, el, kinetic=False):
+#     """Calculate the collisional-radiative recombination coefficients
 
-    Args:
-        r (SIKERun): SIKERun object
-        el (str): element
-        kinetic (bool, optional): whether to calculate kinetic or maxwellian rates. Defaults to False.
+#     Args:
+#         r (SIKERun): SIKERun object
+#         el (str): element
+#         kinetic (bool, optional): whether to calculate kinetic or maxwellian rates. Defaults to False.
 
-    Returns:
-        np.ndarray: 2D array of CR recombination coefficients (num_x, num_Z-1)
-    """
+#     Returns:
+#         np.ndarray: 2D array of CR recombination coefficients (num_x, num_Z-1)
+#     """
 
-    r.calc_eff_rate_mats(kinetic=kinetic)
-    cr_rec_coeffs = np.zeros([r.loc_num_x, r.impurities[el].num_Z - 1])
+#     r.calc_eff_rate_mats(kinetic=kinetic)
+#     cr_rec_coeffs = np.zeros([r.loc_num_x, r.impurities[el].num_Z - 1])
 
-    for x_pos in range(r.min_x, r.max_x):
-        for Z in range(r.impurities[el].num_Z - 1):
-            if kinetic:
-                cr_rec_coeffs[x_pos - r.min_x, Z] = -r.eff_rate_mats[el][
-                    x_pos - r.min_x
-                ][Z, Z + 1] / (r.ne[x_pos] * r.n_norm * r.t_norm)
-            else:
-                cr_rec_coeffs[x_pos - r.min_x, Z] = -r.eff_rate_mats_Max[el][
-                    x_pos - r.min_x
-                ][Z, Z + 1] / (r.ne[x_pos] * r.n_norm * r.t_norm)
+#     for x_pos in range(r.min_x, r.max_x):
+#         for Z in range(r.impurities[el].num_Z - 1):
+#             if kinetic:
+#                 cr_rec_coeffs[x_pos - r.min_x, Z] = -r.eff_rate_mats[el][
+#                     x_pos - r.min_x
+#                 ][Z, Z + 1] / (r.ne[x_pos] * r.n_norm * r.t_norm)
+#             else:
+#                 cr_rec_coeffs[x_pos - r.min_x, Z] = -r.eff_rate_mats_Max[el][
+#                     x_pos - r.min_x
+#                 ][Z, Z + 1] / (r.ne[x_pos] * r.n_norm * r.t_norm)
 
-    return cr_rec_coeffs
+#     return cr_rec_coeffs
