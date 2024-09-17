@@ -15,10 +15,11 @@ Done
 - Check setup.py works now you've moved it up a directory
 - Finish redistributing some of the tools functions into other modules so total number of modules can be reduced (e.g. physics_tools, matrix_utils)
 - Work out how to deal with atomic data
+- Switch from ICL to personal repo
 
 
 To do
-- Switch from ICL to personal repo
+- Make repo public once license has been sorted
 - Generate n-resolved data for Hydrogen, Helium, Lithium, Beryllium, Boron, Oxygen, Nitrogen
 - Simpler parallelisation, perhaps with mpi4py. Add as an OPTIONAL dependency (see e.g. uetools for optional dependency example)
 - Provide a config file API as well as/instead of python API to launch simulations
@@ -36,4 +37,4 @@ To do
 - Sphinx documentation
 - Merge with main branch
 - Handle different velocity grids provided at input
-- Add small diagonal (~1e-10?) to matrix before inversion to improve stability
+- Add small diagonal (~1e-10?) to matrix before inversion to improve stability? 
