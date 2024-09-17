@@ -66,6 +66,7 @@ def generate_output(
         "stat_weight",
         "iz_energy",
         "energy_from_gs",
+        "ground",
     ]
     states = [
         {"state_" + k: v for k, v in s.__dict__.items() if k in selected_state_cols}
@@ -80,36 +81,41 @@ def generate_output(
         }
         for s in impurity.transitions
     ]
+
+    # Generate pandas dataframes for the transitions and states
+    states_df = pd.DataFrame(states)
+    states_df = states_df.rename(
+        columns={"state_id": "k", "state_ground": "state_is_ground"}
+    )
+    states_df = states_df.set_index("k")
+
     transitions_df = pd.DataFrame(transitions)
-    transitions_df.index.name = "i"
-    transitions_df.rename(
+    transitions_df = transitions_df.rename(
         columns={
             "transition_from_id": "transition_from_k",
             "transition_to_id": "transition_to_k",
         }
     )
+    transitions_df.index.name = "i"
+    transitions_df["transition_delta_E"] *= T_norm
+    transitions_df["transition_rate"] /= t_norm
 
-    # Generate Dataarrays
+    # Generate xarray dataset from transitions and states dataframes
+    output_ds = xr.Dataset.from_dataframe(states_df)
+    transitions_ds = xr.Dataset.from_dataframe(transitions_df)
+    output_ds = output_ds.merge(transitions_ds)
+
+    # Generate DataArrays
     dens_da = xr.DataArray(dens * n_norm, coords={"x": x, "k": k})
     Te_da = xr.DataArray(Te * T_norm, coords={"x": x})
     ne_da = xr.DataArray(ne * n_norm, coords={"x": x})
     fe_da = xr.DataArray(fe * n_norm / (v_th**3), coords={"v": v, "x": x})
     rate_mats_da = xr.DataArray(
-        [mat * t_norm for mat in rate_mats],
+        [mat / t_norm for mat in rate_mats],
         coords={"x": x, "j": k, "k": k},
     )  # TODO: Check normalisation here
 
-    # Generate the states dataset from a pandas dataframe
-    states_df = pd.DataFrame(states).rename(columns={"state_id": "k"}).set_index("k")
-    output_ds = xr.Dataset.from_dataframe(states_df)
-
-    # Generate transitions dataset and merge with the states dataset
-    transitions_df["transition_delta_E"] *= T_norm
-    transitions_df["transition_rate"] /= t_norm
-    transitions_ds = xr.Dataset.from_dataframe(transitions_df)
-    output_ds = output_ds.merge(transitions_ds)
-
-    # Combine with other dataarrays
+    # Combine
     output_ds["nk"] = dens_da
     output_ds["Te"] = Te_da
     output_ds["ne"] = ne_da

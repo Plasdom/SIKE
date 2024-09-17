@@ -400,7 +400,7 @@ class SIKERun(object):
         """Build the rate matrices"""
         # Build the rate matrices
         if self.rank == 0:
-            print("Filling transition matrix for...")
+            print("Filling transition matrix for " + self.impurity.longname)
         np_mat = build_matrix(self.min_x, self.max_x, self.impurity.tot_states)
         self.rate_mats = fill_rate_matrix(
             self.loc_num_x,
@@ -430,7 +430,7 @@ class SIKERun(object):
         # Solve or evolve the matrix equation to find the equilibrium densities
         if evolve:
             if self.rank == 0:
-                print("Computing densities for...")
+                print("Computing densities for " + self.impurity.longname)
             n_solved = solver.evolve(
                 self.loc_num_x,
                 self.min_x,
@@ -450,7 +450,7 @@ class SIKERun(object):
                 self.success = False
         else:
             if self.rank == 0:
-                print("Computing densities with for...")
+                print("Computing densities with for " + self.impurity.longname)
             n_solved = solver.solve(
                 self.loc_num_x,
                 self.min_x,

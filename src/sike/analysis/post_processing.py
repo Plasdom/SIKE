@@ -31,14 +31,14 @@ def get_Qz(ds: xr.Dataset) -> xr.DataArray:
         Z_states = ds.k[ds.state_Z == Z]
         emission_ds = ds.sel(
             i=(ds["transition_type"] == "emission")
-            & ds["transition_from_id"].isin(Z_states)
-            & ds["transition_to_id"].isin(Z_states)
+            & ds["transition_from_k"].isin(Z_states)
+            & ds["transition_to_k"].isin(Z_states)
         )
         Qz[:, Z] = 1e-6 * (
             emission_ds.transition_delta_E
             * c.EL_CHARGE
             * emission_ds.transition_rate
-            * emission_ds.nk.sel(k=emission_ds.transition_from_id)
+            * emission_ds.nk.sel(k=emission_ds.transition_from_k)
         ).sum(dim="i")
     Qz = xr.DataArray(Qz, coords={"x": ds.x, "state_Z": Zs})
     return Qz
@@ -55,7 +55,7 @@ def get_Qz_tot(ds: xr.Dataset) -> xr.DataArray:
         emission_ds.transition_delta_E
         * c.EL_CHARGE
         * emission_ds.transition_rate
-        * emission_ds.nk.sel(k=emission_ds.transition_from_id)
+        * emission_ds.nk.sel(k=emission_ds.transition_from_k)
     ).sum(dim="i")
     return Qz_tot
 
@@ -73,7 +73,7 @@ def get_Lz_avg(ds: xr.Dataset) -> xr.DataArray:
             emission_ds.transition_delta_E
             * c.EL_CHARGE
             * emission_ds.transition_rate
-            * emission_ds.nk.sel(k=emission_ds.transition_from_id)
+            * emission_ds.nk.sel(k=emission_ds.transition_from_k)
         ).sum(dim="i")
         / (ds.ne.values * ds.nk.sum(dim="k").values)
     )
@@ -93,15 +93,101 @@ def get_Lz(ds: xr.Dataset) -> xr.DataArray:
         Z_states = ds.k[ds.state_Z == Z]
         emission_ds = ds.sel(
             i=(ds["transition_type"] == "emission")
-            & ds["transition_from_id"].isin(Z_states)
-            & ds["transition_to_id"].isin(Z_states)
+            & ds["transition_from_k"].isin(Z_states)
+            & ds["transition_to_k"].isin(Z_states)
         )
         Qz = 1e-6 * (
             emission_ds.transition_delta_E
             * c.EL_CHARGE
             * emission_ds.transition_rate
-            * emission_ds.nk.sel(k=emission_ds.transition_from_id)
+            * emission_ds.nk.sel(k=emission_ds.transition_from_k)
         ).sum(dim="i")
         Lz[:, Z] = Qz / (ds.ne.values * nz.sel(state_Z=Z).values)
     Lz = xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
     return Lz
+
+
+def get_Meff(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataArray:
+    """Find the effective rate matrix for a given list of P states (see Greenland, P. T., "Collisional Radiative Models with Molecules" (2001))
+
+    :param ds: xarray dataset from SIKERun
+    :param P_states: k indices of states in the input dataset which form the evolved set of states. All remaining states (Q states) are assumed to not be evolved. Defaults to None, in which case the ground states of each charge state are used.
+    :return: Effective rate matrix for transitions between P states
+    """
+
+    # Use ground states if no list of P states provided
+    if P_states is None:
+        P_states = get_ground_states(ds)
+
+    # Q states are the remaining ones
+    Q_states = ds.sel(k=np.logical_not(ds.k.isin(P_states))).k.values
+
+    # Get matrix components
+    M_P = ds.M.sel(j=P_states, k=P_states).values
+    M_Q = ds.M.sel(j=Q_states, k=Q_states).values
+    M_PQ = ds.M.sel(j=P_states, k=Q_states).values
+    M_QP = ds.M.sel(j=Q_states, k=P_states).values
+
+    # Calculate M_eff
+    M_eff = -(M_P - M_PQ @ np.linalg.inv(M_Q) @ M_QP)
+
+    M_eff = xr.DataArray(M_eff, coords={"x": ds.x, "j": P_states, "k": P_states})
+
+    return M_eff
+
+
+def get_Keff_iz(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataArray:
+    """Get the effective ionisation rate coefficients between ground states of each charge state (effective rates for transitions between other states can be specified with the P_states argument)
+
+    :param ds: xarray dataset from SIKERun
+    :param P_states: k indices of states in the input dataset which form the evolved set of states. All remaining states (Q states) are assumed to not be evolved. Defaults to None, in which case the ground states of each charge state are used.
+    :return: Effective ionisation rate coefficients between P states
+    """
+    # Use ground states if no list of P states provided
+    if P_states is None:
+        P_states = get_ground_states(ds)
+        Zs = np.sort(ds.state_Z.sel(k=P_states).values)[:-1]
+    P_states = get_ground_states(ds)
+    Meff = get_Meff(ds, P_states=P_states)
+
+    Keff_iz = np.zeros((len(ds.x), len(Zs)))
+    for Z in Zs:
+        Keff_iz[:, Z] = -Meff.isel(k=Z, j=Z + 1).values / ds.ne.values
+
+    Keff_iz = xr.DataArray(Keff_iz, coords={"x": ds.x, "state_Z": Zs})
+
+    return Keff_iz
+
+
+def get_Keff_rec(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataArray:
+    """Get the effective recombination rate coefficients between ground states of each charge state (effective rates for transitions between other states can be specified with the P_states argument)
+
+    :param ds: xarray dataset from SIKERun
+    :param P_states: k indices of states in the input dataset which form the evolved set of states. All remaining states (Q states) are assumed to not be evolved. Defaults to None, in which case the ground states of each charge state are used.
+    :return: Effective recombination rate coefficients between P states
+    """
+    # Use ground states if no list of P states provided
+    if P_states is None:
+        P_states = get_ground_states(ds)
+        Zs = np.sort(ds.state_Z.sel(k=P_states).values)[1:]
+    P_states = get_ground_states(ds)
+    Meff = get_Meff(ds, P_states=P_states)
+
+    Keff_rec = np.zeros((len(ds.x), len(Zs)))
+    for Z in Zs:
+        Keff_rec[:, Z - 1] = -Meff.isel(k=Z, j=Z - 1).values / ds.ne.values
+
+    Keff_rec = xr.DataArray(Keff_rec, coords={"x": ds.x, "state_Z": Zs})
+
+    return Keff_rec
+
+
+def get_ground_states(ds: xr.Dataset) -> np.ndarray:
+    """Get the list of k indices of ground states in the dataset
+
+    :param ds: xarray dataset from SIKERun
+    :return: A numpy array of ground states indices
+    """
+    ground_states = ds.sel(k=ds.state_is_ground == True).k.values
+
+    return ground_states

@@ -65,22 +65,13 @@ def plot_nz(
     for Z in Zs:
         (l,) = ax.plot([], [])
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
-        if normalise:
-            ax.plot(
-                x,
-                nz.sel(state_Z=Z),
-                color=l.get_color(),
-                label=label,
-                **mpl_kwargs,
-            )
-        else:
-            ax.plot(
-                x,
-                nz.sel(state_Z=Z),
-                color=l.get_color(),
-                label=label,
-                **mpl_kwargs,
-            )
+        ax.plot(
+            x,
+            nz.sel(state_Z=Z),
+            color=l.get_color(),
+            label=label,
+            **mpl_kwargs,
+        )
     ax.legend()
     ax.set_xlabel(xlabel)
     if normalise:
@@ -125,22 +116,13 @@ def plot_Qz(
     for Z in Zs:
         (l,) = ax.plot([], [])
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
-        if normalise:
-            ax.plot(
-                x,
-                Qz.sel(state_Z=Z),
-                color=l.get_color(),
-                label=label,
-                **mpl_kwargs,
-            )
-        else:
-            ax.plot(
-                x,
-                Qz.sel(state_Z=Z),
-                color=l.get_color(),
-                label=label,
-                **mpl_kwargs,
-            )
+        ax.plot(
+            x,
+            Qz.sel(state_Z=Z),
+            color=l.get_color(),
+            label=label,
+            **mpl_kwargs,
+        )
     ax.legend()
     ax.set_xlabel(xlabel)
     if normalise:
@@ -171,7 +153,6 @@ def plot_Lz(
     :param logx: Whether x-axis scale should be logarithmic, defaults to False
     :param logy: Whether y-axis scale should be logarithmic, defaults to True
     :param normalise: Whether Lz should be normalised so that sum(Lz) = 1, defaults to False
-    :param normalise: Whether charge state densities should be normalised so that sum(nz) = 1, defaults to False
     :param ax: Existing matplotlib axes, defaults to None
     :return: Matplotlib axes
     """
@@ -188,22 +169,13 @@ def plot_Lz(
     for Z in Zs:
         (l,) = ax.plot([], [])
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
-        if normalise:
-            ax.plot(
-                x,
-                Lz.sel(state_Z=Z),
-                color=l.get_color(),
-                label=label,
-                **mpl_kwargs,
-            )
-        else:
-            ax.plot(
-                x,
-                Lz.sel(state_Z=Z),
-                color=l.get_color(),
-                label=label,
-                **mpl_kwargs,
-            )
+        ax.plot(
+            x,
+            Lz.sel(state_Z=Z),
+            color=l.get_color(),
+            label=label,
+            **mpl_kwargs,
+        )
     ax.legend()
     ax.set_xlabel(xlabel)
     if normalise:
@@ -278,6 +250,106 @@ def plot_Lz_avg(
     ax.set_xlabel(xlabel)
     ax.set_ylabel(r"$\bar{L}_{z}$ [MWm$^{-3}$]")
     ax.set_title(r"$\bar{L}_{z}$: " + ds.metadata["element"])
+    ax.grid()
+    if logx:
+        ax.set_xscale("log")
+    if logy:
+        ax.set_yscale("log")
+
+    return ax
+
+
+def plot_Keff_iz(
+    ds: xr.Dataset,
+    P_states: None | list[int] = None,
+    xaxis: str = "Te",
+    logx: bool = False,
+    logy: bool = True,
+    ax: plt.Axes | None = None,
+    **mpl_kwargs,
+):
+    """Plot the effective ionisation coefficients between ground states of each charge state, or some other set of P states (see Greenland, P. T., "Collisional Radiative Models with Molecules" (2001))
+
+    :param ds: xarray dataset from SIKERun
+    :param P_states: k indices of states in the input dataset which form the evolved set of states. All remaining states (Q states) are assumed to not be evolved. Defaults to None, in which case the ground states of each charge state are used.
+    :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
+    :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param logy: Whether y-axis scale should be logarithmic, defaults to True
+    :param ax: Existing matplotlib axes, defaults to None
+    :return: Matplotlib axes
+    """
+    Keff_iz = spp.get_Keff_iz(ds, P_states)
+
+    x, xlabel = get_xaxis(ds, xaxis)
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+    Zs = Keff_iz.state_Z.values
+    for Z in Zs:
+        (l,) = ax.plot([], [])
+        label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
+        ax.plot(
+            x,
+            Keff_iz.sel(state_Z=Z),
+            color=l.get_color(),
+            label=label,
+            **mpl_kwargs,
+        )
+    ax.legend()
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("$K_{eff}^{ion,z}$ [m$^{3}$s$^{-1}$]")
+    ax.set_title("$K_{eff}^{ion,z}$: " + ds.metadata["element"])
+    ax.grid()
+    if logx:
+        ax.set_xscale("log")
+    if logy:
+        ax.set_yscale("log")
+
+    return ax
+
+
+def plot_Keff_rec(
+    ds: xr.Dataset,
+    P_states: None | list[int] = None,
+    xaxis: str = "Te",
+    logx: bool = False,
+    logy: bool = True,
+    ax: plt.Axes | None = None,
+    **mpl_kwargs,
+):
+    """Plot the effective recombination coefficients between ground states of each charge state, or some other set of P states (see Greenland, P. T., "Collisional Radiative Models with Molecules" (2001))
+
+    :param ds: xarray dataset from SIKERun
+    :param P_states: k indices of states in the input dataset which form the evolved set of states. All remaining states (Q states) are assumed to not be evolved. Defaults to None, in which case the ground states of each charge state are used.
+    :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
+    :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param logy: Whether y-axis scale should be logarithmic, defaults to True
+    :param ax: Existing matplotlib axes, defaults to None
+    :return: Matplotlib axes
+    """
+    Keff_rec = spp.get_Keff_rec(ds, P_states)
+
+    x, xlabel = get_xaxis(ds, xaxis)
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+    Zs = Keff_rec.state_Z.values
+    for Z in Zs:
+        (l,) = ax.plot([], [])
+        label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
+        ax.plot(
+            x,
+            Keff_rec.sel(state_Z=Z),
+            color=l.get_color(),
+            label=label,
+            **mpl_kwargs,
+        )
+    ax.legend()
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("$K_{eff}^{rec,z}$ [m$^{3}$s$^{-1}$]")
+    ax.set_title("$K_{eff}^{rec,z}$: " + ds.metadata["element"])
     ax.grid()
     if logx:
         ax.set_xscale("log")
