@@ -63,7 +63,7 @@ def plot_nz(
     if ax is None:
         _, ax = plt.subplots(1)
 
-    Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max())
+    Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max() + 1)
     for Z in Zs:
         (l,) = ax.plot([], [])
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
@@ -118,7 +118,7 @@ def plot_Qz(
     if ax is None:
         _, ax = plt.subplots(1)
 
-    Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max())
+    Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max() + 1)
     for Z in Zs:
         (l,) = ax.plot([], [])
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
@@ -173,7 +173,7 @@ def plot_Lz(
     if ax is None:
         _, ax = plt.subplots(1)
 
-    Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max())
+    Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max() + 1)
     for Z in Zs:
         (l,) = ax.plot([], [])
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"

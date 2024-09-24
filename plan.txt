@@ -17,18 +17,21 @@ Done
 - Work out how to deal with atomic data
 - Switch from ICL to personal repo
 - Decide where things like calc_eff_rate_mats should go - in particular, how to deal with the question of full vs. partial rate equations (i.e. full set vs. Greenland-style)
+- Update "run" method to separate "solve" and "evolve" methods:
+    - Coupling may require adding a specific dt to evolve solution forward by some total time, as opposed to setting dt and max_timesteps. Also, I don't think timestep should matter for this problem. Could try jumping the whole timestep, then if something goes wrong try several smaller timesteps, etc
+    - Add small diagonal (~1e-10?) to matrix before inversion when calling solve to improve stability? Could not do initially, then check for negative densities, non conservation  etc and warn the user you're doing it
 
 To do
-- Update "run" method to separate "solve" and "evolve" methods:
-    - Coupling may require adding a specific dt to evolve solution forward by some total time, as opposed to setting dt and max_timesteps. Also, I don't think timestep should matter for thids problem. Could try jumping the whole timestep, then if something goes wrong try several smaller timesteps, etc
-    - Add small diagonal (~1e-10?) to matrix before inversion when calling solve to improve stability? Could not do initially, then check for negative densities, non conservation  etc and warn the user you're doing it
+- Investigate Saha-Boltzmann initialisation
+- Automatically set resolve_j, resolve_l depending on which element is being evolved
 - Handle different velocity grids provided at input
 - Mangle/hide names of methods, classes etc we don't want to expose
-- Expose an "update_fe" method. This can be used to recompute Maxwellian/kinetic equilibria without having to read in the atomic data again, and will be useful during coupling runs
+- Expose an "update_fe" method. This can be used to recompute Maxwellian/kinetic equilibria without having to read in the atomic data again, and will be useful during coupling runs. This will set the matrix_needs_building flag to True
 - Should accept xarrays as input (e.g. fe from remkit?)
 - Tests
 - Remove any old or unused code. E.g. there's some overlap between core.py, analysis.py and post_processing.py
 - Some demo scripts
+    - Make sure the get_bimaxwellians method is user-friendly and enables quick setup of a comparison with Maxwellian/non-Maxwellian case
 - License
 - Merge with main branch
 - Readme:
