@@ -39,6 +39,7 @@ def plot_nz(
     ds: xr.Dataset,
     xaxis: str = "Te",
     logx: bool = False,
+    logy: bool = False,
     normalise: bool = False,
     ax: plt.Axes | None = None,
     **mpl_kwargs,
@@ -48,6 +49,7 @@ def plot_nz(
     :param ds: xarray dataset from SIKERun
     :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
     :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param logy: Whether y-axis scale should be logarithmic, defaults to False
     :param normalise: Whether chanrge state densities should be normalised so that sum(nz) = 1, defaults to False
     :param ax: Existing matplotlib axes, defaults to None
     :return: Matplotlib axes
@@ -82,6 +84,8 @@ def plot_nz(
     ax.grid()
     if logx:
         ax.set_xscale("log")
+    if logy:
+        ax.set_yscale("log")
 
     return ax
 
@@ -90,6 +94,7 @@ def plot_Qz(
     ds: xr.Dataset,
     xaxis: str = "Te",
     logx: bool = False,
+    logy: bool = False,
     normalise: bool = False,
     ax: plt.Axes | None = None,
     **mpl_kwargs,
@@ -99,6 +104,7 @@ def plot_Qz(
     :param ds: xarray dataset from SIKERun
     :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
     :param logx: Whether x-axis scale should be logarithmic, defaults to False
+    :param logy: Whether y-axis scale should be logarithmic, defaults to False
     :param normalise: Whether chanrge state densities should be normalised so that sum(nz) = 1, defaults to False
     :param ax: Existing matplotlib axes, defaults to None
     :return: Matplotlib axes
@@ -133,6 +139,8 @@ def plot_Qz(
     ax.grid()
     if logx:
         ax.set_xscale("log")
+    if logy:
+        ax.set_yscale("log")
 
     return ax
 

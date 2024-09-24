@@ -53,10 +53,6 @@ class SIKERun(object):
         ne: np.ndarray | None = None,
         xgrid: np.ndarray | None = None,
         element: str = "Li",
-        delta_t: float = 1.0e-3,
-        evolve: bool = True,
-        dndt_thresh: float = 1e-5,
-        max_steps: int = 1000,
         frac_imp_dens: float = 0.05,
         resolve_l: bool = True,
         resolve_j: bool = True,
@@ -77,10 +73,6 @@ class SIKERun(object):
         :param ne: electron density profile (units [m^-3]), defaults to None
         :param xgrid: x-grid on which to evolve impurity densities (units [m]), defaults to None
         :param impurity: The impurity species to evolve (use chemical symbols), defaults to "Li"
-        :param delta_t: The time step to use in seconds if `evolve` option is true, defaults to 1.0e-3
-        :param evolve: Specify whether to evolve the state density equations in time. If false, simply invert the rate matrix (this method sometimes suffers from numerical instabilities), defaults to True
-        :param dndt_thresh: The threshold density residual between subsequent s which defines whether equilibrium has been reached, defaults to 1e-5
-        :param max_steps: The maximum number of s to evolve if `evolve` is true, defaults to 1000
         :param frac_imp_dens: The fractional impurity density at initialisation, defaults to 0.05
         :param resolve_l: Reolve states by orbital angular momentum quantum number, defaults to True
         :param resolve_j: Reolve states by total angular momentum quantum number, defaults to True
@@ -97,10 +89,6 @@ class SIKERun(object):
         # TODO: Change fe so that spatial index comes first (like everywhere else)
 
         # Save input options
-        self.delta_t = delta_t
-        self.evolve = evolve
-        self.dndt_thresh = dndt_thresh
-        self.max_steps = max_steps
         self.frac_imp_dens = frac_imp_dens
         self.resolve_l = resolve_l
         self.resolve_j = resolve_j
@@ -116,6 +104,8 @@ class SIKERun(object):
 
         self.num_procs = 1  # TODO: Parallelisation
         self.rank = 0  # TODO: Parallelisation
+
+        self.matrix_needs_building = True
 
         # Save simulation set-up
         if xgrid is not None:
@@ -296,7 +286,6 @@ class SIKERun(object):
         self.dvc /= self.v_th
         self.xgrid /= self.x_norm
         self.dxc /= self.x_norm
-        self.delta_t /= self.t_norm
         self.fe /= self.n_norm / (self.v_th**3)
 
     def generate_grid_widths(self):
@@ -314,18 +303,21 @@ class SIKERun(object):
         for i in range(1, self.num_v):
             self.dvc[i] = 2 * (self.vgrid[i] - self.vgrid[i - 1]) - self.dvc[i - 1]
 
-    def run(self) -> xr.Dataset:
-        """Run the program to find equilibrium impurity densities on the provided background plasma.
+    def solve(self) -> xr.Dataset:
+        """Carry out direct solve on state density evolution equations
 
         :return: xarray dataset containing densities, states, transitions and other relevant information for the case
         """
-
         self.build_matrix()
-        self.compute_densities(
-            dt=self.delta_t,
-            num_t=self.max_steps,
-            evolve=self.evolve,
+
+        self.impurity.dens = solver.solve(
+            self.loc_num_x,
+            self.min_x,
+            self.max_x,
+            self.rate_mats,
+            self.impurity.dens,
         )
+
         return generate_output(
             self.impurity,
             self.xgrid,
@@ -349,118 +341,67 @@ class SIKERun(object):
             self.atom_data_savedir,
         )
 
-    # def calc_eff_rate_mats(self, P_states: str = "ground") -> None:
-    #     """Calculate the effective rate matrix at each spatial location, for the given P states ("metastables")
+    def evolve(self, dt: float, num_t: int = 1) -> xr.Dataset:
+        """Evolve the rate equations by a set timestep
 
-    #     :param P_states: choice of P states (i.e. metastables). Defaults to "ground", meaning ground states of all ionization stages will be treated as evolved states.
-    #     """
+        :param dt: Timestep in seconds
+        :param num_t: Number of timesteps to take, defaults to 1
+        :return: xarray dataset containing densities, states, transitions and other relevant information for the case
+        """
+        self.build_matrix()
 
-    #     # TODO: Add functions (probably in post_processing) to extract ionization, recombination coeffs etc from M_eff
-
-    #     fe = self.fe
-
-    #     eff_rate_mats = {}
-
-    #     # TODO: Implement Greenland P-state validation checker
-    #     self.impurity.reorder_PQ_states(P_states)
-
-    #     eff_rate_mats = [None] * self.loc_num_x
-
-    #     num_P = self.impurity.num_P_states
-    #     num_Q = self.impurity.num_Q_states
-
-    #     for i in range(self.min_x, self.max_x):
-    #         print("{:.1f}%".format(100 * i / self.loc_num_x), end="\r")
-
-    #         # Build the local matrix
-    #         M = fill_local_mat(
-    #             self.impurity.transitions,
-    #             self.impurity.tot_states,
-    #             fe[:, i],
-    #             self.ne[i],
-    #             self.Te[i],
-    #             self.vgrid,
-    #             self.dvc,
-    #         )
-
-    #         # Calculate M_eff
-    #         M_P = M[:num_P, :num_P]
-    #         M_Q = M[num_P + 1 :, num_P + 1 :]
-    #         M_PQ = M[:num_P, num_P + 1 :]
-    #         M_QP = M[num_P + 1 :, :num_P]
-    #         M_eff = -(M_P - M_PQ @ np.linalg.inv(M_Q) @ M_QP)
-
-    #         eff_rate_mats[i - self.min_x] = M_eff
-
-    #     print("{:.1f}%".format(100))
-
-    #     self.eff_rate_mats = eff_rate_mats
-
-    def build_matrix(self) -> None:
-        """Build the rate matrices"""
-        # Build the rate matrices
-        if self.rank == 0:
-            print("Filling transition matrix for " + self.impurity.longname)
-        np_mat = build_matrix(self.min_x, self.max_x, self.impurity.tot_states)
-        self.rate_mats = fill_rate_matrix(
+        sub_dt = (dt / self.t_norm) / num_t
+        self.impurity.dens = solver.evolve(
             self.loc_num_x,
             self.min_x,
             self.max_x,
-            np_mat,
-            self.impurity,
-            self.fe,
-            self.ne,
-            self.Te,
-            self.vgrid,
-            self.dvc,
+            self.rate_mats,
+            self.impurity.dens,
+            sub_dt,
+            num_t,
         )
 
-    def compute_densities(
-        self,
-        num_t: int | None = None,
-        evolve: bool = True,
-        dt: float | None = None,
-    ) -> None:
-        """Solve or evolve the matrix equation to find the equilibrium densities
+        return generate_output(
+            self.impurity,
+            self.xgrid,
+            self.vgrid,
+            self.x_norm,
+            self.t_norm,
+            self.n_norm,
+            self.v_th,
+            self.T_norm,
+            self.Te,
+            self.ne,
+            self.fe,
+            self.rate_mats,
+            self.resolve_l,
+            self.resolve_j,
+            self.ionization,
+            self.radiative_recombination,
+            self.excitation,
+            self.emission,
+            self.autoionization,
+            self.atom_data_savedir,
+        )
 
-        :param evolve: Whether to solve densities directly or evolve until equilibrium is reached, defaults to True
-        :param dt: Timestep to use if evolve=True, defaults to None
-        :param num_t: Number of timesteps to use if evolve=True, defaults to None
-        """
-        # Solve or evolve the matrix equation to find the equilibrium densities
-        if evolve:
+    def build_matrix(self) -> None:
+        """Build the rate matrices"""
+        if self.matrix_needs_building:
+            # Build the rate matrices
             if self.rank == 0:
-                print("Computing densities for " + self.impurity.longname)
-            n_solved = solver.evolve(
+                print("Filling transition matrix for " + self.impurity.longname)
+            np_mat = build_matrix(self.min_x, self.max_x, self.impurity.tot_states)
+            self.rate_mats = fill_rate_matrix(
                 self.loc_num_x,
                 self.min_x,
                 self.max_x,
-                self.rate_mats,
-                self.impurity.dens,
-                dt,
-                num_t,
-                self.dndt_thresh,
-                self.n_norm,
-                self.t_norm,
-            )
-            if n_solved is not None:
-                self.impurity.dens = n_solved
-                self.success = True
-            else:
-                self.success = False
-        else:
-            if self.rank == 0:
-                print("Computing densities with for " + self.impurity.longname)
-            n_solved = solver.solve(
-                self.loc_num_x,
-                self.min_x,
-                self.max_x,
-                self.rate_mats,
-                self.impurity.dens,
+                np_mat,
+                self.impurity,
+                self.fe,
+                self.ne,
+                self.Te,
+                self.vgrid,
+                self.dvc,
             )
 
-            if n_solved is not None:
-                self.impurity.dens = n_solved
-                self.success = True
-            else:
-                self.success = False
+            self.matrix_needs_building = False
