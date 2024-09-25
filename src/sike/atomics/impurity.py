@@ -5,6 +5,7 @@ import json
 from sike.atomics.transition import *
 from sike.atomics.atomic_state import State
 from sike.analysis.impurity_utils import saha_dist, boltzmann_dist, gather_states
+import sike.utils.constants as c
 
 
 class Impurity:
@@ -179,35 +180,10 @@ class Impurity:
 
     def get_element_data(self):
         """Set the nuclear charge and number of ionisation stages"""
-        nuc_chg_dict = {
-            "H": 1,
-            "He": 2,
-            "Li": 3,
-            "Be": 4,
-            "B": 5,
-            "C": 6,
-            "N": 7,
-            "O": 8,
-            "Ne": 10,
-            "Ar": 18,
-            "W": 74,
-        }
-        longname_dict = {
-            "H": "Hydrogen",
-            "He": "Helium",
-            "Li": "Lithium",
-            "Be": "Beryllium",
-            "B": "Boron",
-            "C": "Carbon",
-            "N": "Nitrogen",
-            "O": "Oxygen",
-            "Ne": "Neon",
-            "Ar": "Argon",
-            "W": "Tungsten",
-        }
-        self.nuc_chg = nuc_chg_dict[self.name]
+
+        self.nuc_chg = c.NUCLEAR_CHARGE_DICT[self.name]
         self.num_Z = self.nuc_chg + 1
-        self.longname = longname_dict[self.name]
+        self.longname = c.SYMBOL2ELEMENT[self.name]
 
     def init_states(self):
         """Initialise the evolved atomic states"""

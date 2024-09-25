@@ -54,8 +54,8 @@ class SIKERun(object):
         xgrid: np.ndarray | None = None,
         element: str = "Li",
         frac_imp_dens: float = 0.05,
-        resolve_l: bool = True,
-        resolve_j: bool = True,
+        resolve_l: bool = False,
+        resolve_j: bool = False,
         ionization: bool = True,
         radiative_recombination: bool = True,
         excitation: bool = True,
@@ -74,8 +74,8 @@ class SIKERun(object):
         :param xgrid: x-grid on which to evolve impurity densities (units [m]), defaults to None
         :param impurity: The impurity species to evolve (use chemical symbols), defaults to "Li"
         :param frac_imp_dens: The fractional impurity density at initialisation, defaults to 0.05
-        :param resolve_l: Reolve states by orbital angular momentum quantum number, defaults to True
-        :param resolve_j: Reolve states by total angular momentum quantum number, defaults to True
+        :param resolve_l: Reolve states by orbital angular momentum quantum number, defaults to False
+        :param resolve_j: Reolve states by total angular momentum quantum number, defaults to False
         :param ionization: Include collisional ionisation and three-body recombination processes, defaults to True
         :param radiative_recombination: Include radiative recombination process, defaults to True
         :param excitation: Include collisional excitation and deexcitation processes, defaults to True
@@ -100,7 +100,7 @@ class SIKERun(object):
         self.fixed_fraction_init = fixed_fraction_init
         self.saha_boltzmann_init = saha_boltzmann_init
         self.state_ids = state_ids
-        self.atom_data_savedir = self.get_atom_data_savedir()
+        self.atom_data_savedir = get_atom_data_savedir()
 
         self.num_procs = 1  # TODO: Parallelisation
         self.rank = 0  # TODO: Parallelisation
@@ -156,26 +156,6 @@ class SIKERun(object):
         print("Finished initialising impurity species objects.")
 
         self.rate_mats = {}
-
-    def get_atom_data_savedir(self) -> Path:
-        """Open the config file to find the location of the saved atomic data
-
-        :return: Path to atomic data savedir
-        """
-        config_file = Path(os.getenv("HOME")) / CONFIG_FILENAME
-        if config_file.exists():
-            with open(config_file, "r+") as f:
-                l = f.readlines()
-            atom_data_savepath = Path(l[0])
-            if not atom_data_savepath.exists():
-                raise FileNotFoundError(
-                    "The atomic data savedir specified in the config file does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions."
-                )
-            return atom_data_savepath
-        else:
-            raise FileNotFoundError(
-                "No config file found. Have you run setup to download the atomic data? See readme ofr instructions."
-            )
 
     def init_from_dist(self) -> None:
         """Initialise simulation from electron distributions"""
@@ -341,7 +321,7 @@ class SIKERun(object):
             self.atom_data_savedir,
         )
 
-    def evolve(self, dt: float, num_t: int = 1) -> xr.Dataset:
+    def evolve(self, dt: float, num_t: int = 10) -> xr.Dataset:
         """Evolve the rate equations by a set timestep
 
         :param dt: Timestep in seconds
@@ -351,6 +331,7 @@ class SIKERun(object):
         self.build_matrix()
 
         sub_dt = (dt / self.t_norm) / num_t
+        print("Evolving evolution equations...")
         self.impurity.dens = solver.evolve(
             self.loc_num_x,
             self.min_x,
@@ -360,6 +341,7 @@ class SIKERun(object):
             sub_dt,
             num_t,
         )
+        print("Done.")
 
         return generate_output(
             self.impurity,
@@ -405,3 +387,24 @@ class SIKERun(object):
             )
 
             self.matrix_needs_building = False
+
+
+def get_atom_data_savedir() -> Path:
+    """Open the config file to find the location of the saved atomic data
+
+    :return: Path to atomic data savedir
+    """
+    config_file = Path(os.getenv("HOME")) / CONFIG_FILENAME
+    if config_file.exists():
+        with open(config_file, "r+") as f:
+            l = f.readlines()
+        atom_data_savepath = Path(l[0])
+        if not atom_data_savepath.exists():
+            raise FileNotFoundError(
+                "The atomic data savedir specified in the config file does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions."
+            )
+        return atom_data_savepath
+    else:
+        raise FileNotFoundError(
+            "No config file found. Have you run setup to download the atomic data? See readme ofr instructions."
+        )
