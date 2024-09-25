@@ -37,6 +37,7 @@ class ExTrans(Transition):
         sigma_norm: float,
         from_stat_weight: float | None = None,
         born_bethe_coeffs: np.ndarray | None = None,
+        E_grid: np.ndarray | None = None,
         **transition_kwargs,
     ):
         """Initialise
@@ -46,6 +47,7 @@ class ExTrans(Transition):
         :param sigma_norm: Normalisation constant for cross-section
         :param from_stat_weight: Statistical weight of the initial state, defaults to None
         :param born_bethe_coeffs: Born-Bethe coefficients, defaults to None
+        :param Egrid: Energy grid (pre_collision), in eV, on which cross-sections were calculation
         :param transition_kwargs: Arguments for base Transition class
         """
         super().__init__(**transition_kwargs)
@@ -54,7 +56,83 @@ class ExTrans(Transition):
         self.sigma[np.where(self.sigma < 0.0)] = 0.0
         self.collrate_const = collrate_const
         self.from_stat_weight = from_stat_weight
-        self.born_bethe_coeffs = born_bethe_coeffs
+        if born_bethe_coeffs is not None and E_grid is not None:
+            self.born_bethe_coeffs = born_bethe_coeffs
+            if E_grid is not None:
+                self.Egrid = E_grid  # TODO: Normalisation?
+
+    def interpolate_cross_section(self, new_Egrid: np.ndarray):
+        interp_func = interpolate.interp1d(
+            self.Egrid,
+            np.log(self.sigma),
+            kind="linear",
+            bounds_error=False,
+            fill_value=np.nan,
+        )
+        sigma_new = np.exp(interp_func(new_Egrid))
+
+        # Apply Born-Bethe approximation at energies higher than 200 * transition energy
+        bb_thresh = min(self.delta_E * 200, self.Egrid[-1])
+        b0 = self.born_bethe_coeffs[0]
+        b1 = self.born_bethe_coeffs[1]
+        E_grid_bb = new_Egrid[np.where(new_Egrid > bb_thresh)]
+        sigma_new[np.where(new_Egrid > bb_thresh)] = (
+            1.1969e-15
+            * (1 / (self.from_stat_weight * E_grid_bb))
+            * (b0 * np.log(E_grid_bb / self.delta_E) + b1)
+        )
+
+        # Set below-threshold sigma to zero
+        sigma_new[np.where(new_Egrid <= self.delta_E)] = 0.0
+
+        # Interpolate values which are nan but above threshold
+        # isnans = np.isnan(sigma_new)
+        # if isnans.any():
+        #     nan_locs = np.argwhere(isnans)
+        #     first_nonnan_E = new_Egrid[nan_locs[0][-1] + 1]
+        #     first_nonnan_sigma = sigma_new[nan_locs[0][-1] + 1]
+        #     for nan_loc in nan_locs[0]:
+        #         nan_E = new_Egrid[nan_loc]
+        #         d1 = nan_E - self.delta_E
+        #         d2 = first_nonnan_E - nan_E
+        #         interp_val = (d1 * first_nonnan_sigma + d2 * 0.0) / (d1 + d2)
+        #         sigma_new[nan_loc] = interp_val
+        isnans = np.isnan(sigma_new)
+        if isnans.any():
+            nan_locs = np.argwhere(isnans)
+            first_nonnan_E = new_Egrid[nan_locs[-1][0] + 1]
+            first_nonnan_sigma = sigma_new[nan_locs[-1][0] + 1]
+            for nan_loc in nan_locs:
+                nan_E = new_Egrid[nan_loc[0]]
+                d1 = nan_E - self.delta_E
+                d2 = first_nonnan_E - nan_E
+                interp_val = (d1 * first_nonnan_sigma + d2 * 0.0) / (d1 + d2)
+                sigma_new[nan_loc[0]] = interp_val
+
+        # If nans still exist, use the Born-Bethe approx for all elements
+        isnans = np.isnan(sigma_new)
+        if isnans.any():
+            bb_thresh = self.delta_E
+            b0 = self.born_bethe_coeffs[0]
+            b1 = self.born_bethe_coeffs[1]
+            E_grid_bb = new_Egrid[np.where(new_Egrid > bb_thresh)]
+            sigma_new[np.where(new_Egrid > bb_thresh)] = (
+                1.1969e-15
+                * (1 / (self.from_stat_weight * E_grid_bb))
+                * (b0 * np.log(E_grid_bb / self.delta_E) + b1)
+            )
+
+        # Update cross-section
+        self.sigma = sigma_new
+
+        # Final nan check
+        if np.isnan(self.sigma).any():
+            print(
+                "Found some nans in interpolated excitation cross-sections. This is likely to causing issues when solving the rate equations."
+            )
+
+        # Delete the energy grid associated with the transition
+        del self.Egrid
 
     def set_sigma_deex(self, g_ratio: float, vgrid: np.ndarray) -> np.ndarray:
         """Calculate the de-excitation cross-section
@@ -127,6 +205,7 @@ class IzTrans(Transition):
         sigma_norm: float,
         from_stat_weight: float | None = None,
         fit_params: np.ndarray | None = None,
+        E_grid: np.ndarray | None = None,
         **transition_kwargs,
     ):
         """Initialise
@@ -137,6 +216,7 @@ class IzTrans(Transition):
         :param sigma_norm: Normalisation constant for cross-section
         :param from_stat_weight: Statistical weight of the initial state, defaults to None, defaults to None
         :param fit_params: Parameters for the high-energy cross-section fit, defaults to None
+        :param Egrid: Energy grid (pre_collision), in eV, on which cross-sections were calculation
         :param transition_kwargs: Arguments for base Transition class
         """
         super().__init__(**transition_kwargs)
@@ -146,6 +226,8 @@ class IzTrans(Transition):
         self.tbrec_norm = tbrec_norm
         self.from_stat_weight = from_stat_weight
         self.fit_params = fit_params
+        if E_grid is not None:
+            self.Egrid = E_grid  # TODO: Normalisation?
 
     def set_inv_data(self, g_ratio: float, vgrid: np.ndarray):
         """Store some useful data for calculating the inverse (3b-recombination) cross-sections
@@ -204,6 +286,58 @@ class IzTrans(Transition):
 
         return sigma_tbrec
 
+    def interpolate_cross_section(self, new_Egrid: np.ndarray):
+        # try:
+        interp_func = interpolate.interp1d(
+            self.Egrid,
+            np.log(self.sigma),
+            kind="linear",
+            bounds_error=False,
+            fill_value=np.nan,
+        )
+        # except:
+        #     print("hey")
+        sigma_new = np.exp(interp_func(new_Egrid))
+
+        # Apply fit to energies higher than FAC calculated
+        p = self.fit_params
+        E_grid_fit = new_Egrid[np.where(new_Egrid > self.Egrid[-1])]
+        x = E_grid_fit / self.delta_E
+        y = 1 - (1 / x)
+        sigma_new[np.where(new_Egrid > self.Egrid[-1])] = (
+            1.1969e-15
+            * (1 / (np.pi * self.from_stat_weight * E_grid_fit))
+            * (p[0] * np.log(x) + p[1] * y**2 + p[2] * (y / x) + p[3] * (y / x**2))
+        )
+
+        # Set below-threshold sigma to zero
+        sigma_new[np.where(new_Egrid <= self.delta_E)] = 0.0
+
+        # Interpolate values which are nan but above threshold
+        isnans = np.isnan(sigma_new)
+        if isnans.any():
+            nan_locs = np.argwhere(isnans)
+            first_nonnan_E = new_Egrid[nan_locs[-1][0] + 1]
+            first_nonnan_sigma = sigma_new[nan_locs[-1][0] + 1]
+            for nan_loc in nan_locs:
+                nan_E = new_Egrid[nan_loc[0]]
+                d1 = nan_E - self.delta_E
+                d2 = first_nonnan_E - nan_E
+                interp_val = (d1 * first_nonnan_sigma + d2 * 0.0) / (d1 + d2)
+                sigma_new[nan_loc[0]] = interp_val
+
+        # Update cross-section
+        self.sigma = sigma_new
+
+        # Final nan check
+        if np.isnan(self.sigma).any():
+            print(
+                "Found some nans in interpolated ionization cross-sections. This is likely to causing issues when solving the rate equations."
+            )
+
+        # Delete the energy grid associated with the transition
+        del self.Egrid
+
 
 class RRTrans(Transition):
     """Radiative recombination transition class. Derived from Transition class."""
@@ -217,6 +351,7 @@ class RRTrans(Transition):
         to_stat_weight: float | None,
         l: int | None,
         fit_params: np.ndarray | None,
+        E_grid: np.ndarray | None = None,  # TODO: Unify use of underscores
         **transition_kwargs,
     ):
         """Initialise
@@ -228,6 +363,7 @@ class RRTrans(Transition):
         :param to_stat_weight: Statistical weight of the final state, defaults to None
         :param l: Orbital angular momentum quantum number of final state (TODO: Check this)
         :param fit_params: Parameters for high-energy cross-section fit
+        :param Egrid: Energy grid (pre_collision), in eV, on which cross-sections were calculation
         """
         super().__init__(**transition_kwargs)
 
@@ -237,6 +373,8 @@ class RRTrans(Transition):
         self.to_stat_weight = to_stat_weight
         self.l = l
         self.fit_params = fit_params
+        if E_grid is not None:
+            self.Egrid = E_grid  # TODO: Normalisation
 
     def get_mat_value(
         self, fe: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray
@@ -250,6 +388,70 @@ class RRTrans(Transition):
         """
         self.rate = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
         return self.rate
+
+    def interpolate_cross_section(self, new_Egrid: np.ndarray):
+        interp_func = interpolate.interp1d(
+            self.Egrid,
+            np.log(self.sigma),
+            kind="linear",
+            bounds_error=False,
+            fill_value=np.nan,
+        )
+        sigma_new = np.exp(interp_func(new_Egrid))
+
+        # Apply fit to energies higher than FAC calculated
+        p = self.fit_params
+        E_grid_fit = new_Egrid[np.where(new_Egrid > self.Egrid[-1])]
+        x = E_grid_fit / self.delta_E
+        y = 1 - (1 / x)
+        sigma_new[np.where(new_Egrid > self.Egrid[-1])] = (
+            1.1969e-15
+            * (1 / (np.pi * self.from_stat_weight * E_grid_fit))
+            * (p[0] * np.log(x) + p[1] * y**2 + p[2] * (y / x) + p[3] * (y / x**2))
+        )
+
+        E_h = 27.211
+        p = self.fit_params
+        E_grid_fit = new_Egrid[np.where(new_Egrid > self.Egrid[-1])]
+        eps = E_grid_fit / E_h
+        w = E_grid_fit + self.delta_E
+        x = (E_grid_fit + p[3]) / p[3]
+        y = (1.0 + p[2]) / (np.sqrt(x) + p[2])
+        dgf_dE = (
+            (w / (E_grid_fit + p[3]))
+            * p[0]
+            * x ** (-3.5 - self.l + (p[1] / 2))
+            * y ** p[1]
+        )
+        alpha = 1 / 137
+        g_i = self.to_stat_weight
+        g_f = self.from_stat_weight
+        sigma_pi = (
+            (2 * np.pi * alpha / g_i)
+            * ((1 + alpha**2 * eps) / (1 + 0.5 * alpha**2 * eps))
+            * dgf_dE
+        )
+
+        arb_const = 4e-20  # TODO: This constant works, but not sure exactly what it
+        sigma_new[np.where(new_Egrid > self.Egrid[-1])] = (
+            (alpha**2 / 2)
+            * (g_i / g_f)
+            * (w**2 / (eps * (1.0 + 0.5 * alpha**2 * eps)))
+            * sigma_pi
+            * arb_const
+        )
+
+        # Update cross-section
+        self.sigma = sigma_new
+
+        # Final nan check
+        if np.isnan(self.sigma).any():
+            print(
+                "Found some nans in interpolated radiative recombination cross-sections. This is likely to causing issues when solving the rate equations."
+            )
+
+        # Delete the energy grid associated with the transition
+        del self.Egrid
 
 
 class EmTrans(Transition):

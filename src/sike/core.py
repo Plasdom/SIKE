@@ -260,13 +260,20 @@ class SIKERun(object):
     def apply_normalisation(self) -> None:
         """Normalise all physical values in the simulation"""
         # Apply normalisation
-        self.Te /= self.T_norm
-        self.ne /= self.n_norm
-        self.vgrid /= self.v_th
-        self.dvc /= self.v_th
-        self.xgrid /= self.x_norm
-        self.dxc /= self.x_norm
-        self.fe /= self.n_norm / (self.v_th**3)
+        Te_norm = self.Te.copy() / self.T_norm
+        self.Te = Te_norm
+        ne_norm = self.ne.copy() / self.n_norm
+        self.ne = ne_norm
+        vgrid_norm = self.vgrid.copy() / self.v_th
+        self.vgrid = vgrid_norm
+        dvc_norm = self.dvc.copy() / self.v_th
+        self.dvc = dvc_norm
+        xgrid_norm = self.xgrid.copy() / self.x_norm
+        self.xgrid = xgrid_norm
+        dxc_norm = self.dxc.copy() / self.x_norm
+        self.dxc = dxc_norm
+        fe_norm = self.fe.copy() / (self.n_norm / (self.v_th**3))
+        self.fe = fe_norm
 
     def generate_grid_widths(self):
         """Generate spatial and velocity grid widths"""
@@ -398,7 +405,7 @@ def get_atom_data_savedir() -> Path:
     if config_file.exists():
         with open(config_file, "r+") as f:
             l = f.readlines()
-        atom_data_savepath = Path(l[0])
+        atom_data_savepath = Path(l[0].strip("\n"))
         if not atom_data_savepath.exists():
             raise FileNotFoundError(
                 "The atomic data savedir specified in the config file does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions."
