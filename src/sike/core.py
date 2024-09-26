@@ -328,7 +328,7 @@ class SIKERun(object):
             self.atom_data_savedir,
         )
 
-    def evolve(self, dt: float, num_t: int = 10) -> xr.Dataset:
+    def evolve(self, dt: float, num_t: int = 5) -> xr.Dataset:
         """Evolve the rate equations by a set timestep
 
         :param dt: Timestep in seconds

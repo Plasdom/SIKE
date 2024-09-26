@@ -314,6 +314,9 @@ class Impurity:
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
                     tbrec_norm=self.tbrec_norm,
+                    simulation_E_grid=Egrid,
+                    from_state=self.states[trans["from_id"]],
+                    to_state=self.states[trans["to_id"]],
                 )
             elif trans["type"] == "autoionization" and self.autoionization:
                 transitions[i] = AiTrans(**trans, time_norm=self.time_norm)
@@ -325,6 +328,9 @@ class Impurity:
                     **trans,
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
+                    simulation_E_grid=Egrid,
+                    from_state=self.states[trans["from_id"]],
+                    to_state=self.states[trans["to_id"]],
                 )
             elif trans["type"] == "emission" and self.emission:
                 transitions[i] = EmTrans(**trans, time_norm=self.time_norm)
@@ -333,19 +339,19 @@ class Impurity:
                     **trans,
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
+                    simulation_E_grid=Egrid,
                 )
         transitions = [t for t in transitions if t is not None]
 
         self.transitions = transitions
 
-        # Calculate cross-sections on the given energy grid
-        if (self.resolve_l and self.resolve_j) or (
-            self.resolve_l and not self.resolve_j
-        ):
-            self.interpolate_cross_sections(Egrid)
-        else:
-            pass
-            # self.compute_cross_sections(Egrid, trans_Egrid)
+        # # Calculate cross-sections on the given energy grid
+        # if (self.resolve_l and self.resolve_j) or (
+        #     self.resolve_l and not self.resolve_j
+        # ):
+        #     self.interpolate_cross_sections(Egrid)
+        # else:
+        #     self.compute_cross_sections(Egrid)
 
         # Set the de-excitation cross-sections
         print("  Creating data for inverse transitions...")
@@ -373,18 +379,18 @@ class Impurity:
         print("  Performing checks on transition data...")
         self.state_and_transition_checks()
 
-    def interpolate_cross_sections(self, Egrid: np.ndarray):
-        # Interpolate the cross sections
-        for t in self.transitions:
-            if (
-                t.type == "excitation"
-                or t.type == "ionization"
-                or t.type == "radiative recombination"
-            ):
-                t.interpolate_cross_section(new_Egrid=Egrid)
-        # else:
-        #     # Re-generate the cross-sections from scratch
-        #     pass
+    # def interpolate_cross_sections(self, Egrid: np.ndarray):
+    #     # Interpolate the cross sections
+    #     for t in self.transitions:
+    #         if (
+    #             t.type == "excitation"
+    #             or t.type == "ionization"
+    #             or t.type == "radiative recombination"
+    #         ):
+    #             t.interpolate_cross_section(new_Egrid=Egrid)
+
+    # def compute_cross_sections(self, Egrid: np.ndarray):
+    #     pass
 
     def state_and_transition_checks(self):
         """Perform some checks on states and transitions belonging to the impurity. Removes orphaned states, transitions where one or more associated states are not evolved, etc"""
@@ -411,6 +417,18 @@ class Impurity:
                     self.states[i] = None
                     self.tot_states -= 1
         self.states = [s for s in self.states if s is not None]
+
+        # Remove excitation/ionisation transitions with negative transition energy
+        for i, trans in enumerate(self.transitions):
+            if trans.type == "excitation" or trans.type == "ionization":
+                if trans.delta_E < 0.0:
+                    self.transitions[i] = None
+                    print(
+                        "Removing {} transition with transition energy < 0 eV".format(
+                            trans.type
+                        )
+                    )
+        self.transitions = [t for t in self.transitions if t is not None]
 
         # Check for no orphaned transitions (i.e. transitions where either from_id or to_id is not evolved)
         state_ids = [s.id for s in self.states]
