@@ -6,7 +6,7 @@ class State:
         id: int,
         nuc_chg: int,
         num_el: int,
-        config: str,
+        config: str | list[int],
         energy: float,
         stat_weight: int,
         n: int,

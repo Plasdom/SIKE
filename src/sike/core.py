@@ -260,13 +260,20 @@ class SIKERun(object):
     def apply_normalisation(self) -> None:
         """Normalise all physical values in the simulation"""
         # Apply normalisation
-        self.Te /= self.T_norm
-        self.ne /= self.n_norm
-        self.vgrid /= self.v_th
-        self.dvc /= self.v_th
-        self.xgrid /= self.x_norm
-        self.dxc /= self.x_norm
-        self.fe /= self.n_norm / (self.v_th**3)
+        Te_norm = self.Te.copy() / self.T_norm
+        self.Te = Te_norm
+        ne_norm = self.ne.copy() / self.n_norm
+        self.ne = ne_norm
+        vgrid_norm = self.vgrid.copy() / self.v_th
+        self.vgrid = vgrid_norm
+        dvc_norm = self.dvc.copy() / self.v_th
+        self.dvc = dvc_norm
+        xgrid_norm = self.xgrid.copy() / self.x_norm
+        self.xgrid = xgrid_norm
+        dxc_norm = self.dxc.copy() / self.x_norm
+        self.dxc = dxc_norm
+        fe_norm = self.fe.copy() / (self.n_norm / (self.v_th**3))
+        self.fe = fe_norm
 
     def generate_grid_widths(self):
         """Generate spatial and velocity grid widths"""
@@ -321,7 +328,7 @@ class SIKERun(object):
             self.atom_data_savedir,
         )
 
-    def evolve(self, dt: float, num_t: int = 10) -> xr.Dataset:
+    def evolve(self, dt: float, num_t: int = 5) -> xr.Dataset:
         """Evolve the rate equations by a set timestep
 
         :param dt: Timestep in seconds

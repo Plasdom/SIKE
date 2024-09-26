@@ -116,64 +116,71 @@ class Impurity:
         levels_filepath_nlj = (
             self.atom_data_savedir / self.longname / (self.name + "_levels_nlj.json")
         )
-        levels_filepath_nl = (
-            self.atom_data_savedir / self.longname / (self.name + "_levels_nl.json")
-        )
+        # levels_filepath_nl = (
+        #     self.atom_data_savedir / self.longname / (self.name + "_levels_nl.json")
+        # )
         levels_filepath_n = (
             self.atom_data_savedir / self.longname / (self.name + "_levels_n.json")
         )
         j_resolved_exists = levels_filepath_nlj.exists()
-        l_resolved_exists = levels_filepath_nl.exists()
+        # l_resolved_exists = levels_filepath_nl.exists()
         n_resolved_exists = levels_filepath_n.exists()
 
         # Compare with input options
-        if self.resolve_j and self.resolve_l:
+        if (self.resolve_l and self.resolve_j) or (
+            self.resolve_l and not self.resolve_j
+        ):
             # Resolved in both l and j
             if j_resolved_exists:
                 return
             else:
-                if l_resolved_exists and not n_resolved_exists:
-                    # Set resolve_j = False and resolve_l = True
-                    raise FileNotFoundError(
-                        "Data for "
-                        + self.longname
-                        + " resolved in both l and j was not found. Set resolve_j=False."
-                    )
-                elif not l_resolved_exists and n_resolved_exists:
-                    # Set resolve_j = False and resolve_l = False
-                    raise FileNotFoundError(
-                        "Data for "
-                        + self.longname
-                        + " resolved in both l and j was not found. Set resolve_j=False and resolve_l=False."
-                    )
-                else:
-                    raise Exception
+                raise FileNotFoundError(
+                    "Data for "
+                    + self.longname
+                    + " resolved in l or j was not found. Set resolve_j=False and resolve_l=False."
+                )
+                # if l_resolved_exists and not n_resolved_exists:
+                #     # Set resolve_j = False and resolve_l = True
+                #     raise FileNotFoundError(
+                #         "Data for "
+                #         + self.longname
+                #         + " resolved in both l and j was not found. Set resolve_j=False."
+                #     )
+                # elif not l_resolved_exists and n_resolved_exists:
+                #     # Set resolve_j = False and resolve_l = False
+                #     raise FileNotFoundError(
+                #         "Data for "
+                #         + self.longname
+                #         + " resolved in both l and j was not found. Set resolve_j=False and resolve_l=False."
+                #     )
+                # else:
+                #     raise Exception
         elif self.resolve_j and not self.resolve_l:
             # Resolved in j but not l - this does not make sense
             raise Exception("resolve_j=True is not compatible with resolve_l=False.")
-        elif not self.resolve_j and self.resolve_l:
-            # Resolved in l but not j
-            if l_resolved_exists:
-                return
-            else:
-                if n_resolved_exists:
-                    raise FileNotFoundError(
-                        "Data for "
-                        + self.longname
-                        + " resolved in l was not found. Set resolve_l=False."
-                    )
-                else:
-                    raise Exception
+        # elif not self.resolve_j and self.resolve_l:
+        #     # Resolved in l but not j
+        #     if l_resolved_exists:
+        #         return
+        #     else:
+        #         if n_resolved_exists:
+        #             raise FileNotFoundError(
+        #                 "Data for "
+        #                 + self.longname
+        #                 + " resolved in l was not found. Set resolve_l=False."
+        #             )
+        #         else:
+        #             raise Exception
         elif not self.resolve_j and not self.resolve_j:
             # Resolved in n only
             if n_resolved_exists:
                 return
             else:
-                if l_resolved_exists:
+                if j_resolved_exists:
                     raise FileNotFoundError(
                         "Data for "
                         + self.longname
-                        + " resolved in only n was not found. Set resolve_l=True."
+                        + " resolved in only n was not found. Set resolve_l=True and resolve_j=True, or resolve_l=True and resolve_j=False."
                     )
                 else:
                     raise Exception
@@ -187,25 +194,25 @@ class Impurity:
 
     def init_states(self):
         """Initialise the evolved atomic states"""
-        if self.resolve_j:
+        if (self.resolve_l and self.resolve_j) or (
+            self.resolve_l and not self.resolve_j
+        ):
             levels_f = (
                 self.atom_data_savedir
                 / self.longname
                 / (self.name + "_levels_nlj.json")
             )
         else:
-            if self.resolve_l:
-                levels_f = (
-                    self.atom_data_savedir
-                    / self.longname
-                    / (self.name + "_levels_nl.json")
-                )
-            else:
-                levels_f = (
-                    self.atom_data_savedir
-                    / self.longname
-                    / (self.name + "_levels_n.json")
-                )
+            # if self.resolve_l:
+            #     levels_f = (
+            #         self.atom_data_savedir
+            #         / self.longname
+            #         / (self.name + "_levels_nl.json")
+            #     )
+            # else:
+            levels_f = (
+                self.atom_data_savedir / self.longname / (self.name + "_levels_n.json")
+            )
         with open(levels_f) as f:
             levels_dict = json.load(f)
             self.states = [None] * len(levels_dict)
@@ -265,29 +272,31 @@ class Impurity:
         :param vgrid: Electron velocity grid
         :param Egrid: Electron energy grid
         """
-        if self.resolve_j:
+        if (self.resolve_l and self.resolve_j) or (
+            self.resolve_l and not self.resolve_j
+        ):
             trans_f = (
                 self.atom_data_savedir
                 / self.longname
                 / (self.name + "_transitions_nlj.json")
             )
         else:
-            if self.resolve_l:
-                trans_f = (
-                    self.atom_data_savedir
-                    / self.longname
-                    / (self.name + "_transitions_nl.json")
-                )
-            else:
-                trans_f = (
-                    self.atom_data_savedir
-                    / self.longname
-                    / (self.name + "_transitions_n.json")
-                )
+            # if self.resolve_l:
+            #     trans_f = (
+            #         self.atom_data_savedir
+            #         / self.longname
+            #         / (self.name + "_transitions_nl.json")
+            #     )
+            # else:
+            trans_f = (
+                self.atom_data_savedir
+                / self.longname
+                / (self.name + "_transitions_n.json")
+            )
         print("  Loading transitions from json...")
         with open(trans_f) as f:
             trans_dict = json.load(f)
-            trans_Egrid = trans_dict[0]["E_grid"]
+            # trans_Egrid = np.array(trans_dict[0]["E_grid"])
 
         print("  Creating transition objects...")
         num_transitions = len(trans_dict)
@@ -305,6 +314,9 @@ class Impurity:
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
                     tbrec_norm=self.tbrec_norm,
+                    simulation_E_grid=Egrid,
+                    from_state=self.states[trans["from_id"]],
+                    to_state=self.states[trans["to_id"]],
                 )
             elif trans["type"] == "autoionization" and self.autoionization:
                 transitions[i] = AiTrans(**trans, time_norm=self.time_norm)
@@ -316,6 +328,9 @@ class Impurity:
                     **trans,
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
+                    simulation_E_grid=Egrid,
+                    from_state=self.states[trans["from_id"]],
+                    to_state=self.states[trans["to_id"]],
                 )
             elif trans["type"] == "emission" and self.emission:
                 transitions[i] = EmTrans(**trans, time_norm=self.time_norm)
@@ -324,10 +339,19 @@ class Impurity:
                     **trans,
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
+                    simulation_E_grid=Egrid,
                 )
         transitions = [t for t in transitions if t is not None]
 
         self.transitions = transitions
+
+        # # Calculate cross-sections on the given energy grid
+        # if (self.resolve_l and self.resolve_j) or (
+        #     self.resolve_l and not self.resolve_j
+        # ):
+        #     self.interpolate_cross_sections(Egrid)
+        # else:
+        #     self.compute_cross_sections(Egrid)
 
         # Set the de-excitation cross-sections
         print("  Creating data for inverse transitions...")
@@ -353,22 +377,23 @@ class Impurity:
 
         # Checks
         print("  Performing checks on transition data...")
-        self.state_and_transition_checks(Egrid, trans_Egrid)
+        self.state_and_transition_checks()
 
-    def state_and_transition_checks(self, Egrid: np.ndarray, trans_Egrid: np.ndarray):
-        """Perform some checks on states and transitions belonging to the impurity. Removes orphaned states, transitions where one or more associated states are not evolved, etc
+    # def interpolate_cross_sections(self, Egrid: np.ndarray):
+    #     # Interpolate the cross sections
+    #     for t in self.transitions:
+    #         if (
+    #             t.type == "excitation"
+    #             or t.type == "ionization"
+    #             or t.type == "radiative recombination"
+    #         ):
+    #             t.interpolate_cross_section(new_Egrid=Egrid)
 
-        :param Egrid: Default electron energy grid
-        :param trans_Egrid: Electron energy grid on which transition rates will be calculated
-        :raises ValueError: If the default electron energy grid and the transition energy grid are not the same (will be fixed in future to allow them to differ)
-        """
+    # def compute_cross_sections(self, Egrid: np.ndarray):
+    #     pass
 
-        # Check that simulation E_grid is the same as the transitions E_grid
-        if np.max(np.abs(Egrid - trans_Egrid)) > 1e-5:
-            # TODO: Handle different energy grids from input to transitions by interpolation
-            raise ValueError(
-                "Energy grid is different from grid on which transitions evaluated. This will be handled in the future."
-            )
+    def state_and_transition_checks(self):
+        """Perform some checks on states and transitions belonging to the impurity. Removes orphaned states, transitions where one or more associated states are not evolved, etc"""
 
         # Check for no orphaned states (i.e. states with either no associated transitions or )
         id2pos = {self.states[i].id: i for i in range(len(self.states))}
@@ -392,6 +417,18 @@ class Impurity:
                     self.states[i] = None
                     self.tot_states -= 1
         self.states = [s for s in self.states if s is not None]
+
+        # Remove excitation/ionisation transitions with negative transition energy
+        for i, trans in enumerate(self.transitions):
+            if trans.type == "excitation" or trans.type == "ionization":
+                if trans.delta_E < 0.0:
+                    self.transitions[i] = None
+                    print(
+                        "Removing {} transition with transition energy < 0 eV".format(
+                            trans.type
+                        )
+                    )
+        self.transitions = [t for t in self.transitions if t is not None]
 
         # Check for no orphaned transitions (i.e. transitions where either from_id or to_id is not evolved)
         state_ids = [s.id for s in self.states]
