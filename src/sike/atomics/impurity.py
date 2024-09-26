@@ -35,7 +35,7 @@ class Impurity:
         Egrid: np.ndarray,
         ne: np.ndarray,
         Te: np.ndarray,
-        atom_data_savedir: Path,
+        atomic_data_savedir: Path,
     ):
         """Initialise
 
@@ -82,7 +82,7 @@ class Impurity:
         self.time_norm = time_norm
         self.T_norm = T_norm
         self.n_norm = n_norm
-        self.atom_data_savedir = atom_data_savedir
+        self.atomic_data_savedir = atomic_data_savedir
 
         # Initialise impurity data
         self.get_element_data()
@@ -103,7 +103,7 @@ class Impurity:
         :raises FileNotFoundError: If requested atomic data does not exist.
         :raises Exception: If some other unhandled exception occurs.
         """
-        if not (self.atom_data_savedir / self.longname).exists():
+        if not (self.atomic_data_savedir / self.longname).exists():
             raise FileNotFoundError(
                 "No atomic data was found for "
                 + self.longname
@@ -114,13 +114,13 @@ class Impurity:
 
         # Find what data exists
         levels_filepath_nlj = (
-            self.atom_data_savedir / self.longname / (self.name + "_levels_nlj.json")
+            self.atomic_data_savedir / self.longname / (self.name + "_levels_nlj.json")
         )
         # levels_filepath_nl = (
-        #     self.atom_data_savedir / self.longname / (self.name + "_levels_nl.json")
+        #     self.atomic_data_savedir / self.longname / (self.name + "_levels_nl.json")
         # )
         levels_filepath_n = (
-            self.atom_data_savedir / self.longname / (self.name + "_levels_n.json")
+            self.atomic_data_savedir / self.longname / (self.name + "_levels_n.json")
         )
         j_resolved_exists = levels_filepath_nlj.exists()
         # l_resolved_exists = levels_filepath_nl.exists()
@@ -198,20 +198,22 @@ class Impurity:
             self.resolve_l and not self.resolve_j
         ):
             levels_f = (
-                self.atom_data_savedir
+                self.atomic_data_savedir
                 / self.longname
                 / (self.name + "_levels_nlj.json")
             )
         else:
             # if self.resolve_l:
             #     levels_f = (
-            #         self.atom_data_savedir
+            #         self.atomic_data_savedir
             #         / self.longname
             #         / (self.name + "_levels_nl.json")
             #     )
             # else:
             levels_f = (
-                self.atom_data_savedir / self.longname / (self.name + "_levels_n.json")
+                self.atomic_data_savedir
+                / self.longname
+                / (self.name + "_levels_n.json")
             )
         with open(levels_f) as f:
             levels_dict = json.load(f)
@@ -276,20 +278,20 @@ class Impurity:
             self.resolve_l and not self.resolve_j
         ):
             trans_f = (
-                self.atom_data_savedir
+                self.atomic_data_savedir
                 / self.longname
                 / (self.name + "_transitions_nlj.json")
             )
         else:
             # if self.resolve_l:
             #     trans_f = (
-            #         self.atom_data_savedir
+            #         self.atomic_data_savedir
             #         / self.longname
             #         / (self.name + "_transitions_nl.json")
             #     )
             # else:
             trans_f = (
-                self.atom_data_savedir
+                self.atomic_data_savedir
                 / self.longname
                 / (self.name + "_transitions_n.json")
             )

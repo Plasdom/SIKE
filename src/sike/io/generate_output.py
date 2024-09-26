@@ -26,7 +26,7 @@ def generate_output(
     excitation: bool,
     emission: bool,
     autoionization: bool,
-    atom_data_savedir: Path,
+    atomic_data_savedir: Path,
 ) -> xr.Dataset:
     """Generate an xarray dataset containing all relevant case information (densities, coordinates, states, transitions, rate matrices, etc)
 
@@ -49,7 +49,7 @@ def generate_output(
     :param excitation: Whether excitation process is included
     :param emission: Whether radiative emission process is included
     :param autoionization: Whether autoionisation process is included
-    :param atom_data_savedir: Location of atomic data used
+    :param atomic_data_savedir: Location of atomic data used
     :return: xarray dataset
     """
     # Extract relevant information (densities & states) from the SIKERun object
@@ -132,7 +132,7 @@ def generate_output(
         excitation,
         emission,
         autoionization,
-        atom_data_savedir,
+        atomic_data_savedir,
     )
     output_ds = add_coordinate_info(output_ds)
     output_ds = add_data_info(output_ds)
@@ -149,7 +149,7 @@ def get_metadata(
     excitation: bool,
     emission: bool,
     autoionization: bool,
-    atom_data_savedir: Path,
+    atomic_data_savedir: Path,
 ) -> dict:
     """Generate metadata dictionary
 
@@ -161,7 +161,7 @@ def get_metadata(
     :param excitation: Whether excitation process is included
     :param emission: Whether radiative emission process is included
     :param autoionization: Whether autoionisation process is included
-    :param atom_data_savedir: Location of atomic data used
+    :param atomic_data_savedir: Location of atomic data used
     :return: Metadata dictionary
     """
     # Generate dictionary
@@ -175,7 +175,7 @@ def get_metadata(
         "excitation": excitation,
         "emission": emission,
         "autoionization": autoionization,
-        "atom_data_savedir": atom_data_savedir,
+        "atomic_data_savedir": atomic_data_savedir,
     }
     metadata_dict
 

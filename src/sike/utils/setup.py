@@ -94,7 +94,7 @@ def setup(elements: list[str] | None = None, savedir: str | Path | None = None) 
         print(f"Downloading atomic data for {element}...")
         element_zip_name = element + ".zip"
         element_zip_path = sike_data_savedir / element_zip_name
-        url = c.ATOM_DATA_BASE_URL + element_zip_name + "?download=1"
+        url = c.ATOMIC_DATA_BASE_URL + element_zip_name + "?download=1"
         r = get(url=url)
         open(element_zip_path, "wb").write(r.content)
         with ZipFile(element_zip_path, "r") as zip_ref:

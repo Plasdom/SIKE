@@ -12,3 +12,4 @@ legacy/*
 *.egg-info
 sike_atomic_data/*
 *.json
+*.dat

@@ -2,7 +2,7 @@ from pathlib import Path
 import numpy as np
 
 ATOMIC_DATA_LOCATION = "sike_atomic_data"
-ATOM_DATA_BASE_URL = "https://zenodo.org/records/10614179/files/"
+ATOMIC_DATA_BASE_URL = "https://zenodo.org/records/10614179/files/"
 SYMBOL2ELEMENT = {
     "H": "Hydrogen",
     "He": "Helium",

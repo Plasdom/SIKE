@@ -64,6 +64,7 @@ class SIKERun(object):
         fixed_fraction_init: bool = True,
         saha_boltzmann_init: bool = True,
         state_ids: list[int] | None = None,
+        atomic_data_savedir: str | Path | None = None,
     ):
         """Initialise
 
@@ -85,6 +86,7 @@ class SIKERun(object):
         :param saha_boltzmann_init: Specify whether to initialise impurity state densities to Saha-Boltzmann equilibrium, defaults to True
         :param state_ids: A specific list of state IDs to evolve. If None then all states in levels.json will be evolved., defaults to None
         :raises ValueError: If input is incorrectly specified (must specify either electron distribution and vgrid or electron temperature and density profiles)
+        :raises atomic_data_savedir: Directory where atomic data is saved. If none, the location in $HOME/.sike_config will be retrived
         """
         # TODO: Change fe so that spatial index comes first (like everywhere else)
 
@@ -100,7 +102,18 @@ class SIKERun(object):
         self.fixed_fraction_init = fixed_fraction_init
         self.saha_boltzmann_init = saha_boltzmann_init
         self.state_ids = state_ids
-        self.atom_data_savedir = get_atom_data_savedir()
+        if atomic_data_savedir is None:
+            self.atomic_data_savedir = get_atomic_data_savedir()
+        else:
+            if isinstance(atomic_data_savedir, str):
+                atomic_data_savedir = Path(atomic_data_savedir)
+            if not atomic_data_savedir.exists():
+                raise FileNotFoundError(
+                    "The atomic data savedir specified at input ('{}') does not appear to exist.".format(
+                        atomic_data_savedir
+                    )
+                )
+            self.atomic_data_savedir = atomic_data_savedir
 
         self.num_procs = 1  # TODO: Parallelisation
         self.rank = 0  # TODO: Parallelisation
@@ -151,7 +164,7 @@ class SIKERun(object):
             Egrid=self.Egrid,
             ne=self.ne,
             Te=self.Te,
-            atom_data_savedir=self.atom_data_savedir,
+            atomic_data_savedir=self.atomic_data_savedir,
         )
         print("Finished initialising impurity species objects.")
 
@@ -325,7 +338,7 @@ class SIKERun(object):
             self.excitation,
             self.emission,
             self.autoionization,
-            self.atom_data_savedir,
+            self.atomic_data_savedir,
         )
 
     def evolve(self, dt: float, num_t: int = 5) -> xr.Dataset:
@@ -370,7 +383,7 @@ class SIKERun(object):
             self.excitation,
             self.emission,
             self.autoionization,
-            self.atom_data_savedir,
+            self.atomic_data_savedir,
         )
 
     def build_matrix(self) -> None:
@@ -396,7 +409,7 @@ class SIKERun(object):
             self.matrix_needs_building = False
 
 
-def get_atom_data_savedir() -> Path:
+def get_atomic_data_savedir() -> Path:
     """Open the config file to find the location of the saved atomic data
 
     :return: Path to atomic data savedir
@@ -405,14 +418,14 @@ def get_atom_data_savedir() -> Path:
     if config_file.exists():
         with open(config_file, "r+") as f:
             l = f.readlines()
-        atom_data_savepath = Path(l[0].strip("\n"))
-        if not atom_data_savepath.exists():
+        atomic_data_savepath = Path(l[0].strip("\n"))
+        if not atomic_data_savepath.exists():
             raise FileNotFoundError(
                 "The atomic data savedir specified in the config file ('{}') does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions.".format(
-                    atom_data_savepath
+                    atomic_data_savepath
                 )
             )
-        return atom_data_savepath
+        return atomic_data_savepath
     else:
         raise FileNotFoundError(
             "No config file found. Have you run setup to download the atomic data? See readme ofr instructions."
