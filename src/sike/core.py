@@ -398,10 +398,12 @@ def get_atom_data_savedir() -> Path:
     if config_file.exists():
         with open(config_file, "r+") as f:
             l = f.readlines()
-        atom_data_savepath = Path(l[0])
+        atom_data_savepath = Path(l[0].strip("\n"))
         if not atom_data_savepath.exists():
             raise FileNotFoundError(
-                "The atomic data savedir specified in the config file does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions."
+                "The atomic data savedir specified in the config file ('{}') does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions.".format(
+                    atom_data_savepath
+                )
             )
         return atom_data_savepath
     else:
