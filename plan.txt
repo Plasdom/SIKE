@@ -26,12 +26,12 @@ Done
 - Let user provide atomic_data_savepath at initialisation, which overrides the default
 
 To do
+- Expose an "update_fe" method. This can be used to recompute Maxwellian/kinetic equilibria without having to read in the atomic data again, and will be useful during coupling runs. This will set the matrix_needs_building flag to True
+- Tests, benchmarking, etc
 - Upload n-resolved data to Zenodo
 - Mangle/hide names of methods, classes etc we don't want to expose
-- Expose an "update_fe" method. This can be used to recompute Maxwellian/kinetic equilibria without having to read in the atomic data again, and will be useful during coupling runs. This will set the matrix_needs_building flag to True
 - Create a json schema for atomic states, transitions and (maybe) input files
 - Should accept xarrays as input (e.g. fe from remkit?)
-- Tests, benchmarking, etc
 - Remove any old or unused code. E.g. there's some overlap between core.py, analysis.py and post_processing.py
 - Some demo scripts
     - Make sure the get_bimaxwellians method is user-friendly and enables quick setup of a comparison with Maxwellian/non-Maxwellian case
