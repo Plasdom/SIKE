@@ -13,7 +13,7 @@ if __name__ == "__main__":
     for el in sc.SYMBOL2ELEMENT.keys():
         print(el)
         element = sc.SYMBOL2ELEMENT[el]
-        atom_data_file = sike.get_atom_data_savedir() / element / "atomic.dat"
+        atom_data_file = sike.get_atomic_data_savedir() / element / "atomic.dat"
         with open(atom_data_file) as f:
             atom_data = f.readlines()
 
@@ -200,7 +200,7 @@ if __name__ == "__main__":
             line_data = l.split()
             if len(line_data) > 3:
                 transitions.append({})
-                transitions[-1]["type"] = "radiative recombination"
+                transitions[-1]["type"] = "radiative_recombination"
                 transitions[-1]["element"] = el
                 num_el1 = int(line_data[1])
                 flychk_id1 = int(line_data[2])
@@ -451,7 +451,7 @@ if __name__ == "__main__":
 
         # Save output
         # data_dir = '/Users/dpower/Documents/01 - PhD/01 - Code/08 - SIKE/atom_data/Carbon'
-        data_dir = sike.get_atom_data_savedir() / element
+        data_dir = sike.get_atomic_data_savedir() / element
         with open(
             os.path.join(data_dir, el + "_levels_n.json"), "w", encoding="utf-8"
         ) as f:
