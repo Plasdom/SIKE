@@ -36,5 +36,8 @@ Here,
     - Argon ("Ar")
 - `<SAVEDIR>` is the location of a directory where the atomic data will be saved. A directory called "sike_atomic_data" will be created here, and the downloaded atomic data placed inside. If empty or `None`, then you will be prompted to input the location. 
 
+### Manual download
+The atomic data is stored at `https://zenodo.org/records/13864185`. If the above automated methods fail, you can download and extract the data directly from this link and specify the `atomic_data_savedir` argument at initialisation of the `SIKERun` object. 
+
 
 

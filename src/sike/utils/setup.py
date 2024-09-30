@@ -46,7 +46,7 @@ def verify_savedir(savedir: str | Path) -> Path:
 
 
 def setup(elements: list[str] | None = None, savedir: str | Path | None = None) -> None:
-    """Setup SIKE by downloading atomic data from https://zenodo.org/records/10614179/.
+    """Setup SIKE by downloading atomic data from https://zenodo.org/records/13864185/.
 
     :param elements: List of elements (using their chemical symbol) to download data for. If None, then all available data will be downloaded. Currently, the available species are:
         - H
