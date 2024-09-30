@@ -447,4 +447,4 @@ MARCHAND_SCREENING_COEFFS = np.array(
             0.7612,
         ],
     ]
-)
+).T

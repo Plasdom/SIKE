@@ -35,10 +35,7 @@ def solve(
 
     # Solve the matrix equation
     for i in range(loc_num_x):
-        n_solved[i] = (
-            np.linalg.inv(rate_matrix[i] + 1.0e-8 * np.eye(num_states, num_states))
-            @ rhs[i]
-        )
+        n_solved[i] = np.linalg.inv(rate_matrix[i]) @ rhs[i]
         # n_solved[i] = np.linalg.solve(rate_matrix[i], rhs[i])
 
     n_solved = np.array(n_solved)

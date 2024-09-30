@@ -67,7 +67,7 @@ def bimaxwellian(
 
 
 def get_maxwellians(
-    ne_in: np.ndarray, Te_in: np.ndarray, vgrid_in: np.ndarray, normalised: bool = True
+    ne_in: np.ndarray, Te_in: np.ndarray, vgrid_in: np.ndarray, normalised: bool = False
 ) -> np.ndarray:
     """Return an array of Maxwellian electron distributions with the given densities and temperatures.
 
@@ -107,8 +107,8 @@ def get_bimaxwellians(
     n2: np.ndarray,
     T1: np.ndarray,
     T2: np.ndarray,
-    vgrid: np.ndarray,
-    normalised: bool = True,
+    vgrid: np.ndarray | None,
+    normalised: bool = False,
 ) -> np.ndarray:
     """Return an array of bi-Maxwellian electron distributions with the given densities and temperatures.
 
@@ -120,6 +120,9 @@ def get_bimaxwellians(
     :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
     :return: 2d numpy array of bi-Maxwellians at each location in x
     """
+
+    if vgrid is None:
+        vgrid = DEFAULT_VGRID
 
     if normalised is False:
         T_norm = 10
@@ -156,8 +159,7 @@ def density_moment(f0: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray) -> float:
     :param f0: Electron distribution
     :param vgrid: Velocity grid
     :param dvc: Velocity grid widths
-    :return: Density. Units are normalised or m**-3 depending on whether inputs are normalised.
-    TODO: Should be a normalised argument here?
+    :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
     """
     n = 4 * np.pi * np.sum(f0 * vgrid**2 * dvc)
     return n

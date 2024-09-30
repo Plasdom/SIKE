@@ -10,7 +10,14 @@ class Transition:
     """Base transition class"""
 
     def __init__(
-        self, type: str, element: str, from_id: int, to_id: int, delta_E: float, **_
+        self,
+        type: str,
+        element: str,
+        from_id: int,
+        to_id: int,
+        delta_E: float,
+        T_norm: float,
+        **_,
     ):
         # TODO: delta_E was previously passed un-normalised, then divided by T_norm. Now T_norm is not provided so will need to make sure this step happens when the transitions are initialised
         """Initialise
@@ -20,12 +27,14 @@ class Transition:
         :param from_id: ID of the initial state
         :param to_id: ID of the final state
         :param delta_E: Transition energy
+        :param T_norm: Normalisation constant [eV] for energy/temperature
         """
         self.type = type
         self.element = element
         self.from_id = from_id
         self.to_id = to_id
-        self.delta_E = delta_E
+        self.delta_E = delta_E / T_norm
+        self.T_norm = T_norm
 
 
 class ExTrans(Transition):
@@ -46,8 +55,8 @@ class ExTrans(Transition):
         """Initialise
 
         :param sigma: Cross-sections
-        :param collrate_const: Normalisation constant for collision rate calculation
-        :param sigma_norm: Normalisation constant for cross-section
+        :param collrate_const: Normalisation constant [s^-1] for collision rate calculation
+        :param sigma_norm: Normalisation constant [m^-2] for cross-section
         :param simulation_E_grid: Energy grid (pre_collision), in eV, on which all cross-sections will be evaluated when calculating the rate matrix
         :param from_stat_weight: Statistical weight of the initial state, defaults to None
         :param born_bethe_coeffs: Born-Bethe coefficients, defaults to None
@@ -104,7 +113,7 @@ class ExTrans(Transition):
         a_0 = 5.29177e-11
         I_H = 13.6058
 
-        eps = self.delta_E
+        eps = self.delta_E * self.T_norm
         f_ij = osc_str
 
         # Calculate cross-section
@@ -157,18 +166,18 @@ class ExTrans(Transition):
         sigma_new = np.exp(interp_func(new_Egrid))
 
         # Apply Born-Bethe approximation at energies higher than 200 * transition energy
-        bb_thresh = min(self.delta_E * 200, old_Egrid[-1])
+        bb_thresh = min(self.delta_E * self.T_norm * 200, old_Egrid[-1])
         b0 = born_bethe_coeffs[0]
         b1 = born_bethe_coeffs[1]
         E_grid_bb = new_Egrid[np.where(new_Egrid > bb_thresh)]
         sigma_new[np.where(new_Egrid > bb_thresh)] = (
             1.1969e-15
             * (1 / (self.from_stat_weight * E_grid_bb))
-            * (b0 * np.log(E_grid_bb / self.delta_E) + b1)
+            * (b0 * np.log(E_grid_bb / self.delta_E * self.T_norm) + b1)
         )
 
         # Set below-threshold sigma to zero
-        sigma_new[np.where(new_Egrid <= self.delta_E)] = 0.0
+        sigma_new[np.where(new_Egrid <= self.delta_E * self.T_norm)] = 0.0
 
         # Interpolate values which are nan but above threshold
         isnans = np.isnan(sigma_new)
@@ -178,7 +187,7 @@ class ExTrans(Transition):
             first_nonnan_sigma = sigma_new[nan_locs[-1][0] + 1]
             for nan_loc in nan_locs:
                 nan_E = new_Egrid[nan_loc[0]]
-                d1 = nan_E - self.delta_E
+                d1 = nan_E - self.delta_E * self.T_norm
                 d2 = first_nonnan_E - nan_E
                 interp_val = (d1 * first_nonnan_sigma + d2 * 0.0) / (d1 + d2)
                 sigma_new[nan_loc[0]] = interp_val
@@ -186,14 +195,14 @@ class ExTrans(Transition):
         # If nans still exist, use the Born-Bethe approx for all elements
         isnans = np.isnan(sigma_new)
         if isnans.any():
-            bb_thresh = self.delta_E
+            bb_thresh = self.delta_E * self.T_norm
             b0 = self.born_bethe_coeffs[0]
             b1 = self.born_bethe_coeffs[1]
             E_grid_bb = new_Egrid[np.where(new_Egrid > bb_thresh)]
             sigma_new[np.where(new_Egrid > bb_thresh)] = (
                 1.1969e-15
                 * (1 / (self.from_stat_weight * E_grid_bb))
-                * (b0 * np.log(E_grid_bb / self.delta_E) + b1)
+                * (b0 * np.log(E_grid_bb / (self.delta_E * self.T_norm)) + b1)
             )
 
         # Final nan check
@@ -283,9 +292,9 @@ class IzTrans(Transition):
     ):
         """Initialise
 
-        :param collrate_const: Normalisation constant for collision rate calculation
+        :param collrate_const: Normalisation constant [s^-1] for collision rate calculation
         :param tbrec_norm: Normalisation constant for three-body recombination rate
-        :param sigma_norm: Normalisation constant for cross-section
+        :param sigma_norm: Normalisation constant [m^-2] for cross-section
         :param simulation_E_grid: Energy grid (pre_collision), in eV, on which all cross-sections will be evaluated when calculating the rate matrix
         :param from_state: Initial state
         :param to_state: Final state
@@ -447,7 +456,7 @@ class IzTrans(Transition):
         # Apply fit to energies higher than FAC calculated
         p = fit_params
         E_grid_fit = new_Egrid[np.where(new_Egrid > old_Egrid[-1])]
-        x = E_grid_fit / self.delta_E
+        x = E_grid_fit / (self.delta_E * self.T_norm)
         y = 1 - (1 / x)
         sigma_new[np.where(new_Egrid > old_Egrid[-1])] = (
             1.1969e-15
@@ -456,7 +465,7 @@ class IzTrans(Transition):
         )
 
         # Set below-threshold sigma to zero
-        sigma_new[np.where(new_Egrid <= self.delta_E)] = 0.0
+        sigma_new[np.where(new_Egrid <= self.delta_E * self.T_norm)] = 0.0
 
         # Interpolate values which are nan but above threshold
         isnans = np.isnan(sigma_new)
@@ -466,7 +475,7 @@ class IzTrans(Transition):
             first_nonnan_sigma = sigma_new[nan_locs[-1][0] + 1]
             for nan_loc in nan_locs:
                 nan_E = new_Egrid[nan_loc[0]]
-                d1 = nan_E - self.delta_E
+                d1 = nan_E - self.delta_E * self.T_norm
                 d2 = first_nonnan_E - nan_E
                 interp_val = (d1 * first_nonnan_sigma + d2 * 0.0) / (d1 + d2)
                 sigma_new[nan_loc[0]] = interp_val
@@ -490,19 +499,18 @@ class RRTrans(Transition):
         simulation_E_grid: np.ndarray,
         from_state: State,
         to_state: State,
-        from_stat_weight: float | None,
-        to_stat_weight: float | None,
-        l: int | None,
-        fit_params: np.ndarray | None,
+        from_stat_weight: float | None = None,
+        to_stat_weight: float | None = None,
+        l: int | None = None,
+        fit_params: np.ndarray | None = None,
         E_grid: np.ndarray | None = None,  # TODO: Unify use of underscores
         sigma: np.ndarray | None = None,
         **transition_kwargs,
     ):
         """Initialise
 
-        :param collrate_const: Normalisation constant for collision rate calculation
-        :param sigma_norm: Normalisation constant for cross-section
-        :param simulation_E_grid: Energy grid (pre_collision), in eV, on which all cross-sections will be evaluated when calculating the rate matrix
+        :param collrate_const: Normalisation constant [s^-1] for collision rate calculation
+        :param sigma_norm: Normalisation constant [m^-2] for cross-section
         :param from_state: Initial state
         :param to_state: Final state
         :param from_stat_weight: Statistical weight of the initial state, defaults to None
@@ -630,7 +638,7 @@ class RRTrans(Transition):
         # Apply fit to energies higher than FAC calculated
         p = self.fit_params
         E_grid_fit = new_Egrid[np.where(new_Egrid > old_Egrid[-1])]
-        x = E_grid_fit / self.delta_E
+        x = E_grid_fit / (self.delta_E * self.T_norm)
         y = 1 - (1 / x)
         sigma_new[np.where(new_Egrid > old_Egrid[-1])] = (
             1.1969e-15
@@ -642,7 +650,7 @@ class RRTrans(Transition):
         p = fit_params
         E_grid_fit = new_Egrid[np.where(new_Egrid > old_Egrid[-1])]
         eps = E_grid_fit / E_h
-        w = E_grid_fit + self.delta_E
+        w = E_grid_fit + self.delta_E * self.T_norm
         x = (E_grid_fit + p[3]) / p[3]
         y = (1.0 + p[2]) / (np.sqrt(x) + p[2])
         dgf_dE = (

@@ -85,8 +85,8 @@ class SIKERun(object):
         :param fixed_fraction_init: Specify whether to initialise impurity densities to fixed fraction of electron density. If false, use flat impurity density profiles., defaults to True
         :param saha_boltzmann_init: Specify whether to initialise impurity state densities to Saha-Boltzmann equilibrium, defaults to True
         :param state_ids: A specific list of state IDs to evolve. If None then all states in levels.json will be evolved., defaults to None
+        :param atomic_data_savedir: Directory where atomic data is saved. If none, the location in $HOME/.sike_config will be retrived
         :raises ValueError: If input is incorrectly specified (must specify either electron distribution and vgrid or electron temperature and density profiles)
-        :raises atomic_data_savedir: Directory where atomic data is saved. If none, the location in $HOME/.sike_config will be retrived
         """
         # TODO: Change fe so that spatial index comes first (like everywhere else)
 

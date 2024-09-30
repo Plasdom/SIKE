@@ -304,7 +304,7 @@ class Impurity:
         num_transitions = len(trans_dict)
         transitions = [None] * num_transitions
 
-        for i, trans in enumerate(trans_dict[1:]):
+        for i, trans in enumerate(trans_dict):
             if self.state_ids is not None:
                 if (trans["from_id"] not in self.state_ids) or (
                     trans["to_id"] not in self.state_ids
@@ -313,6 +313,7 @@ class Impurity:
             if trans["type"] == "ionization" and self.ionization:
                 transitions[i] = IzTrans(
                     **trans,
+                    T_norm=self.T_norm,
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
                     tbrec_norm=self.tbrec_norm,
@@ -321,13 +322,18 @@ class Impurity:
                     to_state=self.states[trans["to_id"]],
                 )
             elif trans["type"] == "autoionization" and self.autoionization:
-                transitions[i] = AiTrans(**trans, time_norm=self.time_norm)
+                transitions[i] = AiTrans(
+                    **trans,
+                    T_norm=self.T_norm,
+                    time_norm=self.time_norm,
+                )
             elif (
                 trans["type"] == "radiative_recombination"
                 and self.radiative_recombination
             ):
                 transitions[i] = RRTrans(
                     **trans,
+                    T_norm=self.T_norm,
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
                     simulation_E_grid=Egrid,
@@ -335,10 +341,15 @@ class Impurity:
                     to_state=self.states[trans["to_id"]],
                 )
             elif trans["type"] == "emission" and self.emission:
-                transitions[i] = EmTrans(**trans, time_norm=self.time_norm)
+                transitions[i] = EmTrans(
+                    **trans,
+                    T_norm=self.T_norm,
+                    time_norm=self.time_norm,
+                )
             elif trans["type"] == "excitation" and self.excitation:
                 transitions[i] = ExTrans(
                     **trans,
+                    T_norm=self.T_norm,
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
                     simulation_E_grid=Egrid,
