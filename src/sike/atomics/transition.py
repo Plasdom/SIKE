@@ -2,7 +2,7 @@ from scipy import interpolate
 import numpy as np
 from numba import jit
 
-from sike.utils.constants import *
+from sike.constants import *
 from sike.atomics.atomic_state import State
 
 
@@ -26,7 +26,7 @@ class Transition:
         :param element: Atomic element
         :param from_id: ID of the initial state
         :param to_id: ID of the final state
-        :param delta_E: Transition energy
+        :param delta_E: Transition energy [eV]
         :param T_norm: Normalisation constant [eV] for energy/temperature
         """
         self.type = type
@@ -89,11 +89,6 @@ class ExTrans(Transition):
                 + "\n    1. existing cross-sections, energy grid and Born-Bethe coefficients for high-energy fit, or"
                 + "\n    2. oscillator strength"
             )
-
-        # if born_bethe_coeffs is not None and E_grid is not None:
-        #     self.born_bethe_coeffs = born_bethe_coeffs
-        #     if E_grid is not None:
-        #         self.Egrid = E_grid  # TODO: Normalisation?
 
     def compute_cross_section(self, Egrid: np.ndarray, osc_str: float) -> np.ndarray:
         """Compute the excitation cross-sections using van Regemorter's formula

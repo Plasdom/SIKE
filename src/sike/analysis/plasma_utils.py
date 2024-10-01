@@ -1,7 +1,67 @@
 import numpy as np
 from numba import jit
 
-from sike.utils.constants import *
+from sike.constants import *
+from sike.atomics.atomic_state import State
+
+
+def boltzmann_dist(
+    Te: float, energies: np.ndarray, stat_weights: np.ndarray, gnormalise: bool = False
+) -> np.ndarray:
+    """Generate a boltzmann distribution for the given set of energies and statistical weights
+
+    :param Te: Electron temperature array [eV]
+    :param energies: Atomic state energies [eV]
+    :param stat_weights: Atomic state statistical weights
+    :param gnormalise: Option to normalise output densities by their statistical weights. Defaults to False
+    :return: Boltzmann-distributed densities, relative to ground state
+    """
+    rel_dens = np.zeros(len(energies))
+    for i in range(len(energies)):
+        rel_dens[i] = (stat_weights[i] / stat_weights[0]) * np.exp(
+            -(energies[i] - energies[0]) / Te
+        )
+        if gnormalise:
+            rel_dens[i] /= stat_weights[i]
+    return rel_dens
+
+
+def saha_dist(
+    Te: float, ne: float, imp_dens_tot: float, states: list[State], num_Z: int
+) -> np.ndarray:
+    """Generate a Saha distribution of ionization stage densities for the given electron temperature
+
+    :param Te: Electron temperature [eV]
+    :param ne: Electron density [m^-3]
+    :param imp_dens_tot: Total impurity species density [m^-3]
+    :param states: Impurity atomic states
+    :param num_Z: Number of ionisation stages
+    :return: Numpy array of Saha distribution of ionisation stage densities
+    """
+    ground_states = [s for s in states if s.ground is True]
+    ground_states = list(reversed(sorted(ground_states, key=lambda x: x.num_el)))
+
+    de_broglie_l = np.sqrt((PLANCK_H**2) / (2 * np.pi * EL_MASS * EL_CHARGE * Te))
+
+    # Compute ratios
+    dens_ratios = np.zeros(num_Z - 1)
+    for z in range(1, num_Z):
+        eps = -(ground_states[z - 1].energy - ground_states[z].energy)
+        stat_weight_zm1 = ground_states[z - 1].stat_weight
+        stat_weight = ground_states[z].stat_weight
+
+        dens_ratios[z - 1] = (
+            2 * (stat_weight / stat_weight_zm1) * np.exp(-eps / Te)
+        ) / (ne * (de_broglie_l**3))
+
+    # Fill densities
+    denom_sum = 1.0 + np.sum([np.prod(dens_ratios[: z + 1]) for z in range(num_Z - 1)])
+    dens_saha = np.zeros(num_Z)
+    dens_saha[0] = imp_dens_tot / denom_sum
+    for z in range(1, num_Z):
+        dens_saha[z] = dens_saha[z - 1] * dens_ratios[z - 1]
+
+    return dens_saha
 
 
 @jit(nopython=True)

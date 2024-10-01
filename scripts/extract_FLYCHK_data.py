@@ -3,8 +3,7 @@ import os
 import numpy as np
 import json
 import sike
-import sike.utils
-import sike.utils.constants as sc
+import sike.constants as sc
 
 
 if __name__ == "__main__":
@@ -267,7 +266,7 @@ if __name__ == "__main__":
                 # except ValueError:
                 #     transitions[-1]["maxwellian_rate"] = 0.0
 
-        vgrid = sike.utils.constants.DEFAULT_VGRID
+        vgrid = sike.constants.DEFAULT_VGRID
         Egrid = 0.5 * sc.EL_MASS * vgrid**2 / sc.EL_CHARGE
 
         # Screening coefficients test

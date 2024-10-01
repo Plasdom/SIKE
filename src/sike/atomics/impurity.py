@@ -4,8 +4,8 @@ import json
 
 from sike.atomics.transition import *
 from sike.atomics.atomic_state import State
-from sike.analysis.impurity_utils import saha_dist, boltzmann_dist, gather_states
-import sike.utils.constants as c
+from sike.analysis.plasma_utils import saha_dist, boltzmann_dist
+import sike.constants as c
 
 
 class Impurity:
@@ -85,19 +85,19 @@ class Impurity:
         self.atomic_data_savedir = atomic_data_savedir
 
         # Initialise impurity data
-        self.get_element_data()
-        self.check_data_exists()
+        self._get_element_data()
+        self._check_data_exists()
         print(" Initialising states...")
-        self.init_states()
+        self._init_states()
         print(" Initialising transitions...")
-        self.init_transitions(vgrid=vgrid, Egrid=Egrid)
+        self._init_transitions(vgrid=vgrid, Egrid=Egrid)
         print(" Initialising densities...")
-        self.init_dens(ne=ne, Te=Te)
+        self._init_dens(ne=ne, Te=Te)
         print(" Finalising states...")
-        self.set_state_positions()
-        self.set_transition_positions()
+        self._set_state_positions()
+        self._set_transition_positions()
 
-    def check_data_exists(self):
+    def _check_data_exists(self):
         """Check that the atomic data for the given species and level of state resolution exists.
 
         :raises FileNotFoundError: If requested atomic data does not exist.
@@ -127,9 +127,7 @@ class Impurity:
         n_resolved_exists = levels_filepath_n.exists()
 
         # Compare with input options
-        if (self.resolve_l and self.resolve_j) or (
-            self.resolve_l and not self.resolve_j
-        ):
+        if self.resolve_l and self.resolve_j:
             # Resolved in both l and j
             if j_resolved_exists:
                 return
@@ -155,6 +153,10 @@ class Impurity:
                 #     )
                 # else:
                 #     raise Exception
+        if self.resolve_l and not self.resolve_j:
+            raise Exception(
+                "Atomic data resolved in l but not j is not yet implemented. Either set both resolve_j and resolve_l to True or both to False."
+            )
         elif self.resolve_j and not self.resolve_l:
             # Resolved in j but not l - this does not make sense
             raise Exception("resolve_j=True is not compatible with resolve_l=False.")
@@ -185,14 +187,14 @@ class Impurity:
                 else:
                     raise Exception
 
-    def get_element_data(self):
+    def _get_element_data(self):
         """Set the nuclear charge and number of ionisation stages"""
 
         self.nuc_chg = c.NUCLEAR_CHARGE_DICT[self.name]
         self.num_Z = self.nuc_chg + 1
         self.longname = c.SYMBOL2ELEMENT[self.name]
 
-    def init_states(self):
+    def _init_states(self):
         """Initialise the evolved atomic states"""
         if (self.resolve_l and self.resolve_j) or (
             self.resolve_l and not self.resolve_j
@@ -230,9 +232,9 @@ class Impurity:
 
         self.tot_states = len(self.states)
 
-        self.init_ionization_energies()
+        self._init_ionization_energies()
 
-    def init_ionization_energies(self):
+    def _init_ionization_energies(self):
         """Set the ground state levels, ionization energies, delta E from ground state for each atomic state"""
 
         # Find the lowest energy states
@@ -264,7 +266,7 @@ class Impurity:
             energy_from_gs = self.states[i].energy - gs_energies[self.states[i].Z]
             self.states[i].energy_from_gs = energy_from_gs
 
-    def init_transitions(
+    def _init_transitions(
         self,
         vgrid: np.ndarray,
         Egrid: np.ndarray,
@@ -390,7 +392,7 @@ class Impurity:
 
         # Checks
         print("  Performing checks on transition data...")
-        self.state_and_transition_checks()
+        self._state_and_transition_checks()
 
     # def interpolate_cross_sections(self, Egrid: np.ndarray):
     #     # Interpolate the cross sections
@@ -405,7 +407,7 @@ class Impurity:
     # def compute_cross_sections(self, Egrid: np.ndarray):
     #     pass
 
-    def state_and_transition_checks(self):
+    def _state_and_transition_checks(self):
         """Perform some checks on states and transitions belonging to the impurity. Removes orphaned states, transitions where one or more associated states are not evolved, etc"""
 
         # Check for no orphaned states (i.e. states with either no associated transitions or )
@@ -450,7 +452,7 @@ class Impurity:
                 self.transitions[i] = None
         self.transitions = [t for t in self.transitions if t is not None]
 
-    def init_dens(
+    def _init_dens(
         self,
         ne: np.ndarray,
         Te: np.ndarray,
@@ -463,7 +465,7 @@ class Impurity:
         self.dens = np.zeros((len(ne), self.tot_states))
 
         if self.saha_boltzmann_init:
-            self.set_state_positions()
+            self._set_state_positions()
 
             Z_dens = np.zeros([len(ne), self.num_Z])
             for i in range(len(ne)):
@@ -479,7 +481,7 @@ class Impurity:
                 )
 
             for Z in range(self.num_Z):
-                Z_states = gather_states(self.states, Z)
+                Z_states = self._gather_states(Z)
 
                 energies = [s.energy for s in Z_states]
                 stat_weights = [s.stat_weight for s in Z_states]
@@ -502,12 +504,12 @@ class Impurity:
             else:
                 self.dens[:, 0] = 1.0
 
-    def set_state_positions(self):
+    def _set_state_positions(self):
         """Store the positions of each state (which may be different from the state ID)"""
         for i, state in enumerate(self.states):
             self.states[i].pos = i
 
-    def set_transition_positions(self):
+    def _set_transition_positions(self):
         """Store the positions of each from and to state in each transition"""
 
         id2pos = {}
@@ -518,7 +520,7 @@ class Impurity:
             self.transitions[i].from_pos = id2pos[self.transitions[i].from_id]
             self.transitions[i].to_pos = id2pos[self.transitions[i].to_id]
 
-    def reorder_PQ_states(self, P_states: str = "ground"):
+    def _reorder_PQ_states(self, P_states: str = "ground"):
         """Ensure evolved and non-evolved atomic states are in the correct order
 
         :param P_states: Which atomic states are evolved, defaults to "ground"
@@ -530,5 +532,18 @@ class Impurity:
             self.num_Q_states = len(other_states)
             self.states = ground_states + other_states
 
-        self.set_state_positions()
-        self.set_transition_positions()
+        self._set_state_positions()
+        self._set_transition_positions()
+
+    def _gather_states(self, Z) -> list[State]:
+        """Gather states with a given number of electrons
+
+        :param Z: Ion charge Z
+        :return: list of states with given number of electrons
+        """
+        gathered_states = []
+        for s in self.states:
+            if s.Z == Z:
+                gathered_states.append(s)
+
+        return gathered_states

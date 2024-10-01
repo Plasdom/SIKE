@@ -25,14 +25,18 @@ Done
 - Handle different velocity grids provided at input
 - Let user provide atomic_data_savepath at initialisation, which overrides the default
 - Upload n-resolved data to Zenodo
+- Remove any old or unused code. E.g. there's some overlap between core.py, analysis.py and post_processing.py
+- Mangle/hide names of methods, classes etc we don't want to expose
 
 To do
 - Expose an "update_fe" method. This can be used to recompute Maxwellian/kinetic equilibria without having to read in the atomic data again, and will be useful during coupling runs. This will set the matrix_needs_building flag to True
 - Tests, benchmarking, etc
-- Mangle/hide names of methods, classes etc we don't want to expose
+- Put units in variable names: 
+    - Transition module: T_norm, Egrid and simulation Egrid used for interpolating/computing cross-sections
+    - Atomic data: Everything
 - Create a json schema for atomic states, transitions and (maybe) input files
 - Should accept xarrays as input (e.g. fe from remkit?)
-- Remove any old or unused code. E.g. there's some overlap between core.py, analysis.py and post_processing.py
+- Put transition types into constants
 - Some demo scripts
     - Make sure the get_bimaxwellians method is user-friendly and enables quick setup of a comparison with Maxwellian/non-Maxwellian case
 - License

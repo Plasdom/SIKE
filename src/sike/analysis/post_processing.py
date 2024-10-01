@@ -1,7 +1,7 @@
 import xarray as xr
 import numpy as np
 
-from sike.utils import constants as c
+from sike import constants as c
 
 
 def get_Zavg(ds: xr.Dataset) -> xr.DataArray:

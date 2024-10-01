@@ -4,7 +4,7 @@ import os
 import xarray as xr
 
 from sike.atomics.impurity import Impurity
-from sike.utils.constants import *
+from sike.constants import *
 from sike.solver.matrix_utils import *
 from sike.solver import solver
 from sike.analysis.plasma_utils import *
@@ -129,11 +129,11 @@ class SIKERun(object):
         if fe is not None and vgrid is not None:
             self.fe = fe.copy()
             self.vgrid = vgrid.copy()
-            self.init_from_dist()
+            self._init_from_dist()
         elif Te is not None and ne is not None:
             self.Te = Te.copy()
             self.ne = ne.copy()
-            self.init_from_profiles(vgrid)
+            self._init_from_profiles(vgrid)
         else:
             raise ValueError(
                 "Must specify either electron distribution and vgrid or electron temperature and density profiles"
@@ -170,13 +170,13 @@ class SIKERun(object):
 
         self.rate_mats = {}
 
-    def init_from_dist(self) -> None:
+    def _init_from_dist(self) -> None:
         """Initialise simulation from electron distributions"""
         self.num_x = len(self.fe[0, :])
         if self.xgrid is None:
             self.xgrid = np.linspace(0, 1, self.num_x)
         self.num_v = len(self.vgrid)
-        self.generate_grid_widths()
+        self._generate_grid_widths()
 
         self.rank = 0  # TODO: Implement parallelisation
         loc_x = self.num_x / self.num_procs
@@ -204,13 +204,13 @@ class SIKERun(object):
         )
 
         # Generate normalisation constants and normalise everything
-        self.init_norms()
-        self.apply_normalisation()
+        self._init_norms()
+        self._apply_normalisation()
 
         # Create the E_grid
         self.Egrid = self.T_norm * self.vgrid**2
 
-    def init_from_profiles(self, vgrid: np.ndarray | None = None):
+    def _init_from_profiles(self, vgrid: np.ndarray | None = None):
         """Initialise simulation from electron temperature and density profiles
 
         :param vgrid: Electron velocity grid, defaults to None
@@ -225,7 +225,7 @@ class SIKERun(object):
         if self.xgrid is None:
             self.xgrid = np.linspace(0, 1, self.num_x)
         self.num_v = len(self.vgrid)
-        self.generate_grid_widths()
+        self._generate_grid_widths()
 
         loc_x = self.num_x / self.num_procs
         self.min_x = int(self.rank * loc_x)
@@ -239,13 +239,13 @@ class SIKERun(object):
         self.fe = get_maxwellians(self.ne, self.Te, self.vgrid, normalised=False)
 
         # Generate normalisation constants and normalise everything
-        self.init_norms()
-        self.apply_normalisation()
+        self._init_norms()
+        self._apply_normalisation()
 
         # Create the E_grid
         self.Egrid = self.T_norm * self.vgrid**2
 
-    def init_norms(self) -> None:
+    def _init_norms(self) -> None:
         """Initialise the normalisation constants for the simulation"""
 
         self.T_norm = np.mean(self.Te)  # eV
@@ -270,7 +270,7 @@ class SIKERun(object):
             ** 3
         )
 
-    def apply_normalisation(self) -> None:
+    def _apply_normalisation(self) -> None:
         """Normalise all physical values in the simulation"""
         # Apply normalisation
         Te_norm = self.Te.copy() / self.T_norm
@@ -288,7 +288,7 @@ class SIKERun(object):
         fe_norm = self.fe.copy() / (self.n_norm / (self.v_th**3))
         self.fe = fe_norm
 
-    def generate_grid_widths(self):
+    def _generate_grid_widths(self):
         """Generate spatial and velocity grid widths"""
         # Spatial grid widths
         self.dxc = np.zeros(self.num_x)
