@@ -10,7 +10,7 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
 
 ## Quickstart
 
-1. Clone or download the repository and in a terminal in the top-level directory run
+1. Clone or download the repository, open a terminal in the top-level directory and run:
 
     `pip install -e .`
 
