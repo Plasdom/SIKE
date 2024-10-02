@@ -21,8 +21,8 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
 
     `python scripts/sike_setup.py`
 
-    > [!NOTE]
-    > If the download fails for any reason, see section on atomic data below for manual setup instructions.
+> [!NOTE]
+> If the download fails for any reason, see section on atomic data below for manual setup instructions.
 
 3. In a python script or notebook, run the following code:
 
