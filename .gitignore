@@ -13,3 +13,5 @@ legacy/*
 sike_atomic_data/*
 *.json
 *.dat
+plan.txt
+testing.ipynb
