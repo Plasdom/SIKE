@@ -101,6 +101,11 @@ def setup(elements: list[str] | None = None, savedir: str | Path | None = None) 
             zip_ref.extractall(sike_data_savedir)
             element_zip_path.unlink()
             shutil.rmtree(sike_data_savedir / "__MACOSX")
-    print("Finished downloading atomic data.")
+    print("Finished downloading atomic data, saved to: {}".format(sike_data_savedir))
+    print(
+        "A config file containing the location of this directory has been saved to {}".format(
+            config_filepath
+        )
+    )
 
     return sike_data_savedir
