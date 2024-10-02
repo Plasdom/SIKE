@@ -167,7 +167,7 @@ def get_bimaxwellians(
     n2: np.ndarray,
     T1: np.ndarray,
     T2: np.ndarray,
-    vgrid: np.ndarray | None,
+    vgrid: np.ndarray | None = None,
     normalised: bool = False,
 ) -> np.ndarray:
     """Return an array of bi-Maxwellian electron distributions with the given densities and temperatures.
@@ -182,6 +182,7 @@ def get_bimaxwellians(
     """
 
     if vgrid is None:
+        print("Using default velocity grid.")
         vgrid = DEFAULT_VGRID
 
     if normalised is False:

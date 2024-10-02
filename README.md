@@ -55,12 +55,11 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
 
     sike.plotting.plot_nz(ds)
     ```
-    ![Charge state profiles with bi-Maxwellians](https://github.com/Plasdom/SIKE/blob/main/example_plots/C_dist.png)
+    ![Charge state profiles with bi-Maxwellians](https://github.com/Plasdom/SIKE/blob/main/example_plots/C_dist_bimax.png)
 
 ## Atomic data
-TODO: Check all this works as described
 
-Because the atomic data files are quite large, and not all users will need to download atomic data for all impurity species, it is not bundled along with the package on git/pypi. Instead, run the setup method to retrieve the atomic data from a data repository (zenodo). There are two options:
+Because the atomic data files are quite large, and not all users will need to download atomic data for all impurity species, it is not bundled along with the package. Instead, run the setup method to retrieve the atomic data from a data repository (zenodo). There are two options:
 1. Run the script "scripts/sike_setup.py":
     ```
     python scripts/sike_setup.py --atomic_data_savedir <SAVEDIR> --elements <ELEMENTS>
@@ -88,8 +87,8 @@ Here,
     - Argon ("Ar")
 - `<SAVEDIR>` is the location of a directory where the atomic data will be saved. A directory called "sike_atomic_data" will be created here, and the downloaded atomic data placed inside. If empty or `None`, then you will be prompted to input the location. 
 
-### Manual download
-The atomic data is stored at `https://zenodo.org/records/13864185`. If the above automated methods fail, you can download and extract the data directly from this link and specify the `atomic_data_savedir` argument at initialisation of the `SIKERun` object. 
+> [!NOTE]  
+> The atomic data is stored at `https://zenodo.org/records/13864185`. If the above automated methods fail, you can download and extract the data directly from this link and specify the `atomic_data_savedir` argument at initialisation of the `SIKERun` object. 
 
 
 

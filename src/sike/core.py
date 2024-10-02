@@ -126,9 +126,13 @@ class SIKERun(object):
         else:
             self.xgrid = None
 
-        if fe is not None and vgrid is not None:
+        if fe is not None:
             self.fe = fe.copy()
-            self.vgrid = vgrid.copy()
+            if vgrid is not None:
+                self.vgrid = vgrid.copy()
+            else:
+                print("Using default velocity grid.")
+                self.vgrid = DEFAULT_VGRID.copy()
             self._init_from_dist()
         elif Te is not None and ne is not None:
             self.Te = Te.copy()
