@@ -432,5 +432,5 @@ def get_atomic_data_savedir() -> Path:
         return atomic_data_savepath
     else:
         raise FileNotFoundError(
-            "No config file found. Have you run setup to download the atomic data? See readme ofr instructions."
+            "No config file found. Have you run setup to download the atomic data? See readme for instructions."
         )

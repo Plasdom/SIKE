@@ -21,6 +21,9 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
 
     `python scripts/sike_setup.py`
 
+    > [!NOTE]
+    > If the download fails for any reason, see section on atomic data below for manual setup instructions.
+
 3. In a python script or notebook, run the following code:
 
     ```python 
@@ -62,7 +65,7 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
 
 ## Atomic data
 
-Because the atomic data files are quite large, and not all users will need to download atomic data for all impurity species, it is not bundled along with the package. Instead, run the setup method to retrieve the atomic data from a data repository (zenodo). There are two options:
+Because the atomic data files are quite large, and not all users will need to download atomic data for all impurity species, it is not bundled along with the package. Instead, run the setup method to retrieve the atomic data from a data repository (zenodo). There are three options:
 1. Run the script "scripts/sike_setup.py":
     ```
     python scripts/sike_setup.py --atomic_data_savedir <SAVEDIR> --elements <ELEMENTS>
@@ -76,7 +79,12 @@ Because the atomic data files are quite large, and not all users will need to do
     ```
     e.g. `sike.setup(elements=["Li", "C"], savedir="/Users/username/Downloads/")`
 
-Here,
+3. If the download fails, atomic data can be downloaded manually from the Zenodo record: https://zenodo.org/records/13864185. Select one or more elements to download, then extract the folders (named "Lithium", "Carbon", etc) to a local directory somewhere. Then pass this directory in the `atomic_data_savedir` argument to the `SIKERun` initialisation, i.e. 
+    ```python 
+    c = sike.SIKERun(..., atomic_data_savedir="<LOCATION>")
+    ```
+
+Above,
 - `<ELEMENTS>` is a list of elements (specified by symbol) to download data for. If `<ELEMENTS>` is empty or `None`, then all atomic data will be downloaded. The full list of elements for which data is available is:
     - Hydrogen ("H")
     - Helium ("He")
@@ -89,9 +97,6 @@ Here,
     - Neon ("Ne")
     - Argon ("Ar")
 - `<SAVEDIR>` is the location of a directory where the atomic data will be saved. A directory called "sike_atomic_data" will be created here, and the downloaded atomic data placed inside. If empty or `None`, then you will be prompted to input the location. 
-
-> [!NOTE]  
-> The atomic data is stored at `https://zenodo.org/records/13864185`. If the above automated methods fail, you can download and extract the data directly from this link and specify the `atomic_data_savedir` argument at initialisation of the `SIKERun` object. 
 
 
 
