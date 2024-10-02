@@ -81,7 +81,7 @@ Because the atomic data files are quite large, and not all users will need to do
 
 3. If the download fails, atomic data can be downloaded manually from the Zenodo record: https://zenodo.org/records/13864185. Select one or more elements to download, then extract the folders (named "Lithium", "Carbon", etc) to a local directory somewhere. Then pass this directory in the `atomic_data_savedir` argument to the `SIKERun` initialisation, i.e. 
     ```python 
-    c = sike.SIKERun(..., atomic_data_savedir="<LOCATION>")
+    c = sike.SIKERun(..., atomic_data_savedir="<SAVEDIR>")
     ```
 
 Above,
@@ -96,7 +96,7 @@ Above,
     - Nitrogen ("N")
     - Neon ("Ne")
     - Argon ("Ar")
-- `<SAVEDIR>` is the location of a directory where the atomic data will be saved. A directory called "sike_atomic_data" will be created here, and the downloaded atomic data placed inside. If empty or `None`, then you will be prompted to input the location. 
+- `<SAVEDIR>` is the location of a directory where the atomic data will be saved. By default, a directory called "sike_atomic_data" will be created here, and the downloaded atomic data placed inside. If empty or `None`, then you will be prompted to input the location. 
 
 
 
