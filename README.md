@@ -8,9 +8,8 @@ where $\mathbf{M}$ is the rate matrix for transitions between states. No collisi
 
 The SIKE model and atomic data is described in more detail in this pre-print: https://arxiv.org/abs/2410.00651. 
 
-## Dependencies
-
-SIKE is a python package, intended to work with python>=3.11. It does rely on other python package dependenies: scipy, xarray, matplotlib and numba. It is recommended to create and activate a virtual environment with conda (e.g. `conda create -n sike python=3.11 && conda activate sike`) prior to following the quickstart steps below. 
+> [!NOTE]
+> SIKE is a python package, intended to work with python>=3.11. It is recommended to create and activate a virtual environment with conda (e.g. `conda create -n sike python=3.11 && conda activate sike`) prior to following the quickstart steps below in order to avoid any conflicts with existing python environments. 
 
 ## Quickstart
 
