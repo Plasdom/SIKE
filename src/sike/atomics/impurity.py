@@ -4,7 +4,7 @@ import json
 
 from sike.atomics.transition import *
 from sike.atomics.atomic_state import State
-from sike.analysis.plasma_utils import saha_dist, boltzmann_dist
+from sike.plasma_utils import saha_dist, boltzmann_dist
 import sike.constants as c
 
 

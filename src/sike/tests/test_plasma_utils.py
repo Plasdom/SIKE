@@ -2,7 +2,7 @@ import pytest
 import json
 from pathlib import Path
 
-from sike.analysis.plasma_utils import *
+from sike.plasma_utils import *
 from sike.atomics.atomic_state import State
 import numpy as np
 

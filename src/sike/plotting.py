@@ -1,7 +1,7 @@
 import xarray as xr
 import matplotlib.pyplot as plt
 
-import sike.analysis.post_processing as spp
+import sike.post_processing as spp
 
 
 def plot_Zavg(

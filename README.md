@@ -96,6 +96,8 @@ Above,
     - Nitrogen ("N")
     - Neon ("Ne")
     - Argon ("Ar")
+    - Molybdenum ("Mo")
+    - Tungsten ("W")
 - `<SAVEDIR>` is the location of a directory where the atomic data will be saved. By default, a directory called "sike_atomic_data" will be created here, and the downloaded atomic data placed inside. If empty or `None`, then you will be prompted to input the location. 
 
 

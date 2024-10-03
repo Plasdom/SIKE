@@ -7,7 +7,7 @@ from sike.atomics.impurity import Impurity
 from sike.constants import *
 from sike.solver.matrix_utils import *
 from sike.solver import solver
-from sike.analysis.plasma_utils import *
+from sike.plasma_utils import *
 from sike.io.generate_output import generate_output
 
 # TODO: Do we ever want to actually evolve all states? Or only build M_eff and get derived coefficients? Opportunity to massively simplify by removing petsc & mpi dependency

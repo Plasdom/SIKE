@@ -15,19 +15,8 @@ parser.add_argument(
     "--elements",
     nargs="+",
     required=False,
-    default=[
-        "H",
-        "He",
-        "Li",
-        "Be",
-        "B",
-        "C",
-        "N",
-        "O",
-        "Ne",
-        "Ar",
-    ],
-    help="List of elements whose atomic data will be downloaded. Options are: 'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'Ne', 'Ar'. By default, all will be downloaded.",
+    default=["H", "He", "Li", "Be", "B", "C", "N", "O", "Ne", "Ar", "Mo", "W"],
+    help="List of elements whose atomic data will be downloaded. Options are: 'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'Ne', 'Ar', 'Mo', 'W'. By default, all will be downloaded.",
 )
 
 
