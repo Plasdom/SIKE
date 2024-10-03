@@ -348,7 +348,7 @@ class SIKERun(object):
     def evolve(self, dt_s: float, num_t: int = 5) -> xr.Dataset:
         """Evolve the rate equations by a set timestep
 
-        :param dt: Timestep in seconds
+        :param dt_s: Timestep in seconds
         :param num_t: Number of timesteps to take, defaults to 1
         :return: xarray dataset containing densities, states, transitions and other relevant information for the case
         """
