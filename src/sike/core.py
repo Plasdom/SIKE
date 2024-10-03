@@ -345,7 +345,7 @@ class SIKERun(object):
             self.atomic_data_savedir,
         )
 
-    def evolve(self, dt: float, num_t: int = 5) -> xr.Dataset:
+    def evolve(self, dt_s: float, num_t: int = 5) -> xr.Dataset:
         """Evolve the rate equations by a set timestep
 
         :param dt: Timestep in seconds
@@ -354,7 +354,7 @@ class SIKERun(object):
         """
         self.build_matrix()
 
-        sub_dt = (dt / self.t_norm) / num_t
+        sub_dt = (dt_s / self.t_norm) / num_t
         print("Evolving evolution equations...")
         self.impurity.dens = solver.evolve(
             self.loc_num_x,
