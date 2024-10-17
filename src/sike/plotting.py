@@ -263,7 +263,7 @@ def plot_Lz_avg(
         _, ax = plt.subplots(1)
     ax.plot(x, Lz_tot, **mpl_kwargs)
     ax.set_xlabel(xlabel)
-    ax.set_ylabel(r"$\bar{L}_{z}$ [MWm$^{-3}$]")
+    ax.set_ylabel(r"$\bar{L}_{z}$ [MWm$^{3}$]")
     ax.set_title(r"$\bar{L}_{z}$: " + ds.metadata["element"])
     ax.grid()
     if logx:

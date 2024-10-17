@@ -65,6 +65,8 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
 
 ## Atomic data
 
+The atomic data for SIKE has been derived using outputs from the Flexible Atomic Code (M. F. Gu, Canadian Journal of Physics **86**, 2004) and FLYCHK (H. K. Chung et al. High Energy Density Physics **1**, 2005). 
+
 Because the atomic data files are quite large, and not all users will need to download atomic data for all impurity species, it is not bundled along with the package. Instead, run the setup method to retrieve the atomic data from a data repository (zenodo). There are three options:
 1. Run the script "scripts/sike_setup.py":
     ```
