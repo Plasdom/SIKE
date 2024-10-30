@@ -38,7 +38,7 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
     ne = 1e20 * np.ones(nx)
 
     c = sike.SIKERun(ne=ne, Te=Te, element="C")
-    ds = c.solve()
+    ds = c.evolve(dt_s=1e0)
 
     sike.plotting.plot_nz(ds)
     ```
@@ -60,7 +60,7 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
                                 T2 = Te)
 
     c = sike.SIKERun(fe, element="C")
-    ds = c.solve()
+    ds = c.evolve(dt_s=1e0)
 
     sike.plotting.plot_nz(ds)
     ```

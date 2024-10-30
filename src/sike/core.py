@@ -62,7 +62,7 @@ class SIKERun(object):
         emission: bool = True,
         autoionization: bool = True,
         fixed_fraction_init: bool = True,
-        saha_boltzmann_init: bool = True,
+        saha_boltzmann_init: bool = False,
         state_ids: list[int] | None = None,
         atomic_data_savedir: str | Path | None = None,
     ):
