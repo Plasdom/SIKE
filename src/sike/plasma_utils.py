@@ -127,7 +127,7 @@ def bimaxwellian(
 
 
 def get_maxwellians(
-    ne_in: np.ndarray, Te_in: np.ndarray, vgrid_in: np.ndarray, normalised: bool = False
+    ne: np.ndarray, Te: np.ndarray, vgrid: np.ndarray, normalised: bool = False
 ) -> np.ndarray:
     """Return an array of Maxwellian electron distributions with the given densities and temperatures.
 
@@ -137,22 +137,22 @@ def get_maxwellians(
     :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
     :return: 2d numpy array of Maxwellians at each location in x
     """
-    ne = ne_in.copy()
-    Te = Te_in.copy()
-    vgrid = vgrid_in.copy()
+    ne_c = ne.copy()
+    Te_c = Te.copy()
+    vgrid_c = vgrid.copy()
 
     if normalised is False:
         T_norm = 10
         n_norm = 1e19
         v_th = np.sqrt(2 * EL_CHARGE * T_norm / EL_MASS)
-        ne /= n_norm
-        Te /= T_norm
-        vgrid /= v_th
+        ne_c /= n_norm
+        Te_c /= T_norm
+        vgrid_c /= v_th
 
-    f0_max = [[0.0 for i in range(len(ne))] for j in range(len(vgrid))]
-    for i in range(len(ne)):
-        f0_max_loc = maxwellian(Te[i], ne[i], vgrid)
-        for j in range(len(vgrid)):
+    f0_max = [[0.0 for i in range(len(ne_c))] for j in range(len(vgrid_c))]
+    for i in range(len(ne_c)):
+        f0_max_loc = maxwellian(Te_c[i], ne_c[i], vgrid_c)
+        for j in range(len(vgrid_c)):
             f0_max[j][i] = f0_max_loc[j]
     f0_max = np.array(f0_max)
 
