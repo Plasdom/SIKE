@@ -1,5 +1,6 @@
 """Setup script for obtaining atomic data and telling SIKE where to find it."""
 
+import zipfile
 from requests import get
 from zipfile import ZipFile
 import shutil
@@ -97,10 +98,16 @@ def setup(elements: list[str] | None = None, savedir: str | Path | None = None) 
         url = c.ATOMIC_DATA_BASE_URL + element_zip_name + "?download=1"
         r = get(url=url)
         open(element_zip_path, "wb").write(r.content)
-        with ZipFile(element_zip_path, "r") as zip_ref:
-            zip_ref.extractall(sike_data_savedir)
-            element_zip_path.unlink()
-            shutil.rmtree(sike_data_savedir / "__MACOSX")
+        try:
+            with ZipFile(element_zip_path, "r") as zip_ref:
+                zip_ref.extractall(sike_data_savedir)
+                element_zip_path.unlink()
+                try:
+                    shutil.rmtree(sike_data_savedir / "__MACOSX")
+                except FileNotFoundError:
+                    pass
+        except zipfile.BadZipFile:
+            print(f"Error downloading data for {element}.")
     print("Finished downloading atomic data, saved to: {}".format(sike_data_savedir))
     print(
         "A config file containing the location of this directory has been saved to {}".format(

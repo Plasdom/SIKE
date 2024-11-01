@@ -73,7 +73,7 @@ The atomic data for SIKE has been derived using outputs from the Flexible Atomic
 Because the atomic data files are quite large, and not all users will need to download atomic data for all impurity species, it is not bundled along with the package. Instead, run the setup method to retrieve the atomic data from a data repository (zenodo). There are three options:
 1. Run the script "scripts/sike_setup.py":
     ```
-    python scripts/sike_setup.py --atomic_data_savedir <SAVEDIR> --elements <ELEMENTS>
+    python scripts/sike_setup.py --savedir <SAVEDIR> --elements <ELEMENTS>
     ```
     e.g. `python scripts/sike_setup.py --savedir /Users/username/Downloads/ --elements Li C`.
 
