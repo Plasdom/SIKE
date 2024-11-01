@@ -84,7 +84,7 @@ Because the atomic data files are quite large, and not all users will need to do
     ```
     e.g. `sike.setup(elements=["Li", "C"], savedir="/Users/username/Downloads/")`
 
-3. If the download fails, atomic data can be downloaded manually from the Zenodo record: https://zenodo.org/records/14018018. Select one or more elements to download, then extract the folders (named "Lithium", "Carbon", etc) to a local directory somewhere. Then pass this directory in the `atomic_data_savedir` argument to the `SIKERun` initialisation, i.e. 
+3. If the download fails, atomic data can be downloaded manually from the Zenodo record: https://zenodo.org/records/13864185. Select one or more elements to download, then extract the folders (named "Lithium", "Carbon", etc) to a local directory somewhere. Then pass this directory in the `atomic_data_savedir` argument to the `SIKERun` initialisation, i.e. 
     ```python 
     c = sike.SIKERun(..., atomic_data_savedir="<SAVEDIR>")
     ```
