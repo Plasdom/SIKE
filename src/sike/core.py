@@ -89,6 +89,7 @@ class SIKERun(object):
         :raises ValueError: If input is incorrectly specified (must specify either electron distribution and vgrid or electron temperature and density profiles)
         """
         # TODO: Change fe so that spatial index comes first (like everywhere else)
+        # TODO: Check Te, ne and fe are numpy arrays, if not convert them
 
         # Save input options
         self.frac_imp_dens = frac_imp_dens
@@ -162,6 +163,7 @@ class SIKERun(object):
             tbrec_norm=self.tbrec_norm,
             sigma_norm=self.sigma_0,
             time_norm=self.t_norm,
+            v_th=self.v_th,
             T_norm=self.T_norm,
             n_norm=self.n_norm,
             vgrid=self.vgrid,
@@ -212,7 +214,7 @@ class SIKERun(object):
         self._apply_normalisation()
 
         # Create the E_grid
-        self.Egrid = self.T_norm * self.vgrid**2
+        self.Egrid = velocity2energy(self.vgrid * self.v_th)
 
     def _init_from_profiles(self, vgrid: np.ndarray | None = None):
         """Initialise simulation from electron temperature and density profiles
@@ -230,6 +232,7 @@ class SIKERun(object):
             self.xgrid = np.linspace(0, 1, self.num_x)
         self.num_v = len(self.vgrid)
         self._generate_grid_widths()
+        self.Egrid = velocity2energy(self.vgrid)
 
         loc_x = self.num_x / self.num_procs
         self.min_x = int(self.rank * loc_x)
@@ -240,21 +243,18 @@ class SIKERun(object):
         self.loc_num_x = self.max_x - self.min_x
 
         # Generature Maxwellians
-        self.fe = get_maxwellians(self.ne, self.Te, self.vgrid, normalised=False)
+        self.fe = get_maxwellians(self.ne, self.Te, self.Egrid, normalised=False)
 
         # Generate normalisation constants and normalise everything
         self._init_norms()
         self._apply_normalisation()
-
-        # Create the E_grid
-        self.Egrid = self.T_norm * self.vgrid**2
 
     def _init_norms(self) -> None:
         """Initialise the normalisation constants for the simulation"""
 
         self.T_norm = np.mean(self.Te)  # eV
         self.n_norm = np.mean(self.ne) * self.frac_imp_dens  # m^-3
-        self.v_th = np.sqrt(2 * self.T_norm * EL_CHARGE / EL_MASS)  # m/s
+        self.v_th = energy2velocity(self.T_norm)  # m/s
 
         Z = 1
         gamma_ee_0 = EL_CHARGE**4 / (4 * np.pi * (EL_MASS * EPSILON_0) ** 2)
@@ -273,6 +273,8 @@ class SIKERun(object):
             * np.sqrt((PLANCK_H**2) / (2 * np.pi * EL_MASS * self.T_norm * EL_CHARGE))
             ** 3
         )
+
+        self.fe_norm = self.n_norm / (self.v_th**3)
 
     def _apply_normalisation(self) -> None:
         """Normalise all physical values in the simulation"""
@@ -307,6 +309,56 @@ class SIKERun(object):
         for i in range(1, self.num_v):
             self.dvc[i] = 2 * (self.vgrid[i] - self.vgrid[i - 1]) - self.dvc[i - 1]
 
+    # def update_plasma_background(
+    #     self,
+    #     ne: np.ndarray | None = None,
+    #     Te: np.ndarray | None = None,
+    #     fe: np.ndarray | None = None,
+    # ):
+    #     """Update electron distributions or ne and Te profiles
+
+    #     :param ne: Electron density profiles [m^-3], defaults to None
+    #     :param Te: Electron temperature profiles [eV], defaults to None
+    #     :param fe: Electron velocity distributions [m^-6 s^-3] (assuming the same velocity grid as used at initialisation), defaults to None
+    #     :raises Exception: If fe is None and one of Te and ne is None (i.e. either fe or both Te and ne must be provided)
+    #     """
+    #     # TODO: Find out why this is not working as expected, i.e. eliminating density dependence of e.g. Zavg
+    #     if fe is None:
+    #         if (ne is None) or (Te is None):
+    #             raise Exception("Must supply either fe or Te & ne.")
+
+    #     if fe is None:
+    #         fe = get_maxwellians(ne, Te, self.vgrid * self.v_th, normalised=False)
+    #     else:
+    #         ne = np.array(
+    #             [
+    #                 density_moment(
+    #                     fe[:, i], self.vgrid * self.v_th, self.dvc * self.v_th
+    #                 )
+    #                 for i in range(self.num_x)
+    #             ]
+    #         )
+    #         Te = np.array(
+    #             [
+    #                 temperature_moment(
+    #                     fe[:, i],
+    #                     self.vgrid * self.v_th,
+    #                     self.dvc * self.v_th,
+    #                     normalised=False,
+    #                 )
+    #                 for i in range(self.num_x)
+    #             ]
+    #         )
+
+    #     fe_norm = fe.copy() / (self.n_norm / (self.v_th**3))
+    #     self.fe = fe_norm
+    #     Te_norm = Te.copy() / self.T_norm
+    #     self.Te = Te_norm
+    #     ne_norm = ne.copy() / self.n_norm
+    #     self.ne = ne_norm
+
+    #     self.impurity._init_dens(ne=ne, Te=Te)
+
     def solve(self) -> xr.Dataset:
         """Carry out direct solve on state density evolution equations
 
@@ -326,6 +378,7 @@ class SIKERun(object):
             self.impurity,
             self.xgrid,
             self.vgrid,
+            self.dvc,
             self.x_norm,
             self.t_norm,
             self.n_norm,
@@ -371,6 +424,7 @@ class SIKERun(object):
             self.impurity,
             self.xgrid,
             self.vgrid,
+            self.dvc,
             self.x_norm,
             self.t_norm,
             self.n_norm,
@@ -408,6 +462,7 @@ class SIKERun(object):
                 self.Te,
                 self.vgrid,
                 self.dvc,
+                self.v_th,
             )
 
             self.matrix_needs_building = False

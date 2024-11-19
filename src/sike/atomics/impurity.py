@@ -29,6 +29,7 @@ class Impurity:
         tbrec_norm: float,
         sigma_norm: float,
         time_norm: float,
+        v_th: float,
         T_norm: float,
         n_norm: float,
         vgrid: np.ndarray,
@@ -53,10 +54,11 @@ class Impurity:
         :param excitation: Whether to include collisional excitation transitions and inverse
         :param collrate_const: Collision rate normalisation constant
         :param tbrec_norm: Three-body recombination rate normalisation constant
-        :param sigma_norm: Cross-section normalisation constant
-        :param time_norm: Time normalisation constant
-        :param T_norm: Temperature normalisation constant
-        :param n_norm: Density normalisation constant
+        :param sigma_norm: Cross-section normalisation constant [m^2]
+        :param time_norm: Time normalisation constant [s]
+        :param v_th: Normalisation constant [ms^-1] for electron velocities
+        :param T_norm: Temperature normalisation constant [eV]
+        :param n_norm: Density normalisation constant [m^-3]
         :param vgrid: Electron velocity grid
         :param Egrid: Electron energy grid
         :param ne: Electron densities
@@ -80,6 +82,7 @@ class Impurity:
         self.tbrec_norm = tbrec_norm
         self.sigma_norm = sigma_norm
         self.time_norm = time_norm
+        self.v_th = v_th
         self.T_norm = T_norm
         self.n_norm = n_norm
         self.atomic_data_savedir = atomic_data_savedir
@@ -378,7 +381,7 @@ class Impurity:
                         self.states[id2pos[t.from_id]].stat_weight
                         / self.states[id2pos[t.to_id]].stat_weight
                     )
-                    t.set_sigma_deex(g_ratio, vgrid)
+                    t.set_sigma_deex(g_ratio, vgrid, self.v_th)
 
         # Set the statistical weight ratios for ionization cross-sections
         if self.ionization:
@@ -388,7 +391,7 @@ class Impurity:
                         self.states[id2pos[t.from_id]].stat_weight
                         / self.states[id2pos[t.to_id]].stat_weight
                     )
-                    t.set_inv_data(g_ratio, vgrid)
+                    t.set_inv_data(g_ratio, vgrid, self.v_th)
 
         # Checks
         print("  Performing checks on transition data...")

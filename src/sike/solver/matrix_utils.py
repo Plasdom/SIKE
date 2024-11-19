@@ -3,6 +3,8 @@ from numba import jit
 
 from sike.atomics.impurity import Impurity
 
+# Update docstrings to Sphinx format
+
 
 def build_matrix(min_x, max_x, num_states):
     """Construct an array of local numpy matrices for the problem
@@ -34,6 +36,7 @@ def fill_rate_matrix(
     Te: np.ndarray,
     vgrid: np.ndarray,
     dvc: np.ndarray,
+    v_th: float,
 ):
     """Fill the rate matrix with rates calculated by each transition object
 
@@ -45,6 +48,7 @@ def fill_rate_matrix(
         Te (np.ndarray): electron temperature profile
         vgrid (np.ndarray): velocity grid
         dvc (np.ndarray): velocity grid widths
+        :param v_th: Normalisation constant [ms^-1] for electron velocities
     """
 
     num_states = impurity.tot_states
@@ -89,7 +93,7 @@ def fill_rate_matrix(
 
             elif typ == "ionization":
                 val = trans.get_mat_value_inv(
-                    fe[:, i + min_x], vgrid, dvc, ne[i + min_x], Te[i + min_x]
+                    fe[:, i + min_x], vgrid, dvc, ne[i + min_x], Te[i + min_x], v_th
                 )
 
                 # Add the loss term

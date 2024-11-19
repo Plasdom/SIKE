@@ -85,18 +85,18 @@ def lambda_ei(n: float, T: float, T_0: float, n_0: float, Z_0: float) -> float:
 
 
 @jit(nopython=True)
-def maxwellian(T: float, n: float, vgrid: np.ndarray) -> np.ndarray:
+def maxwellian(T: float, n: float, Egrid: np.ndarray) -> np.ndarray:
     """Return a normalised (to n_0 / v_th,0 ** 3) Maxwellian electron distribution (isotropic, as function of velocity magnitude).
 
     :param T: Normalised electron temperature
     :param n: Normalised electron density
-    :param vgrid: Normalised velocity grid on which to define Maxwellian distribution. If None, create using vgrid = np.arange(0.00001, 10, 1. / 1000.)
+    :param Egrid: Normalised energy grid on which to define Maxwellian distribution
     :return: numpy array of Maxwellian
     """
 
-    f = [0.0 for i in range(len(vgrid))]
-    for i, v in enumerate(vgrid):
-        f[i] = n * (np.pi * T) ** (-3 / 2) * np.exp(-(v**2) / T)
+    f = [0.0 for i in range(len(Egrid))]
+    for i, E in enumerate(Egrid):
+        f[i] = n * (np.pi * T) ** (-3 / 2) * np.exp(-E / T)
     f = np.array(f)
 
     return f
@@ -104,7 +104,7 @@ def maxwellian(T: float, n: float, vgrid: np.ndarray) -> np.ndarray:
 
 @jit(nopython=True)
 def bimaxwellian(
-    T1: float, n1: float, T2: float, n2: float, vgrid: np.ndarray
+    T1: float, n1: float, T2: float, n2: float, Egrid: np.ndarray
 ) -> np.ndarray:
     """Return a normalised (to n_0 / v_th,0 ** 3) Maxwellian electron distribution (isotropic, as function of velocity magnitude).
 
@@ -112,14 +112,14 @@ def bimaxwellian(
     :param n1: First population electron density
     :param T2: Second population electron temperature
     :param n2: Second population electron density
-    :param vgrid: Velocity grid on which to define Maxwellian distribution
+    :param Egrid: Energy grid on which to define Maxwellian distribution
     :return: numpy array of Maxwellian
     """
 
-    f = [0.0 for i in range(len(vgrid))]
-    for i, v in enumerate(vgrid):
-        f[i] = (n1 * (np.pi * T1) ** (-3 / 2) * np.exp(-(v**2) / T1)) + (
-            n2 * (np.pi * T2) ** (-3 / 2) * np.exp(-(v**2) / T2)
+    f = [0.0 for i in range(len(Egrid))]
+    for i, E in enumerate(Egrid):
+        f[i] = (n1 * (np.pi * T1) ** (-3 / 2) * np.exp(-E / T1)) + (
+            n2 * (np.pi * T2) ** (-3 / 2) * np.exp(-E / T2)
         )
     f = np.array(f)
 
@@ -127,32 +127,32 @@ def bimaxwellian(
 
 
 def get_maxwellians(
-    ne: np.ndarray, Te: np.ndarray, vgrid: np.ndarray, normalised: bool = False
+    ne: np.ndarray, Te: np.ndarray, Egrid: np.ndarray, normalised: bool = False
 ) -> np.ndarray:
     """Return an array of Maxwellian electron distributions with the given densities and temperatures.
 
     :param ne: Electron densities
     :param Te: Electron temperatures
-    :param vgrid: Velocity grid on which to calculate Maxwellians
+    :param Egrid: Energy grid on which to calculate Maxwellians
     :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
     :return: 2d numpy array of Maxwellians at each location in x
     """
     ne_c = ne.copy()
     Te_c = Te.copy()
-    vgrid_c = vgrid.copy()
+    Egrid_c = Egrid.copy()
 
     if normalised is False:
         T_norm = 10
         n_norm = 1e19
-        v_th = np.sqrt(2 * EL_CHARGE * T_norm / EL_MASS)
+        v_th = energy2velocity(T_norm)
         ne_c /= n_norm
         Te_c /= T_norm
-        vgrid_c /= v_th
+        Egrid_c /= T_norm
 
-    f0_max = [[0.0 for i in range(len(ne_c))] for j in range(len(vgrid_c))]
+    f0_max = [[0.0 for i in range(len(ne_c))] for j in range(len(Egrid_c))]
     for i in range(len(ne_c)):
-        f0_max_loc = maxwellian(Te_c[i], ne_c[i], vgrid_c)
-        for j in range(len(vgrid_c)):
+        f0_max_loc = maxwellian(Te_c[i], ne_c[i], Egrid_c)
+        for j in range(len(Egrid_c)):
             f0_max[j][i] = f0_max_loc[j]
     f0_max = np.array(f0_max)
 
@@ -167,7 +167,7 @@ def get_bimaxwellians(
     n2: np.ndarray,
     T1: np.ndarray,
     T2: np.ndarray,
-    vgrid: np.ndarray | None = None,
+    Egrid: np.ndarray | None = None,
     normalised: bool = False,
 ) -> np.ndarray:
     """Return an array of bi-Maxwellian electron distributions with the given densities and temperatures.
@@ -176,19 +176,19 @@ def get_bimaxwellians(
     :param n2: Second population electron densities
     :param T1: First population electron temperatures
     :param T2: Second population electron temperatures
-    :param vgrid: Velocity grid on which to calculate Maxwellians
+    :param Egrid: Energy grid on which to calculate Maxwellians
     :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
     :return: 2d numpy array of bi-Maxwellians at each location in x
     """
 
-    if vgrid is None:
+    if Egrid is None:
         print("Using default velocity grid.")
-        vgrid = DEFAULT_VGRID
+        Egrid = velocity2energy(DEFAULT_VGRID)
 
     if normalised is False:
         T_norm = 10
         n_norm = 1e19
-        v_th = np.sqrt(2 * EL_CHARGE * T_norm / EL_MASS)
+        v_th = energy2velocity(T_norm)
         n1 = n1.copy()
         n2 = n2.copy()
         T1 = T1.copy()
@@ -197,13 +197,13 @@ def get_bimaxwellians(
         n2 /= n_norm
         T1 /= T_norm
         T2 /= T_norm
-        vgrid = vgrid.copy()
-        vgrid /= v_th
+        Egrid = Egrid.copy()
+        Egrid /= T_norm
 
-    f0_bimax = np.zeros([len(vgrid), len(n1)])
+    f0_bimax = np.zeros([len(Egrid), len(n1)])
     for i in range(len(n1)):
-        f0_bimax_loc = bimaxwellian(T1[i], n1[i], T2[i], n2[i], vgrid)
-        for j in range(len(vgrid)):
+        f0_bimax_loc = bimaxwellian(T1[i], n1[i], T2[i], n2[i], Egrid)
+        for j in range(len(Egrid)):
             f0_bimax[j, i] = f0_bimax_loc[j]
     f0_bimax = np.array(f0_bimax)
 
@@ -214,7 +214,9 @@ def get_bimaxwellians(
 
 
 @jit(nopython=True)
-def density_moment(f0: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray) -> float:
+def density_moment(
+    f0: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray, normalised: bool = True
+) -> float:
     """Calculate density moment of input electron distribution
 
     :param f0: Electron distribution
@@ -222,7 +224,35 @@ def density_moment(f0: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray) -> float:
     :param dvc: Velocity grid widths
     :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
     """
-    n = 4 * np.pi * np.sum(f0 * vgrid**2 * dvc)
+    if normalised:
+        n = 4 * np.pi * np.sum(f0 * vgrid**2 * dvc)
+    else:
+        n = 4 * np.pi * np.sum(f0 * vgrid**2 * dvc)
+    return n
+
+
+@jit(nopython=True)
+def density_moment_en(
+    f0: np.ndarray, Egrid: np.ndarray, dE: np.ndarray, normalised: bool = True
+) -> float:
+    """Calculate density moment of input electron distribution by integrating over energy instead of velocity
+
+    :param f0: Electron distribution
+    :param Egrid: Energy grid
+    :param dE: Velocity grid widths
+    :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
+    """
+    if normalised:
+        n = 4 * np.pi * 0.5 * np.sum((f0) * np.sqrt(Egrid) * dE)
+    else:
+        n = (
+            4
+            * np.pi
+            * (EL_MASS**-1.5)
+            * (EL_CHARGE**1.5)
+            * np.sqrt(2)
+            * np.sum(f0 * np.sqrt(Egrid) * dE)
+        )
     return n
 
 
@@ -246,3 +276,85 @@ def temperature_moment(
         T /= EL_CHARGE
 
     return T
+
+
+# @jit(nopython=True)
+def temperature_moment_en(
+    f0: np.ndarray, Egrid: np.ndarray, dE: np.ndarray, normalised: bool = True
+) -> float:
+    """Calculate the temperature moment of input electron distribution by integrating over energy instead of velocity
+
+    :param f0: Electron distribution
+    :param Egrid: Energy grid
+    :param dE: Energy grid widths
+    :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
+    :return: temperature. Units are dimensionless or eV depending on normalised argument
+    """
+    n = density_moment_en(f0, Egrid, dE, normalised)
+    if normalised:
+        T = (2 / 3) * 4 * np.pi * 0.5 * np.sum(f0 * Egrid**1.5 * dE) / n
+    else:
+        T = (
+            (2 / 3)
+            * 4
+            * np.pi
+            * (EL_MASS**-1.5)
+            * (EL_CHARGE**2.5)
+            * np.sqrt(2)
+            * np.sum(f0 * Egrid**1.5 * dE)
+            / n
+        )
+        T /= EL_CHARGE
+
+    return T
+
+
+@jit(nopython=True)
+def energy2velocity(E: np.ndarray | float) -> np.ndarray:
+    """Calculate the velocity of electrons with relativistic kinetic energy E
+
+    :param E: Electron energies [eV]
+    :return: Electron velocities [m/s]
+    """
+    gamma = (E * EL_CHARGE) / (EL_MASS * LIGHT_SPEED**2) + 1
+    v = np.sqrt(1 - (1 / gamma**2)) * LIGHT_SPEED
+    return v
+
+
+@jit(nopython=True)
+def velocity2energy(v: np.ndarray | float) -> np.ndarray:
+    """Calculate the relativistic kinetic energy of electrons with velocity v
+
+    :param v: Electron velocities [m/s]
+    :return: Electron energies [eV]
+    """
+    gamma = 1 / np.sqrt(1 - (v / LIGHT_SPEED) ** 2)
+    E = (gamma - 1) * EL_MASS * LIGHT_SPEED**2
+    return E / EL_CHARGE
+
+
+def generate_vgrid(
+    Emin: float, Emax: float, nv: int = 200, spacing: str = "log"
+) -> np.ndarray:
+    """Generate a velocity grid bounded by electron energies Emin and Emax
+
+    :param Emin: Minimum energy of electrons in output velocity grid
+    :param Emax: Maximum energy of electrons in output velocity grid
+    :param nv: Number of grid cells, defaults to 200
+    :param spacing: Spacing of velocities on grid, options are "log", "geom" or "linear". Defaults to "log"
+    :return: Velocity grid
+    """
+
+    vmin = energy2velocity(Emin)
+    vmax = energy2velocity(Emax)
+
+    if spacing == "log":
+        vgrid = np.logspace(np.log10(vmin), np.log10(vmax), nv, base=10.0)
+    elif spacing == "geom":
+        vgrid = np.geomspace(vmin, vmax, nv)
+    elif spacing == "linear":
+        vgrid = np.linspace(vmin, vmax, nv)
+
+    Egrid = velocity2energy(vgrid)
+
+    return vgrid, Egrid

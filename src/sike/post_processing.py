@@ -37,7 +37,7 @@ def get_Qz(ds: xr.Dataset) -> xr.DataArray:
         Qz[:, Z] = 1e-6 * (
             emission_ds.transition_delta_E
             * c.EL_CHARGE
-            * emission_ds.transition_rate
+            * emission_ds.transition_rates
             * emission_ds.nk.sel(k=emission_ds.transition_from_k)
         ).sum(dim="i")
     Qz = xr.DataArray(Qz, coords={"x": ds.x, "state_Z": Zs})
@@ -54,7 +54,7 @@ def get_Qz_tot(ds: xr.Dataset) -> xr.DataArray:
     Qz_tot = 1e-6 * (
         emission_ds.transition_delta_E
         * c.EL_CHARGE
-        * emission_ds.transition_rate
+        * emission_ds.transition_rates
         * emission_ds.nk.sel(k=emission_ds.transition_from_k)
     ).sum(dim="i")
     return Qz_tot
@@ -72,7 +72,7 @@ def get_Lz_avg(ds: xr.Dataset) -> xr.DataArray:
         * (
             emission_ds.transition_delta_E
             * c.EL_CHARGE
-            * emission_ds.transition_rate
+            * emission_ds.transition_rates
             * emission_ds.nk.sel(k=emission_ds.transition_from_k)
         ).sum(dim="i")
         / (ds.ne.values * ds.nk.sum(dim="k").values)
@@ -99,7 +99,7 @@ def get_Lz(ds: xr.Dataset) -> xr.DataArray:
         Qz = 1e-6 * (
             emission_ds.transition_delta_E
             * c.EL_CHARGE
-            * emission_ds.transition_rate
+            * emission_ds.transition_rates
             * emission_ds.nk.sel(k=emission_ds.transition_from_k)
         ).sum(dim="i")
         Lz[:, Z] = Qz / (ds.ne.values * nz.sel(state_Z=Z).values)
@@ -180,6 +180,29 @@ def get_Keff_rec(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataAr
     Keff_rec = xr.DataArray(Keff_rec, coords={"x": ds.x, "state_Z": Zs})
 
     return Keff_rec
+
+
+def get_K_rr(ds: xr.Dataset) -> xr.DataArray:
+    """Get the radiative recombination rate coefficients between each charge state [m^3/s]
+
+    :param ds: xarray dataset from SIKERun
+    :return: Effective recombination rate coefficients between P states
+    """
+
+    Zs = sorted(list(set(ds.state_Z.values)))
+
+    K_rr = np.zeros((len(ds.x), len(Zs)))
+    for Z in Zs:
+        Z_states = Z_states = ds.k[ds.state_Z == Z]
+        rr_ds = ds.sel(
+            i=(ds["transition_type"] == "radiative_recombination")
+            & ds["transition_from_k"].isin(Z_states)
+        )
+        K_rr[:, Z] = rr_ds.transition_rates.sum(dim="i")
+
+    K_rr_ds = xr.DataArray(K_rr, coords={"x": ds.x, "state_Z": Zs})
+
+    return K_rr_ds
 
 
 def get_ground_states(ds: xr.Dataset) -> np.ndarray:
