@@ -5,11 +5,15 @@ from pathlib import Path
 
 from sike.atomics.impurity import Impurity
 
+# TODO: Rename index variables (i, j, k, etc) to clarify their meaning
+
 
 def generate_output(
     impurity: Impurity,
     xgrid: np.ndarray,
     vgrid: np.ndarray,
+    Egrid: np.ndarray,
+    dE: np.ndarray,
     x_norm: float,
     t_norm: float,
     n_norm: float,
@@ -33,6 +37,7 @@ def generate_output(
     :param impurity: Impurity object containing information on states modelled, transitions, etc
     :param xgrid: Spatial grid
     :param vgrid: Velocity grid
+    :param dvc: Velocity grid widths
     :param x_norm: X normalisation
     :param t_norm: Time normalisation
     :param n_norm: Density normalisation
@@ -72,7 +77,8 @@ def generate_output(
         {"state_" + k: v for k, v in s.__dict__.items() if k in selected_state_cols}
         for s in impurity.states
     ]
-    selected_trans_cols = ["from_id", "to_id", "type", "rate", "rate_inv", "delta_E"]
+    # selected_trans_cols = ["from_id", "to_id", "type", "rate", "rate_inv", "delta_E"]
+    selected_trans_cols = ["from_id", "to_id", "type", "delta_E"]
     transitions = [
         {
             "transition_" + k: v
@@ -82,7 +88,7 @@ def generate_output(
         for s in impurity.transitions
     ]
 
-    # Generate pandas dataframes for the transitions and states
+    # Generate pandas dataframes for the transitions and states metadata
     states_df = pd.DataFrame(states)
     states_df = states_df.rename(
         columns={"state_id": "k", "state_ground": "state_is_ground"}
@@ -98,7 +104,7 @@ def generate_output(
     )
     transitions_df.index.name = "i"
     transitions_df["transition_delta_E"] *= T_norm
-    transitions_df["transition_rate"] /= t_norm
+    # transitions_df["transition_rate"] /= t_norm
 
     # Generate xarray dataset from transitions and states dataframes
     output_ds = xr.Dataset.from_dataframe(states_df)
@@ -114,6 +120,35 @@ def generate_output(
         [mat / t_norm for mat in rate_mats],
         coords={"x": x, "j": k, "k": k},
     )  # TODO: Check normalisation here
+
+    # Generate dataset for the transition rates
+    rates = np.zeros((len(x), len(transitions)))
+    inv_rates = np.zeros((len(x), len(transitions)))
+    for it in range(len(transitions_ds.i)):
+        for ix in range(len(x)):
+            r = impurity.transitions[it].get_mat_value(
+                fe[:, ix], Egrid / T_norm, dE / T_norm
+            )
+            if (impurity.transitions[it].type == "ionisation") or (
+                impurity.transitions[it].type == "excitation"
+            ):
+                ir = impurity.transitions[it].get_mat_value_inv(
+                    fe[:, ix], Egrid / T_norm, dE / T_norm
+                )
+            else:
+                ir = np.nan
+            rates[ix, it] = r / t_norm
+            inv_rates[ix, it] = ir / t_norm
+    transition_rates_ds = xr.DataArray(
+        rates,
+        coords={"x": x, "i": transitions_ds.i},
+    )
+    inv_transition_rates_ds = xr.DataArray(
+        inv_rates,
+        coords={"x": x, "i": transitions_ds.i},
+    )
+    output_ds["transition_rates"] = transition_rates_ds
+    output_ds["transition_rates_inv"] = inv_transition_rates_ds
 
     # Combine
     output_ds["nk"] = dens_da
