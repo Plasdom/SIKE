@@ -47,12 +47,27 @@ def saha_dist(
     dens_ratios = np.zeros(num_Z - 1)
     for z in range(1, num_Z):
         eps = -(ground_states[z - 1].energy - ground_states[z].energy)
-        stat_weight_zm1 = ground_states[z - 1].stat_weight
-        stat_weight = ground_states[z].stat_weight
 
-        dens_ratios[z - 1] = (
-            2 * (stat_weight / stat_weight_zm1) * np.exp(-eps / Te)
-        ) / (ne * (de_broglie_l**3))
+        Zm1_states = [s for s in states if s.Z == z - 1]
+        gm1 = 0
+        for zs in Zm1_states:
+            gm1 += zs.stat_weight * np.exp(
+                -(eps + (zs.energy - ground_states[z].energy)) / Te
+            )
+        Z_states = [s for s in states if s.Z == z]
+        g = 0
+        if z == num_Z - 1:
+            g = 1
+        else:
+            eps_zp1 = -(ground_states[z].energy - ground_states[z + 1].energy)
+            for zs in Z_states:
+                g += zs.stat_weight * np.exp(
+                    -(eps_zp1 + (zs.energy - ground_states[z + 1].energy)) / Te
+                )
+        # g = ground_states[z].stat_weight
+        dens_ratios[z - 1] = (2.0 * (g / gm1) * np.exp(-eps / Te)) / (
+            ne * (de_broglie_l**3)
+        )
 
     # Fill densities
     denom_sum = 1.0 + np.sum([np.prod(dens_ratios[: z + 1]) for z in range(num_Z - 1)])
@@ -278,7 +293,7 @@ def temperature_moment(
     return T
 
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def temperature_moment_en(
     f0: np.ndarray, Egrid: np.ndarray, dE: np.ndarray, normalised: bool = True
 ) -> float:

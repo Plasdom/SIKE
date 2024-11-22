@@ -64,7 +64,7 @@ def test_saha_dist(input_states):
 
     :param input_states: A minimal set of example atomic states
     """
-    Te = [0.0001, 1.0, 5.0, 10.0, 10000.0]
+    Te = [0.0001, 1.0, 5.0, 10.0, 100000.0]
     ne = [1e18, 1e19, 1e20]
     nz_tot = [1e12, 1e16, 1e20]
 
@@ -83,4 +83,4 @@ def test_saha_dist(input_states):
     # Check fully ionized at high Te
     dist = saha_dist(1e9, 1e20, nz_tot[0], input_states, num_Z=2)
     assert np.isclose(dist[1], nz_tot[0])
-    assert np.isclose(dist[0], 0.0)
+    assert np.isclose(dist[0] / nz_tot[0], 0.0)
