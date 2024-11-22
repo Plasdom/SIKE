@@ -4,7 +4,7 @@ import numpy as np
 # from sike.plasma_utils import energy2velocity
 
 ATOMIC_DATA_LOCATION = "sike_atomic_data"
-ATOMIC_DATA_BASE_URL = "https://zenodo.org/records/13864185/files/"
+ATOMIC_DATA_BASE_URL = "https://zenodo.org/records/14205937/files/"
 SYMBOL2ELEMENT = {
     "H": "Hydrogen",
     "He": "Helium",
@@ -15,9 +15,13 @@ SYMBOL2ELEMENT = {
     "O": "Oxygen",
     "N": "Nitrogen",
     "Ne": "Neon",
+    "Al": "Aluminium",
     "Ar": "Argon",
+    "Fe": "Iron",
+    "Kr": "Krypton",
     "Mo": "Molybdenum",
     "W": "Tungsten",
+    "Xe": "Xenon",
 }
 ELEMENT2SYMBOL = {v: k for k, v in SYMBOL2ELEMENT.items()}
 CONFIG_FILENAME = ".sike_config"
@@ -31,8 +35,12 @@ NUCLEAR_CHARGE_DICT = {
     "N": 7,
     "O": 8,
     "Ne": 10,
+    "Al": 13,
     "Ar": 18,
+    "Fe": 26,
+    "Kr": 36,
     "Mo": 42,
+    "Xe": 54,
     "W": 74,
 }
 
