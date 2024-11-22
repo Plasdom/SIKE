@@ -14,6 +14,8 @@ The SIKE model and atomic data is described in more detail in this pre-print: ht
 > [!NOTE]
 > SIKE is a python package, intended to work with python>=3.11. It is recommended to create and activate a virtual environment with conda (e.g. `conda create -n sike python=3.11 && conda activate sike`) prior to following the quickstart steps below in order to avoid any conflicts with existing python environments. 
 
+SIKE was developed to study the sensitivity of atomic rates to non-Maxwellian electron distributions in magnetic fusion plasmas. It is not as accurate as commonly used modelling databases such as ADAS, see the notebook and comparison plots in the benchmarking directory. 
+
 ## Quickstart
 
 1. Clone or download the repository, open a terminal in the top-level directory and run:
@@ -84,7 +86,7 @@ Because the atomic data files are quite large, and not all users will need to do
     ```
     e.g. `sike.setup(elements=["Li", "C"], savedir="/Users/username/Downloads/")`
 
-3. If the download fails, atomic data can be downloaded manually from the Zenodo record: https://zenodo.org/records/13864185. Select one or more elements to download, then extract the folders (named "Lithium", "Carbon", etc) to a local directory somewhere. Then pass this directory in the `atomic_data_savedir` argument to the `SIKERun` initialisation, i.e. 
+3. If the download fails, atomic data can be downloaded manually from the Zenodo record: https://zenodo.org/records/14205937. Select one or more elements to download, then extract the folders (named "Lithium", "Carbon", etc) to a local directory somewhere. Then pass this directory in the `atomic_data_savedir` argument to the `SIKERun` initialisation, i.e. 
     ```python 
     c = sike.SIKERun(..., atomic_data_savedir="<SAVEDIR>")
     ```

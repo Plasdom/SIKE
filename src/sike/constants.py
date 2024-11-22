@@ -55,8 +55,8 @@ BOHR_RADIUS = 5.291772e-11
 PLANCK_H = 6.62607004e-34
 LIGHT_SPEED = 299792458.0
 
-# Default velocity grid to use when initialising SIKE run from temperature and density profiles
-DEFAULT_VGRID = np.array(
+# Velocity grid used in SOL-KiT for SOL impurities study
+SOLKIT_VGRID = np.array(
     [
         46888.62202694,
         141838.0816315,

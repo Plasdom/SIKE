@@ -142,7 +142,10 @@ def bimaxwellian(
 
 
 def get_maxwellians(
-    ne: np.ndarray, Te: np.ndarray, Egrid: np.ndarray, normalised: bool = False
+    ne: np.ndarray,
+    Te: np.ndarray,
+    Egrid: np.ndarray | None = None,
+    normalised: bool = False,
 ) -> np.ndarray:
     """Return an array of Maxwellian electron distributions with the given densities and temperatures.
 
@@ -152,6 +155,9 @@ def get_maxwellians(
     :param normalised: specify whether inputs (and therefore outputs) are normalised or not, defaults to True
     :return: 2d numpy array of Maxwellians at each location in x
     """
+    if Egrid is None:
+        print("Using default velocity grid.")
+        _, Egrid = generate_vgrid()
     ne_c = ne.copy()
     Te_c = Te.copy()
     Egrid_c = Egrid.copy()
@@ -198,7 +204,7 @@ def get_bimaxwellians(
 
     if Egrid is None:
         print("Using default velocity grid.")
-        Egrid = velocity2energy(DEFAULT_VGRID)
+        vgrid, Egrid = generate_vgrid()
 
     if normalised is False:
         T_norm = 10
@@ -349,15 +355,15 @@ def velocity2energy(v: np.ndarray | float) -> np.ndarray:
 
 
 def generate_vgrid(
-    Emin: float, Emax: float, nv: int = 200, spacing: str = "log"
-) -> np.ndarray:
+    Emin: float = 1e-4, Emax: float = 1e7, nv: int = 500, spacing: str = "log"
+) -> tuple[np.ndarray, np.ndarray]:
     """Generate a velocity grid bounded by electron energies Emin and Emax
 
-    :param Emin: Minimum energy of electrons in output velocity grid
-    :param Emax: Maximum energy of electrons in output velocity grid
-    :param nv: Number of grid cells, defaults to 200
+    :param Emin: Minimum energy of electrons in output velocity grid [eV], defaults to 1e-4
+    :param Emax: Maximum energy of electrons in output velocity grid [eV], defaults to 1e7
+    :param nv: Number of grid cells, defaults to 500
     :param spacing: Spacing of velocities on grid, options are "log", "geom" or "linear". Defaults to "log"
-    :return: Velocity grid
+    :return: Velocity grid [m/s] and energy grid [eV]
     """
 
     vmin = energy2velocity(Emin)

@@ -134,7 +134,7 @@ class SIKERun(object):
                 self.vgrid = vgrid.copy()
             else:
                 print("Using default velocity grid.")
-                self.vgrid = DEFAULT_VGRID.copy()
+                self.vgrid, _ = generate_vgrid()
             self._init_from_dist()
         elif Te is not None and ne is not None:
             self.Te = Te.copy()
@@ -198,14 +198,14 @@ class SIKERun(object):
         # Generate temperature and density profiles
         self.ne = np.array(
             [
-                density_moment(self.fe[:, i], self.vgrid, self.dvc)
+                density_moment_en(self.fe[:, i], self.Egrid, self.dE, normalised=False)
                 for i in range(self.num_x)
             ]
         )
         self.Te = np.array(
             [
-                temperature_moment(
-                    self.fe[:, i], self.vgrid, self.dvc, normalised=False
+                temperature_moment_en(
+                    self.fe[:, i], self.Egrid, self.dE, normalised=False
                 )
                 for i in range(self.num_x)
             ]
@@ -223,7 +223,7 @@ class SIKERun(object):
 
         # Save/create the velocity grid
         if vgrid is None:
-            self.vgrid = DEFAULT_VGRID.copy()
+            self.vgrid, _ = generate_vgrid()
         else:
             self.vgrid = vgrid
         self.num_x = len(self.Te)

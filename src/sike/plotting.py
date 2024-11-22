@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 
 import sike.post_processing as spp
 
+# TODO: Provide routines for plotting bremsstrahlung, excitation and recombination radiation together or separately
+
 
 def plot_Zavg(
     ds: xr.Dataset,
@@ -34,7 +36,6 @@ def plot_Zavg(
     if logx:
         ax.set_xscale("log")
 
-    plt.show()
     return ax
 
 
@@ -90,7 +91,6 @@ def plot_nz(
     if logy:
         ax.set_yscale("log")
 
-    plt.show()
     return ax
 
 
@@ -146,7 +146,6 @@ def plot_Qz(
     if logy:
         ax.set_yscale("log")
 
-    plt.show()
     return ax
 
 
@@ -202,7 +201,6 @@ def plot_Lz(
     if logy:
         ax.set_yscale("log")
 
-    plt.show()
     return ax
 
 
@@ -235,7 +233,6 @@ def plot_Qz_tot(
     if logx:
         ax.set_xscale("log")
 
-    plt.show()
     return ax
 
 
@@ -247,7 +244,7 @@ def plot_Lz_avg(
     ax: plt.Axes | None = None,
     **mpl_kwargs,
 ) -> plt.Axes:
-    """Plot the total radiation from spontaneous emission across all charge states
+    """Plot the total radiation from excitation across all charge states
 
     :param ds: xarray dataset from SIKERun
     :param xaxis: Variable to use for x-axis ["Te", "ne" or "x"], defaults to "Te"
@@ -271,7 +268,6 @@ def plot_Lz_avg(
     if logy:
         ax.set_yscale("log")
 
-    plt.show()
     return ax
 
 
@@ -322,7 +318,6 @@ def plot_Keff_iz(
     if logy:
         ax.set_yscale("log")
 
-    plt.show()
     return ax
 
 
@@ -373,7 +368,6 @@ def plot_Keff_rec(
     if logy:
         ax.set_yscale("log")
 
-    plt.show()
     return ax
 
 
