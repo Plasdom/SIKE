@@ -34,9 +34,8 @@ def fill_rate_matrix(
     fe: np.ndarray,
     ne: np.ndarray,
     Te: np.ndarray,
-    vgrid: np.ndarray,
-    dvc: np.ndarray,
-    v_th: float,
+    Egrid: np.ndarray,
+    dE: np.ndarray,
 ):
     """Fill the rate matrix with rates calculated by each transition object
 
@@ -65,7 +64,7 @@ def fill_rate_matrix(
             typ = trans.type
 
             # # Calculate the value to be added to the matrix
-            val = trans.get_mat_value(fe[:, i + min_x], vgrid, dvc)
+            val = trans.get_mat_value(fe[:, i + min_x], Egrid, dE)
 
             # Add the loss term
             row = from_pos
@@ -79,7 +78,7 @@ def fill_rate_matrix(
 
             # # Calculate inverse process matrix entries (3-body recombination & de-excitation)
             if typ == "excitation":
-                val = trans.get_mat_value_inv(fe[:, i + min_x], vgrid, dvc)
+                val = trans.get_mat_value_inv(fe[:, i + min_x], Egrid, dE)
 
                 # Add the loss term
                 row = to_pos
@@ -93,7 +92,7 @@ def fill_rate_matrix(
 
             elif typ == "ionization":
                 val = trans.get_mat_value_inv(
-                    fe[:, i + min_x], vgrid, dvc, ne[i + min_x], Te[i + min_x], v_th
+                    fe[:, i + min_x], Egrid, dE, ne[i + min_x], Te[i + min_x]
                 )
 
                 # Add the loss term

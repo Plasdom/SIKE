@@ -12,6 +12,7 @@ from sike.io.generate_output import generate_output
 
 # TODO: Do we ever want to actually evolve all states? Or only build M_eff and get derived coefficients? Opportunity to massively simplify by removing petsc & mpi dependency
 # TODO: I guess we should only ever really be evolving the P states, so all that code is still useful, but could probably do it with dense numpy matrices rather than petsc, and probably don't need MPI!
+# TODO: Make Egrid normalised in code for consistency with normalised vgrid used everywhere
 
 
 class SIKERun(object):
@@ -182,6 +183,7 @@ class SIKERun(object):
         if self.xgrid is None:
             self.xgrid = np.linspace(0, 1, self.num_x)
         self.num_v = len(self.vgrid)
+        self.Egrid = velocity2energy(self.vgrid)
         self._generate_grid_widths()
 
         self.rank = 0  # TODO: Implement parallelisation
@@ -213,9 +215,6 @@ class SIKERun(object):
         self._init_norms()
         self._apply_normalisation()
 
-        # Create the E_grid
-        self.Egrid = velocity2energy(self.vgrid * self.v_th)
-
     def _init_from_profiles(self, vgrid: np.ndarray | None = None):
         """Initialise simulation from electron temperature and density profiles
 
@@ -231,8 +230,8 @@ class SIKERun(object):
         if self.xgrid is None:
             self.xgrid = np.linspace(0, 1, self.num_x)
         self.num_v = len(self.vgrid)
-        self._generate_grid_widths()
         self.Egrid = velocity2energy(self.vgrid)
+        self._generate_grid_widths()
 
         loc_x = self.num_x / self.num_procs
         self.min_x = int(self.rank * loc_x)
@@ -254,7 +253,7 @@ class SIKERun(object):
 
         self.T_norm = np.mean(self.Te)  # eV
         self.n_norm = np.mean(self.ne) * self.frac_imp_dens  # m^-3
-        self.v_th = energy2velocity(self.T_norm)  # m/s
+        self.v_th = np.sqrt(2 * self.T_norm * EL_CHARGE / EL_MASS)
 
         Z = 1
         gamma_ee_0 = EL_CHARGE**4 / (4 * np.pi * (EL_MASS * EPSILON_0) ** 2)
@@ -305,59 +304,20 @@ class SIKERun(object):
 
         # Velocity grid widths
         self.dvc = np.zeros(self.num_v)
-        self.dvc[0] = 2 * self.vgrid[0]
-        for i in range(1, self.num_v):
-            self.dvc[i] = 2 * (self.vgrid[i] - self.vgrid[i - 1]) - self.dvc[i - 1]
+        self.dvc[0] = 0.5 * (self.vgrid[1] + self.vgrid[0])
+        for i in range(1, self.num_v - 1):
+            v_plus = 0.5 * (self.vgrid[i + 1] + self.vgrid[i])
+            v_minus = 0.5 * (self.vgrid[i] + self.vgrid[i - 1])
+            self.dvc[i] = v_plus - v_minus
 
-    # def update_plasma_background(
-    #     self,
-    #     ne: np.ndarray | None = None,
-    #     Te: np.ndarray | None = None,
-    #     fe: np.ndarray | None = None,
-    # ):
-    #     """Update electron distributions or ne and Te profiles
-
-    #     :param ne: Electron density profiles [m^-3], defaults to None
-    #     :param Te: Electron temperature profiles [eV], defaults to None
-    #     :param fe: Electron velocity distributions [m^-6 s^-3] (assuming the same velocity grid as used at initialisation), defaults to None
-    #     :raises Exception: If fe is None and one of Te and ne is None (i.e. either fe or both Te and ne must be provided)
-    #     """
-    #     # TODO: Find out why this is not working as expected, i.e. eliminating density dependence of e.g. Zavg
-    #     if fe is None:
-    #         if (ne is None) or (Te is None):
-    #             raise Exception("Must supply either fe or Te & ne.")
-
-    #     if fe is None:
-    #         fe = get_maxwellians(ne, Te, self.vgrid * self.v_th, normalised=False)
-    #     else:
-    #         ne = np.array(
-    #             [
-    #                 density_moment(
-    #                     fe[:, i], self.vgrid * self.v_th, self.dvc * self.v_th
-    #                 )
-    #                 for i in range(self.num_x)
-    #             ]
-    #         )
-    #         Te = np.array(
-    #             [
-    #                 temperature_moment(
-    #                     fe[:, i],
-    #                     self.vgrid * self.v_th,
-    #                     self.dvc * self.v_th,
-    #                     normalised=False,
-    #                 )
-    #                 for i in range(self.num_x)
-    #             ]
-    #         )
-
-    #     fe_norm = fe.copy() / (self.n_norm / (self.v_th**3))
-    #     self.fe = fe_norm
-    #     Te_norm = Te.copy() / self.T_norm
-    #     self.Te = Te_norm
-    #     ne_norm = ne.copy() / self.n_norm
-    #     self.ne = ne_norm
-
-    #     self.impurity._init_dens(ne=ne, Te=Te)
+        # Energy grid widths
+        self.dE = np.zeros(self.num_v)
+        self.dE[0] = 0.5 * (self.Egrid[1] + self.Egrid[0])
+        for i in range(1, self.num_v - 1):
+            E_plus = 0.5 * (self.Egrid[i + 1] + self.Egrid[i])
+            E_minus = 0.5 * (self.Egrid[i] + self.Egrid[i - 1])
+            self.dE[i] = E_plus - E_minus
+        self.dE[-1] = self.dE[-2]
 
     def solve(self) -> xr.Dataset:
         """Carry out direct solve on state density evolution equations
@@ -378,7 +338,8 @@ class SIKERun(object):
             self.impurity,
             self.xgrid,
             self.vgrid,
-            self.dvc,
+            self.Egrid,
+            self.dE,
             self.x_norm,
             self.t_norm,
             self.n_norm,
@@ -424,7 +385,8 @@ class SIKERun(object):
             self.impurity,
             self.xgrid,
             self.vgrid,
-            self.dvc,
+            self.Egrid,
+            self.dE,
             self.x_norm,
             self.t_norm,
             self.n_norm,
@@ -460,9 +422,8 @@ class SIKERun(object):
                 self.fe,
                 self.ne,
                 self.Te,
-                self.vgrid,
-                self.dvc,
-                self.v_th,
+                self.Egrid / self.T_norm,
+                self.dE / self.T_norm,
             )
 
             self.matrix_needs_building = False

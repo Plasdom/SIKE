@@ -4,7 +4,6 @@ from numba import jit
 
 from sike.constants import *
 from sike.atomics.atomic_state import State
-from sike.plasma_utils import energy2velocity, velocity2energy
 
 
 class Transition:
@@ -206,9 +205,7 @@ class ExTrans(Transition):
 
         return sigma_new
 
-    def set_sigma_deex(
-        self, g_ratio: float, vgrid: np.ndarray, v_th: float
-    ) -> np.ndarray:
+    def set_sigma_deex(self, g_ratio: float, Egrid: np.ndarray) -> np.ndarray:
         """Calculate the de-excitation cross-section
 
         :param g_ratio: the ratio of statistical weights of from/to states
@@ -216,23 +213,14 @@ class ExTrans(Transition):
         :param v_th: Normalisation constant [ms^-1] for electron velocities
         :return: De-excitation cross-sections
         """
-        vgrid_inv = (
-            energy2velocity(
-                velocity2energy(vgrid * v_th) + self.delta_E * velocity2energy(v_th)
-            )
-            / v_th
-        )
+        Egrid_inv = Egrid + self.delta_E
         sigma_interp_func = interpolate.interp1d(
-            vgrid, self.sigma, fill_value=0.0, bounds_error=False, kind="linear"
+            Egrid, self.sigma, fill_value=0.0, bounds_error=False, kind="linear"
         )
-        sigma_interp = sigma_interp_func(vgrid_inv)
-        self.sigma_deex = self.get_sigma_deex(
-            vgrid, vgrid_inv, sigma_interp, g_ratio, v_th
-        )
+        sigma_interp = sigma_interp_func(Egrid_inv)
+        self.sigma_deex = self.get_sigma_deex(Egrid, Egrid_inv, sigma_interp, g_ratio)
 
-    def get_mat_value(
-        self, fe: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray
-    ) -> float:
+    def get_mat_value(self, fe: np.ndarray, Egrid: np.ndarray, dE: np.ndarray) -> float:
         """Get the matrix value for this transition. For excitation transitions, this is ne * rate coefficient
 
         :param fe: local electron distribution
@@ -240,11 +228,11 @@ class ExTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        self.rate = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        self.rate = calc_rate_en(Egrid, dE, fe, self.sigma, self.collrate_const)
         return self.rate
 
     def get_mat_value_inv(
-        self, fe: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray
+        self, fe: np.ndarray, Egrid: np.ndarray, dE: np.ndarray
     ) -> float:
         """Get the matrix value for the inverse of transition. For excitation transitions, this is three-body recombination
 
@@ -253,16 +241,17 @@ class ExTrans(Transition):
         :param dvc: velocity grid widths
         :return: electron density multiplied by three-body recombination rate coefficient
         """
-        self.rate_inv = calc_rate(vgrid, dvc, fe, self.sigma_deex, self.collrate_const)
+        self.rate_inv = calc_rate_en(
+            Egrid, dE, fe, self.sigma_deex, self.collrate_const
+        )
         return self.rate_inv
 
     def get_sigma_deex(
         self,
-        vgrid: np.ndarray,
-        vgrid_inv: np.ndarray,
+        Egrid: np.ndarray,
+        Egrid_inv: np.ndarray,
         sigma_interp: np.ndarray,
         g_ratio: float,
-        v_th: float,
     ) -> np.ndarray:
         """Get the de-excitation cross-section, assuming detailed balance
 
@@ -273,7 +262,7 @@ class ExTrans(Transition):
         :param v_th: Normalisation constant [ms^-1] for electron velocities
         :return: local de-excitation cross-section
         """
-        sigma_deex = get_sigma_deex(vgrid, vgrid_inv, sigma_interp, g_ratio, v_th)
+        sigma_deex = get_sigma_deex(Egrid, Egrid_inv, sigma_interp, g_ratio)
 
         return sigma_deex
 
@@ -336,7 +325,7 @@ class IzTrans(Transition):
                 + "\n    2. n-shell occupancy as a list of integers in the atomic state object for the initial (from) state"
             )
 
-    def set_inv_data(self, g_ratio: float, vgrid: np.ndarray, v_th: float):
+    def set_inv_data(self, g_ratio: float, Egrid: np.ndarray):
         """Store some useful data for calculating the inverse (3b-recombination) cross-sections
 
         :param g_ratio: statistical weight ratio of from/to states
@@ -344,20 +333,13 @@ class IzTrans(Transition):
         :param v_th: Normalisation constant [ms^-1] for electron velocities
         """
         self.g_ratio = g_ratio
-        self.vgrid_inv = (
-            energy2velocity(
-                velocity2energy(vgrid * v_th) + self.delta_E * velocity2energy(v_th)
-            )
-            / v_th
-        )
+        self.Egrid_inv = Egrid + self.delta_E
         sigma_interp_func = interpolate.interp1d(
-            vgrid, self.sigma, fill_value=0.0, bounds_error=False, kind="linear"
+            Egrid, self.sigma, fill_value=0.0, bounds_error=False, kind="linear"
         )
-        self.sigma_interp = sigma_interp_func(self.vgrid_inv)
+        self.sigma_interp = sigma_interp_func(self.Egrid_inv)
 
-    def get_mat_value(
-        self, fe: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray
-    ) -> float:
+    def get_mat_value(self, fe: np.ndarray, Egrid: np.ndarray, dE: np.ndarray) -> float:
         """Get the matrix value for this transition. For ionization transitions, this is ne * rate coefficient
 
         :param fe: local electron distribution
@@ -365,17 +347,16 @@ class IzTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        self.rate = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        self.rate = calc_rate_en(Egrid, dE, fe, self.sigma, self.collrate_const)
         return self.rate
 
     def get_mat_value_inv(
         self,
         fe: np.ndarray,
-        vgrid: np.ndarray,
-        dvc: np.ndarray,
+        Egrid: np.ndarray,
+        dE: np.ndarray,
         ne: float,
         Te: float,
-        v_th: float,
     ):
         """Get the matrix value for the inverse of transition. For ionization transitions, this is three-body recombination
 
@@ -387,13 +368,17 @@ class IzTrans(Transition):
         :param v_th: Normalisation constant [ms^-1] for electron velocities
         :return: electron density multiplied by three-body recombination rate coefficient
         """
-        sigma_tbrec = self.get_sigma_tbrec(vgrid, Te, v_th)
-        self.rate_inv = calc_rate(
-            vgrid, dvc, fe, sigma_tbrec, ne * self.tbrec_norm * self.collrate_const
+        sigma_tbrec = self.get_sigma_tbrec(Egrid, Te)
+        self.rate_inv = calc_rate_en(
+            Egrid,
+            dE,
+            fe,
+            sigma_tbrec,
+            ne * self.tbrec_norm * self.collrate_const,
         )
         return self.rate_inv
 
-    def get_sigma_tbrec(self, vgrid: np.ndarray, Te: float, v_th: float) -> np.ndarray:
+    def get_sigma_tbrec(self, Egrid: np.ndarray, Te: float) -> np.ndarray:
         """Get the three-body recombination cross-section, assuming detailed balance
 
         :param vgrid: Velocity grid
@@ -402,7 +387,7 @@ class IzTrans(Transition):
         :return: Three-body recombination cross-section
         """
         sigma_tbrec = get_sigma_tbr(
-            vgrid, self.vgrid_inv, self.sigma_interp, self.g_ratio, Te, v_th
+            Egrid, self.Egrid_inv, self.sigma_interp, self.g_ratio, Te
         )
 
         return sigma_tbrec
@@ -567,9 +552,7 @@ class RRTrans(Transition):
                 + "\n    2. n-shell occupancy as a list of integers in the atomic state object for the initial (from) state"
             )
 
-    def get_mat_value(
-        self, fe: np.ndarray, vgrid: np.ndarray, dvc: np.ndarray
-    ) -> float:
+    def get_mat_value(self, fe: np.ndarray, Egrid: np.ndarray, dE: np.ndarray) -> float:
         """Get the matrix value for this transition.
 
         :param fe: local electron distribution
@@ -577,7 +560,7 @@ class RRTrans(Transition):
         :param dvc: velocity grid widths
         :return: Matrix value
         """
-        self.rate = calc_rate(vgrid, dvc, fe, self.sigma, self.collrate_const)
+        self.rate = calc_rate_en(Egrid, dE, fe, self.sigma, self.collrate_const)
         return self.rate
 
     def compute_cross_section(
@@ -645,6 +628,14 @@ class RRTrans(Transition):
         old_Egrid: np.ndarray,
         new_Egrid: np.ndarray,
     ) -> np.ndarray:
+        """Inteprolate given cross-section to the provided energy grid
+
+        :param sigma: Input cross-section
+        :param fit_params: Fit parameters to use at high energies
+        :param old_Egrid: Old energy grid [eV]
+        :param new_Egrid: New energy grid [eV]
+        :return: Interpolated cross-section
+        """
         interp_func = interpolate.interp1d(
             old_Egrid,
             np.log(sigma),
@@ -783,13 +774,36 @@ def calc_rate(
 
 
 @jit(nopython=True)
+def calc_rate_en(
+    Egrid: np.ndarray,
+    dE: np.ndarray,
+    fe: np.ndarray,
+    sigma: np.ndarray,
+    const: float = 1.0,
+) -> float:
+    """Efficiently compute the collisional rate for a given process (by integrating over energy instead of velocity)
+
+    :param Egrid: energy grid (normalised)
+    :param dE: energy grid widths (normalised)
+    :param fe: local electron distribution (normalised)
+    :param sigma: cross-section (normalised)
+    :param const: normalisation cross-section (defaults to 1), defaults to 1.0
+    :return: Collisional rate
+    """
+    rate = 0.0
+    for i in range(len(Egrid)):
+        rate += Egrid[i] * dE[i] * fe[i] * sigma[i]
+    rate *= const * 0.5 * 4.0 * np.pi
+    return rate
+
+
+@jit(nopython=True)
 def get_sigma_tbr(
-    vgrid: np.ndarray,
-    vgrid_inv: np.ndarray,
+    Egrid: np.ndarray,
+    Egrid_inv: np.ndarray,
     sigma_interp: np.ndarray,
     g_ratio: float,
     Te: float,
-    v_th: float,
 ) -> np.ndarray:
     """Get three-body recombination cross-section via detailed balance
 
@@ -801,21 +815,18 @@ def get_sigma_tbr(
     :param v_th: Normalisation constant [ms^-1] for electron velocities
     :return: Three-body recombination cross-section
     """
-    Egrid = velocity2energy(vgrid * v_th)
-    Egrid_inv = velocity2energy(vgrid_inv * v_th)
     sigma_tbrec = (
-        0.5 * g_ratio * (1 / (np.sqrt(Te) ** 3)) * sigma_interp * (Egrid_inv / Egrid)
+        0.5 * g_ratio * ((1 / (np.sqrt(Te) ** 3)) * sigma_interp * (Egrid_inv / Egrid))
     )
     return sigma_tbrec
 
 
 @jit(nopython=True)
 def get_sigma_deex(
-    vgrid: np.ndarray,
-    vgrid_inv: np.ndarray,
+    Egrid: np.ndarray,
+    Egrid_inv: np.ndarray,
     sigma_interp: np.ndarray,
     g_ratio: float,
-    v_th: float,
 ) -> np.ndarray:
     """Get de-excitation cross section via principle of detailed balance
 
@@ -826,8 +837,6 @@ def get_sigma_deex(
     :param v_th: Normalisation constant [ms^-1] for electron velocities
     :return: De-excitation cross-section
     """
-    Egrid = velocity2energy(vgrid * v_th)
-    Egrid_inv = velocity2energy(vgrid_inv * v_th)
     sigma_deex = g_ratio * sigma_interp * (Egrid_inv / Egrid)
     return sigma_deex
 

@@ -59,8 +59,8 @@ class Impurity:
         :param v_th: Normalisation constant [ms^-1] for electron velocities
         :param T_norm: Temperature normalisation constant [eV]
         :param n_norm: Density normalisation constant [m^-3]
-        :param vgrid: Electron velocity grid
-        :param Egrid: Electron energy grid
+        :param vgrid: Electron velocity grid (normalised)
+        :param Egrid: Electron energy grid [eV]
         :param ne: Electron densities
         :param Te: Electron temperatures
         """
@@ -288,13 +288,6 @@ class Impurity:
                 / (self.name + "_transitions_nlj.json")
             )
         else:
-            # if self.resolve_l:
-            #     trans_f = (
-            #         self.atomic_data_savedir
-            #         / self.longname
-            #         / (self.name + "_transitions_nl.json")
-            #     )
-            # else:
             trans_f = (
                 self.atomic_data_savedir
                 / self.longname
@@ -303,7 +296,6 @@ class Impurity:
         print("  Loading transitions from json...")
         with open(trans_f) as f:
             trans_dict = json.load(f)
-            # trans_Egrid = np.array(trans_dict[0]["E_grid"])
 
         print("  Creating transition objects...")
         num_transitions = len(trans_dict)
@@ -315,6 +307,8 @@ class Impurity:
                     trans["to_id"] not in self.state_ids
                 ):
                     continue
+            from_state = [s for s in self.states if s.id == trans["from_id"]][0]
+            to_state = [s for s in self.states if s.id == trans["to_id"]][0]
             if trans["type"] == "ionization" and self.ionization:
                 transitions[i] = IzTrans(
                     **trans,
@@ -323,8 +317,8 @@ class Impurity:
                     sigma_norm=self.sigma_norm,
                     tbrec_norm=self.tbrec_norm,
                     simulation_E_grid=Egrid,
-                    from_state=self.states[trans["from_id"]],
-                    to_state=self.states[trans["to_id"]],
+                    from_state=from_state,
+                    to_state=to_state,
                 )
             elif trans["type"] == "autoionization" and self.autoionization:
                 transitions[i] = AiTrans(
@@ -342,8 +336,8 @@ class Impurity:
                     collrate_const=self.collrate_const,
                     sigma_norm=self.sigma_norm,
                     simulation_E_grid=Egrid,
-                    from_state=self.states[trans["from_id"]],
-                    to_state=self.states[trans["to_id"]],
+                    from_state=from_state,
+                    to_state=to_state,
                 )
             elif trans["type"] == "emission" and self.emission:
                 transitions[i] = EmTrans(
@@ -363,14 +357,6 @@ class Impurity:
 
         self.transitions = transitions
 
-        # # Calculate cross-sections on the given energy grid
-        # if (self.resolve_l and self.resolve_j) or (
-        #     self.resolve_l and not self.resolve_j
-        # ):
-        #     self.interpolate_cross_sections(Egrid)
-        # else:
-        #     self.compute_cross_sections(Egrid)
-
         # Set the de-excitation cross-sections
         print("  Creating data for inverse transitions...")
         id2pos = {self.states[i].id: i for i in range(len(self.states))}
@@ -381,7 +367,7 @@ class Impurity:
                         self.states[id2pos[t.from_id]].stat_weight
                         / self.states[id2pos[t.to_id]].stat_weight
                     )
-                    t.set_sigma_deex(g_ratio, vgrid, self.v_th)
+                    t.set_sigma_deex(g_ratio, Egrid / self.T_norm)
 
         # Set the statistical weight ratios for ionization cross-sections
         if self.ionization:
@@ -391,24 +377,11 @@ class Impurity:
                         self.states[id2pos[t.from_id]].stat_weight
                         / self.states[id2pos[t.to_id]].stat_weight
                     )
-                    t.set_inv_data(g_ratio, vgrid, self.v_th)
+                    t.set_inv_data(g_ratio, Egrid / self.T_norm)
 
         # Checks
         print("  Performing checks on transition data...")
         self._state_and_transition_checks()
-
-    # def interpolate_cross_sections(self, Egrid: np.ndarray):
-    #     # Interpolate the cross sections
-    #     for t in self.transitions:
-    #         if (
-    #             t.type == "excitation"
-    #             or t.type == "ionization"
-    #             or t.type == "radiative recombination"
-    #         ):
-    #             t.interpolate_cross_section(new_Egrid=Egrid)
-
-    # def compute_cross_sections(self, Egrid: np.ndarray):
-    #     pass
 
     def _state_and_transition_checks(self):
         """Perform some checks on states and transitions belonging to the impurity. Removes orphaned states, transitions where one or more associated states are not evolved, etc"""
