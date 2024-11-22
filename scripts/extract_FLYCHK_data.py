@@ -12,7 +12,9 @@ if __name__ == "__main__":
     for el in sc.SYMBOL2ELEMENT.keys():
         print(el)
         element = sc.SYMBOL2ELEMENT[el]
-        atom_data_file = sike.get_atomic_data_savedir() / element / "atomic.dat"
+        atom_data_file = (
+            sike.get_atomic_data_savedir() / "FLYCHK data" / element / "atomic.dat"
+        )
         with open(atom_data_file) as f:
             atom_data = f.readlines()
 
@@ -266,7 +268,7 @@ if __name__ == "__main__":
                 # except ValueError:
                 #     transitions[-1]["maxwellian_rate"] = 0.0
 
-        vgrid = sike.constants.DEFAULT_VGRID
+        vgrid, Egrid = sike.generate_vgrid()
         Egrid = 0.5 * sc.EL_MASS * vgrid**2 / sc.EL_CHARGE
 
         # Screening coefficients test
