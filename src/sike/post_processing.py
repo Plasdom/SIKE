@@ -1,3 +1,4 @@
+from xml.etree.ElementInclude import include
 import xarray as xr
 import numpy as np
 
@@ -60,11 +61,12 @@ def get_Qz_tot(ds: xr.Dataset) -> xr.DataArray:
     return Qz_tot
 
 
-def get_Lz_avg(ds: xr.Dataset) -> xr.DataArray:
+def get_Lz_avg(ds: xr.Dataset, include_radrec: bool = False) -> xr.DataArray:
     """Get the total line emission coefficient (i.e. averaged over all charge states) [MWm^3] from dataset
 
     :param ds: xarray dataset from SIKERun
-    :return: Qz_tot (coords = [x, state_Z])
+    :param include_radrec: whether to include radiative recombination contributions, defaults to False
+    :return: Lz_avg (coords = [x, state_Z])
     """
     emission_ds = ds.sel(i=(ds["transition_type"] == "emission"))
     Lz_avg = (
@@ -77,13 +79,38 @@ def get_Lz_avg(ds: xr.Dataset) -> xr.DataArray:
         ).sum(dim="i")
         / (ds.ne.values * ds.nk.sum(dim="k").values)
     )
+    if include_radrec:
+        Lz_avg += get_Lz_avg_rr(ds)
+
     return Lz_avg
 
 
-def get_Lz(ds: xr.Dataset) -> xr.DataArray:
+def get_Lz_avg_rr(ds: xr.Dataset) -> xr.DataArray:
+    """Get the total line emission coefficient (i.e. averaged over all charge states) from radiative recombination [MWm^3] from dataset
+
+    :param ds: xarray dataset from SIKERun
+    :return: Lz_avg (coords = [x, state_Z])
+    """
+
+    rr_ds = ds.sel(i=(ds["transition_type"] == "radiative_recombination"))
+    Qz_avg = 1e-6 * (
+        rr_ds.transition_delta_E
+        * c.EL_CHARGE
+        * rr_ds.transition_rates
+        * rr_ds.nk.sel(k=rr_ds.transition_from_k)
+    ).sum(dim="i")
+    Lz_avg = Qz_avg / (ds.ne.values * ds.nk.sum(dim="k").values)
+
+    Lz_avg = xr.DataArray(Lz_avg, coords={"x": ds.x})
+
+    return Lz_avg
+
+
+def get_Lz(ds: xr.Dataset, include_radrec: bool = False) -> xr.DataArray:
     """Get the line emission coefficients for each charge state [MWm^3] from dataset
 
     :param ds: xarray dataset from SIKERun
+    :param include_radrec: whether to include radiative recombination contributions, defaults to False
     :return: Qz_tot (coords = [x, state_Z])
     """
     Zs = sorted(list(set(ds.state_Z.values)))
@@ -102,8 +129,41 @@ def get_Lz(ds: xr.Dataset) -> xr.DataArray:
             * emission_ds.transition_rates
             * emission_ds.nk.sel(k=emission_ds.transition_from_k)
         ).sum(dim="i")
+
+        if include_radrec:
+            Qz += get_Lz_rr(ds)
+
         Lz[:, Z] = Qz / (ds.ne.values * nz.sel(state_Z=Z).values)
     Lz = xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
+    return Lz
+
+
+def get_Lz_rr(ds: xr.Dataset) -> xr.DataArray:
+    """Get the line emission coefficients for each charge state [MWm^3] from radiative recombination from dataset
+
+    :param include_radrec: whether to include radiative recombination contributions, defaults to False
+    :return: Qz_tot (coords = [x, state_Z])
+    """
+    Zs = sorted(list(set(ds.state_Z.values)))
+    nz = get_nz(ds)
+    Lz = np.zeros((len(ds.x), len(Zs)))
+    for Z in Zs:
+        Z_states = ds.k[ds.state_Z == Z]
+        rr_ds = ds.sel(
+            i=(ds["transition_type"] == "radiative_recombination")
+            & ds["transition_from_k"].isin(Z_states)
+        )
+        Qz = 1e-6 * (
+            rr_ds.transition_delta_E
+            * c.EL_CHARGE
+            * rr_ds.transition_rates
+            * rr_ds.nk.sel(k=rr_ds.transition_from_k)
+        ).sum(dim="i")
+
+        Lz[:, Z] = Qz / (ds.ne.values * nz.sel(state_Z=Z).values)
+
+    Lz = xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
+
     return Lz
 
 
@@ -214,3 +274,41 @@ def get_ground_states(ds: xr.Dataset) -> np.ndarray:
     ground_states = ds.sel(k=ds.state_is_ground == True).k.values
 
     return ground_states
+
+
+def get_Lz_br(ds: xr.Dataset) -> xr.DataArray:
+    """TODO: Docstring
+
+    :param ds: _description_
+    :return: _description_
+    """
+
+    Zs = sorted(list(set(ds.state_Z.values)))
+    nz = get_nz(ds)
+    Lz = np.zeros((len(ds.x), len(Zs)))
+    for Z in Zs:
+        Lz[:, Z] = Z**2 * np.sqrt(ds.Te) / (7.69e18**2)
+
+    Lz = xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
+
+    return Lz
+
+
+def get_Lz_avg_br(ds: xr.Dataset) -> xr.DataArray:
+    """TODO: Docstring
+
+    :param ds: _description_
+    :return: _description_
+    """
+
+    Zs = sorted(list(set(ds.state_Z.values)))
+    nz = get_nz(ds)
+    Lz = np.zeros((len(ds.x)))
+    for Z in Zs:
+        Lz += nz.sel(state_Z=Z) * Z**2 * np.sqrt(ds.Te) / (7.69e18**2)
+
+    Lz = 1e-6 * Lz / nz.sum(dim="state_Z")
+
+    Lz = xr.DataArray(Lz, coords={"x": ds.x})
+
+    return Lz
