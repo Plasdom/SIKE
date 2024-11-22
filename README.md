@@ -92,7 +92,7 @@ Because the atomic data files are quite large, and not all users will need to do
     ```
 
 Above,
-- `<ELEMENTS>` is a list of elements (specified by symbol) to download data for. If `<ELEMENTS>` is empty or `None`, then all atomic data will be downloaded. The full list of elements for which data is available is:
+- `<ELEMENTS>` is a list of elements (specified by symbol) to download data for. If `<ELEMENTS>` is empty or `None`, then all atomic data will be downloaded. Currently, the full list of elements for which data is available is:
     - Hydrogen ("H")
     - Helium ("He")
     - Lithium ("Li")
@@ -102,8 +102,12 @@ Above,
     - Oxygen ("O")
     - Nitrogen ("N")
     - Neon ("Ne")
+    - Aluminium ("Al")
     - Argon ("Ar")
+    - Iron ("Fe")
+    - Krypton ("Kr")
     - Molybdenum ("Mo")
+    - Xenon ("Xe")
     - Tungsten ("W")
 - `<SAVEDIR>` is the location of a directory where the atomic data will be saved. By default, a directory called "sike_atomic_data" will be created here, and the downloaded atomic data placed inside. If empty or `None`, then you will be prompted to input the location. 
 
