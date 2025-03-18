@@ -11,7 +11,7 @@ legacy/*
 .idea/*
 *.egg-info
 sike_atomic_data/*
-*.json
+# *.json
 *.dat
 plan.txt
 testing.ipynb
