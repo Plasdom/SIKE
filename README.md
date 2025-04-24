@@ -9,9 +9,9 @@ $\frac{d\vec{n}}{dt} = \mathbf{M}\vec{n}$,
 
 where $\mathbf{M}$ is the rate matrix for transitions between states. No collisional radiative assumptions are made, i.e. all states are evolved as opposed to only a few "metastable" states, but effective rate coefficients given a set of evolved and non-evolved states can be computed by SIKE.  
 
-The SIKE model and atomic data is described in more detail in this pre-print: https://arxiv.org/abs/2410.00651. 
+The SIKE model and atomic data is described in more detail in Power et al. 2025 PPCF 67 045030: https://doi.org/10.1088/1361-6587/adc200. 
 
-SIKE was developed to study the sensitivity of atomic rates to non-Maxwellian electron distributions in magnetic fusion plasmas. It is not as accurate as commonly used modelling databases such as ADAS, please see the notebook and comparison plots in the benchmarking directory to get an idea of the differences. 
+SIKE was developed to study the sensitivity of atomic rates to non-Maxwellian electron distributions in magnetic fusion plasmas. It is not currently as accurate as commonly used modelling databases such as ADAS, please see the notebook and comparison plots in the benchmarking directory to get an idea of the differences. 
 
 ## Quickstart
 
