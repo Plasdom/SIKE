@@ -570,7 +570,6 @@ wheels = [
 
 [[package]]
 name = "sike"
-version = "0.1"
 source = { editable = "." }
 dependencies = [
     { name = "matplotlib" },
