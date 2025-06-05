@@ -18,3 +18,4 @@ testing.ipynb
 extract_FLYCHK_data.ipynb
 treat_atomic_data.ipynb
 benchmarking/FLYCHK_data
+build/
