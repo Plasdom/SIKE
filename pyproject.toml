@@ -15,4 +15,10 @@ requires-python = ">=3.11"
 dependencies = ["numpy>=2.0", "scipy>=1.14", "requests", "numba>=0.60", "xarray", "matplotlib"]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "hypothesis"
+]
+
 [tool.setuptools_scm]
