@@ -22,6 +22,7 @@ SYMBOL2ELEMENT = {
     "Mo": "Molybdenum",
     "W": "Tungsten",
     "Xe": "Xenon",
+    "T": "Testium"
 }
 ELEMENT2SYMBOL = {v: k for k, v in SYMBOL2ELEMENT.items()}
 CONFIG_FILENAME = ".sike_config"
@@ -42,6 +43,7 @@ NUCLEAR_CHARGE_DICT = {
     "Mo": 42,
     "Xe": 54,
     "W": 74,
+    "T": 2,
 }
 
 

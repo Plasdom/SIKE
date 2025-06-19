@@ -11,6 +11,9 @@ legacy/*
 .idea/*
 *.egg-info
 sike_atomic_data/*
+!sike_atomic_data/Testium/
+!sike_atomic_data/Testium/T_levels_n.json
+!sike_atomic_data/Testium/T_transitions_n.json
 # *.json
 *.dat
 plan.txt
