@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import os
 import xarray as xr
 
 import sike
@@ -8,7 +9,29 @@ import sike.post_processing as spp
 import sike.post_processing
 
 
-def test_solve():
+def data_exists(element):
+    data_dir = os.path.join(sike.get_atomic_data_savedir(), sike.SYMBOL2ELEMENT.get(element))
+    levels = os.path.join(data_dir, element + "_levels_n.json")
+    transitions = os.path.join(data_dir, element + "_transitions_n.json")
+    return os.path.exists(levels) and os.path.exists(transitions)
+
+
+@pytest.mark.skipif(not data_exists("T"), reason="Testium data not downloaded - see README for instructions")
+def test_testium(snapshot):
+    nx = 100
+    Te = np.linspace(1, 10, nx)
+    ne = 1e20 * np.ones(nx)
+
+    c = sike.SIKERun(Te=Te, ne=ne, element="T")
+    ds = c.evolve(dt_s=1e0)
+
+    Zavg = spp.get_Zavg(ds)
+
+    assert np.round(Zavg.values, 6).tolist() == snapshot
+
+
+@pytest.mark.skipif(not data_exists("H"), reason="Hydrogen data not downloaded - see README for instructions")
+def test_solve(snapshot):
     """Test a simple hydrogen example using the solve() method"""
     nx = 3
     Te = np.linspace(1, 5, nx)
@@ -22,92 +45,102 @@ def test_solve():
     Zavg = spp.get_Zavg(ds)
     assert isinstance(ds, xr.Dataset)
 
-    expected_vals = [0.129, 0.996, 0.998]
-    assert all(np.isclose(Zavg.values, expected_vals, atol=1e-3))
+    assert np.round(Zavg.values, 6).tolist() == snapshot
 
 
-def test_evolve():
-    """Test a simple hydrogen example using the solve() method"""
+@pytest.mark.parametrize("element", ["He", "C", "Ar"])
+def test_evolve(element):
+    """Test some simple atoms on how the evolve() method compares to solve()"""
+    if not data_exists(element):
+        pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+
     nx = 2
     Te = np.linspace(1, 10, nx)
     ne = 1e20 * np.ones(nx)
 
-    for el in ["He", "C", "Ar"]:
-        c = sike.SIKERun(Te=Te, ne=ne, element=el, saha_boltzmann_init=False)
-        ds = c.evolve(0.0)
-        Zavg_0 = spp.get_Zavg(ds)
-        assert all(np.isclose(Zavg_0, 0))
+    c = sike.SIKERun(Te=Te, ne=ne, element=element, saha_boltzmann_init=False)
+    ds = c.evolve(0.0)
+    Zavg_0 = spp.get_Zavg(ds)
+    assert all(np.isclose(Zavg_0, 0))
 
-        ds_evolve = c.evolve(1e3)
-        ds_solve = c.solve()
-        assert all(np.isclose(spp.get_Zavg(ds_evolve), spp.get_Zavg(ds_solve)))
+    ds_evolve = c.evolve(1e3)
+    ds_solve = c.solve()
+    assert all(np.isclose(spp.get_Zavg(ds_evolve), spp.get_Zavg(ds_solve)))
 
 
-def test_saha_boltzmann_init():
+@pytest.mark.parametrize("element", sike.SYMBOL2ELEMENT.keys())
+def test_saha_boltzmann_init(element):
     """Ensure the Saha-Boltzmann initialisation does not evolve in time when radiative transitions are turned off"""
+    if not data_exists(element):
+        pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+
     nx = 2
     Te = np.linspace(1, 10, nx)
     ne = 1e20 * np.ones(nx)
-    E_min_ev = 1e-4
-    E_max_ev = 3e5
     vgrid, Egrid = sike.plasma_utils.generate_vgrid()
-    for el in sike.SYMBOL2ELEMENT.keys():
-        c = sike.SIKERun(
-            Te=Te,
-            ne=ne,
-            vgrid=vgrid,
-            element=el,
-            saha_boltzmann_init=True,
-            emission=False,
-            radiative_recombination=False,
-            autoionization=False,
-        )
-        ds_0 = c.evolve(0)
-        ds_1 = c.evolve(1e3)
-        Zavg_0 = spp.get_Zavg(ds_0)
-        Zavg_1 = spp.get_Zavg(ds_1)
-        assert all(np.isclose(Zavg_0, Zavg_1, atol=1e-1, rtol=1e-2))
+
+    c = sike.SIKERun(
+        Te=Te,
+        ne=ne,
+        vgrid=vgrid,
+        element=element,
+        saha_boltzmann_init=True,
+        emission=False,
+        radiative_recombination=False,
+        autoionization=False,
+    )
+
+    ds_0 = c.evolve(0)
+    ds_1 = c.evolve(1e3)
+    Zavg_0 = spp.get_Zavg(ds_0)
+    Zavg_1 = spp.get_Zavg(ds_1)
+    assert all(np.isclose(Zavg_0, Zavg_1, atol=1e-1, rtol=1e-2))
 
 
-def test_all_elements_n_resolved():
+@pytest.mark.parametrize("element", sike.SYMBOL2ELEMENT.keys())
+def test_all_elements_n_resolved(element):
     """Ensure SIKERun object can be created for all species using n-resolved data"""
+    if not data_exists(element):
+        pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+
     nx = 2
     Te = np.linspace(1, 10, nx)
     ne = 1e20 * np.ones(nx)
     vgrid, _ = sike.generate_vgrid(nv=2)
-    for el in sike.SYMBOL2ELEMENT.keys():
-        c = sike.SIKERun(Te=Te, ne=ne, resolve_l=False, resolve_j=False, element=el)
+    c = sike.SIKERun(Te=Te, ne=ne, resolve_l=False, resolve_j=False, element=element)
 
 
-def test_init_methods():
+@pytest.mark.parametrize("element", ["H", "C", "Ne"])
+def test_init_methods(element):
     """Check that the methods init_from_dist() and init_from_profiles() result in the same output when distributions are generated the same way"""
+    if not data_exists(element):
+        pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+
     nx = 10
     Te = np.logspace(-1, 4, nx)
     ne = 1e20 * np.ones(nx)
-    elements = ["H", "C", "Ne"]
 
-    for el in elements:
-        # Initialise using Te and ne profiles
-        c_pr = sike.SIKERun(Te=Te, ne=ne, element=el)
-        ds_pr = c_pr.evolve(dt_s=1e6)
+    # Initialise using Te and ne profiles
+    c_pr = sike.SIKERun(Te=Te, ne=ne, element=element)
+    ds_pr = c_pr.evolve(dt_s=1e6)
 
-        # Generate equivalent Maxwellians and check they're the same as generated by SIKERun object
-        fe = sike.get_maxwellians(ne=ne, Te=Te, Egrid=c_pr.Egrid, normalised=False)
-        assert np.isclose(c_pr.fe * c_pr.fe_norm, fe).all()
+    # Generate equivalent Maxwellians and check they're the same as generated by SIKERun object
+    fe = sike.get_maxwellians(ne=ne, Te=Te, Egrid=c_pr.Egrid, normalised=False)
+    assert np.isclose(c_pr.fe * c_pr.fe_norm, fe).all()
 
-        c_d = sike.SIKERun(fe=fe, element=el)
-        ds_d = c_d.evolve(dt_s=1e6)
-        assert np.isclose(c_d.Te, Te / c_d.T_norm, atol=1e-2, rtol=1e-4).all()
-        assert np.isclose(c_d.ne, ne / c_d.n_norm, atol=1e-2, rtol=1e-4).all()
+    c_d = sike.SIKERun(fe=fe, element=element)
+    ds_d = c_d.evolve(dt_s=1e6)
+    assert np.isclose(c_d.Te, Te / c_d.T_norm, atol=1e-2, rtol=1e-4).all()
+    assert np.isclose(c_d.ne, ne / c_d.n_norm, atol=1e-2, rtol=1e-4).all()
 
-        nz_d = sike.post_processing.get_nz(ds_d).values
-        nz_pr = sike.post_processing.get_nz(ds_pr).values
-        nz_pr = np.where(nz_d / c_d.n_norm < 1e-14, 0.0, nz_pr)
-        nz_d = np.where(nz_d / c_d.n_norm < 1e-14, 0.0, nz_d)
+    nz_d = sike.post_processing.get_nz(ds_d).values
+    nz_pr = sike.post_processing.get_nz(ds_pr).values
+    nz_pr = np.where(nz_d / c_d.n_norm < 1e-14, 0.0, nz_pr)
+    nz_d = np.where(nz_d / c_d.n_norm < 1e-14, 0.0, nz_d)
 
-        assert np.isclose(
-            nz_d / c_d.n_norm,
-            nz_pr / c_pr.n_norm,
-            atol=1e-1,
-            rtol=1e-3,
-        ).all()
+    assert np.isclose(
+        nz_d / c_d.n_norm,
+        nz_pr / c_pr.n_norm,
+        atol=1e-1,
+        rtol=1e-3,
+    ).all()
