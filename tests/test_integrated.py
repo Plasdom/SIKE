@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import os
 import xarray as xr
 
 import sike
@@ -8,12 +7,14 @@ import sike.plasma_utils
 import sike.post_processing as spp
 import sike.post_processing
 
+from pathlib import Path
+
 
 def data_exists(element):
-    data_dir = os.path.join(sike.get_atomic_data_savedir(), sike.SYMBOL2ELEMENT.get(element))
-    levels = os.path.join(data_dir, element + "_levels_n.json")
-    transitions = os.path.join(data_dir, element + "_transitions_n.json")
-    return os.path.exists(levels) and os.path.exists(transitions)
+    data_dir = Path(sike.get_atomic_data_savedir()) / sike.SYMBOL2ELEMENT.get(element)
+    levels = data_dir / f"{element}_levels_n.json"
+    transitions = data_dir / f"{element}_transitions_n.json"
+    return levels.exists() and transitions.exists()
 
 
 @pytest.mark.skipif(not data_exists("T"), reason="Testium data not downloaded - see README for instructions")
