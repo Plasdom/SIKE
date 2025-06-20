@@ -10,14 +10,25 @@ import sike.post_processing
 from pathlib import Path
 
 
-def data_exists(element):
-    data_dir = Path(sike.get_atomic_data_savedir()) / sike.SYMBOL2ELEMENT.get(element)
+def data_exists(element: str) -> bool:
+    """Checks if the data files for the given element exist"""
+    data_dir = sike.get_test_data_dir() if element == "T" else sike.get_atomic_data_savedir()
+    data_dir /= sike.SYMBOL2ELEMENT.get(element)
     levels = data_dir / f"{element}_levels_n.json"
     transitions = data_dir / f"{element}_transitions_n.json"
     return levels.exists() and transitions.exists()
 
 
-@pytest.mark.skipif(not data_exists("T"), reason="Testium data not downloaded - see README for instructions")
+def check_run_test(element: str) -> None:
+    """Should we run the test calling this function based on if the elemental data is available"""
+    if not data_exists(element):
+        if element == "T":
+            pytest.skip("Could not find Testium data")
+        else:
+            pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+
+
+@pytest.mark.skipif(not data_exists("T"), reason="Could not find Testium data")
 def test_testium(snapshot):
     nx = 100
     Te = np.linspace(1, 10, nx)
@@ -52,8 +63,7 @@ def test_solve(snapshot):
 @pytest.mark.parametrize("element", ["He", "C", "Ar"])
 def test_evolve(element):
     """Test some simple atoms on how the evolve() method compares to solve()"""
-    if not data_exists(element):
-        pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+    check_run_test(element)
 
     nx = 2
     Te = np.linspace(1, 10, nx)
@@ -72,8 +82,7 @@ def test_evolve(element):
 @pytest.mark.parametrize("element", sike.SYMBOL2ELEMENT.keys())
 def test_saha_boltzmann_init(element):
     """Ensure the Saha-Boltzmann initialisation does not evolve in time when radiative transitions are turned off"""
-    if not data_exists(element):
-        pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+    check_run_test(element)
 
     nx = 2
     Te = np.linspace(1, 10, nx)
@@ -101,8 +110,7 @@ def test_saha_boltzmann_init(element):
 @pytest.mark.parametrize("element", sike.SYMBOL2ELEMENT.keys())
 def test_all_elements_n_resolved(element):
     """Ensure SIKERun object can be created for all species using n-resolved data"""
-    if not data_exists(element):
-        pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+    check_run_test(element)
 
     nx = 2
     Te = np.linspace(1, 10, nx)
@@ -114,8 +122,7 @@ def test_all_elements_n_resolved(element):
 @pytest.mark.parametrize("element", ["H", "C", "Ne"])
 def test_init_methods(element):
     """Check that the methods init_from_dist() and init_from_profiles() result in the same output when distributions are generated the same way"""
-    if not data_exists(element):
-        pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+    check_run_test(element)
 
     nx = 10
     Te = np.logspace(-1, 4, nx)

@@ -3,6 +3,7 @@ import numpy as np
 
 # from sike.plasma_utils import energy2velocity
 
+TEST_DATA_LOCATION = "tests/data"
 ATOMIC_DATA_LOCATION = "sike_atomic_data"
 ATOMIC_DATA_BASE_URL = "https://zenodo.org/records/14205937/files/"
 SYMBOL2ELEMENT = {
