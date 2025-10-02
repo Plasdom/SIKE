@@ -12,7 +12,9 @@ from pathlib import Path
 
 def data_exists(element: str) -> bool:
     """Checks if the data files for the given element exist"""
-    data_dir = sike.get_test_data_dir() if element == "T" else sike.get_atomic_data_savedir()
+    data_dir = (
+        sike.get_test_data_dir() if element == "T" else sike.get_atomic_data_savedir()
+    )
     data_dir /= sike.SYMBOL2ELEMENT.get(element)
     levels = data_dir / f"{element}_levels_n.json"
     transitions = data_dir / f"{element}_transitions_n.json"
@@ -25,7 +27,9 @@ def check_run_test(element: str) -> None:
         if element == "T":
             pytest.skip("Could not find Testium data")
         else:
-            pytest.skip(f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions")
+            pytest.skip(
+                f"{sike.SYMBOL2ELEMENT.get(element)} data not downloaded - see README for instructions"
+            )
 
 
 @pytest.mark.skipif(not data_exists("T"), reason="Could not find Testium data")
@@ -42,7 +46,10 @@ def test_testium(snapshot):
     assert np.round(Zavg.values, 6).tolist() == snapshot
 
 
-@pytest.mark.skipif(not data_exists("H"), reason="Hydrogen data not downloaded - see README for instructions")
+@pytest.mark.skipif(
+    not data_exists("H"),
+    reason="Hydrogen data not downloaded - see README for instructions",
+)
 def test_solve(snapshot):
     """Test a simple hydrogen example using the solve() method"""
     nx = 3
@@ -146,4 +153,58 @@ def test_init_methods(element):
     nz_pr = np.where(nz_d / c_d.n_norm < 1e-14, 0.0, nz_pr)
     nz_d = np.where(nz_d / c_d.n_norm < 1e-14, 0.0, nz_d)
 
-    np.testing.assert_allclose(nz_d / c_d.n_norm, nz_pr / c_pr.n_norm, atol=1e-1, rtol=1e-3)
+    np.testing.assert_allclose(
+        nz_d / c_d.n_norm, nz_pr / c_pr.n_norm, atol=1e-1, rtol=1e-3
+    )
+
+
+@pytest.mark.parametrize("element", ["Li", "C"])
+def test_update_profiles(element):
+    """Test the update_profiles() method with new Te, ne profiles in SIKE.core"""
+    # Initialise the initial and final plasma profiles
+    nx = 4
+    Te_i = np.logspace(-1, 3, nx)
+    ne_i = 1e20 * np.ones(nx)
+    Te_f = 10 * Te_i
+    ne_f = 1e20 * np.ones(nx)
+
+    # Initialise using Te and ne profiles
+    c = sike.SIKERun(Te=Te_i, ne=ne_i, element=element)
+    ds_i = c.evolve(dt_s=1e6)
+    Zavg_i = spp.get_Zavg(ds_i)
+
+    # Update profiles
+    c.update_profiles(Te=Te_f, ne=ne_f)
+
+    # Iterate solution for small timesteps, confirming that mean charge state is increasing
+    for i in range(10):
+        ds_new = c.evolve(dt_s=1e-4)
+        Zavg_new = spp.get_Zavg(ds_new)
+        assert np.all(Zavg_new.values > Zavg_i.values)
+
+
+@pytest.mark.parametrize("element", ["Li", "C"])
+def test_update_distributions(element):
+    """Test the update_profiles() method with new distributions in SIKE.core"""
+    # Initialise the initial and final plasma profiles
+    nx = 4
+    Te_i = np.logspace(-1, 3, nx)
+    ne_i = 1e20 * np.ones(nx)
+    fe_i = sike.get_maxwellians(ne=ne_i, Te=Te_i, normalised=False)
+    Te_f = 10 * Te_i
+    ne_f = 1e20 * np.ones(nx)
+    fe_f = sike.get_maxwellians(ne=ne_f, Te=Te_f, normalised=False)
+
+    # Initialise using distributions
+    c = sike.SIKERun(fe=fe_i, element=element)
+    ds_i = c.evolve(dt_s=1e6)
+    Zavg_i = spp.get_Zavg(ds_i)
+
+    # Update distributions
+    c.update_profiles(fe=fe_f)
+
+    # Iterate solution for small timesteps, confirming that mean charge state is increasing
+    for i in range(10):
+        ds_new = c.evolve(dt_s=1e-4)
+        Zavg_new = spp.get_Zavg(ds_new)
+        assert np.all(Zavg_new.values > Zavg_i.values)

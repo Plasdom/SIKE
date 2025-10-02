@@ -1,5 +1,6 @@
 import xarray as xr
 import matplotlib.pyplot as plt
+import numpy as np
 
 import sike.post_processing as spp
 
@@ -258,15 +259,16 @@ def plot_Lz_avg(
 
     if ax is None:
         _, ax = plt.subplots(1)
-    ax.plot(x, Lz_tot, **mpl_kwargs)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(r"$\bar{L}_{z}$ [MWm$^{3}$]")
     ax.set_title(r"$\bar{L}_{z}$: " + ds.metadata["element"])
-    ax.grid()
+    ax.grid(True)
     if logx:
         ax.set_xscale("log")
     if logy:
         ax.set_yscale("log")
+    ax.plot(x, Lz_tot, **mpl_kwargs)
+    ax.legend()
 
     return ax
 
@@ -389,6 +391,12 @@ def get_xaxis(ds, xaxis):
         x = ds.ne
         xlabel = "$n_e$ [m$^{-3}$]"
     elif xaxis == "x":
-        x = ds.xgrid
-        xlabel = "x [m]"
+        try:
+            x = ds.xgrid
+            xlabel = "x [m]"
+        except AttributeError:
+            x = np.linspace(0, 1, len(ds.x))
+            xlabel = "x"
+    else:
+        raise Exception("Valid options to 'xaxis' are 'Te', ne' or 'x'")
     return x, xlabel

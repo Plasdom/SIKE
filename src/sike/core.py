@@ -180,8 +180,11 @@ class SIKERun(object):
 
         self.rate_mats = {}
 
-    def _init_from_dist(self) -> None:
-        """Initialise simulation from electron distributions"""
+    def _init_from_dist(self, init_norms: bool = True) -> None:
+        """Initialise simulation from electron distributions
+
+        :param init_norms: Whether to initialise the normalisation constants, defaults to True
+        """
         self.num_x = len(self.fe[0, :])
         if self.xgrid is None:
             self.xgrid = np.linspace(0, 1, self.num_x)
@@ -215,13 +218,17 @@ class SIKERun(object):
         )
 
         # Generate normalisation constants and normalise everything
-        self._init_norms()
+        if init_norms:
+            self._init_norms()
         self._apply_normalisation()
 
-    def _init_from_profiles(self, vgrid: np.ndarray | None = None):
+    def _init_from_profiles(
+        self, vgrid: np.ndarray | None = None, init_norms: bool = True
+    ):
         """Initialise simulation from electron temperature and density profiles
 
         :param vgrid: Electron velocity grid, defaults to None
+        :param init_norms: Whether to initialise the normalisation constants, defaults to True
         """
 
         # Save/create the velocity grid
@@ -248,7 +255,8 @@ class SIKERun(object):
         self.fe = get_maxwellians(self.ne, self.Te, self.Egrid, normalised=False)
 
         # Generate normalisation constants and normalise everything
-        self._init_norms()
+        if init_norms:
+            self._init_norms()
         self._apply_normalisation()
 
     def _init_norms(self) -> None:
@@ -430,6 +438,34 @@ class SIKERun(object):
             )
 
             self.matrix_needs_building = False
+
+    def update_profiles(
+        self,
+        Te: np.ndarray | None = None,
+        ne: np.ndarray | None = None,
+        fe: np.ndarray | None = None,
+    ):
+        """Update either the plasma temperature & density profiles or the electron distribution functions for time-dependent simulations
+
+        :param Te: electron temperature profile (units [eV]), defaults to None
+        :param ne: electron density profile (units [m^-3]), defaults to None
+        :param fe: Isotropic part of electron distribution function as a function of velocity magnitude (units [m^-6 s^-3]), defaults to None
+        :raises ValueError: _description_
+        """
+        if fe is not None:
+            self.fe = fe.copy()
+            self.vgrid = self.vgrid * self.v_th
+            self.Egrid = self.Egrid * self.T_norm
+            self._init_from_dist(init_norms=False)
+        elif Te is not None and ne is not None:
+            self.Te = Te.copy()
+            self.ne = ne.copy()
+            self._init_from_profiles(init_norms=False)
+        else:
+            raise ValueError(
+                "Must specify either electron distribution and vgrid or electron temperature and density profiles"
+            )
+        self.matrix_needs_building = True
 
 
 def get_atomic_data_savedir() -> Path:
