@@ -104,18 +104,21 @@ class SIKERun(object):
         self.fixed_fraction_init = fixed_fraction_init
         self.saha_boltzmann_init = saha_boltzmann_init
         self.state_ids = state_ids
-        if atomic_data_savedir is None:
-            self.atomic_data_savedir = get_atomic_data_savedir()
+        if element == "T":
+            self.atomic_data_savedir = get_test_data_dir()
         else:
-            if isinstance(atomic_data_savedir, str):
-                atomic_data_savedir = Path(atomic_data_savedir)
-            if not atomic_data_savedir.exists():
-                raise FileNotFoundError(
-                    "The atomic data savedir specified at input ('{}') does not appear to exist.".format(
-                        atomic_data_savedir
+            if atomic_data_savedir is None:
+                self.atomic_data_savedir = get_atomic_data_savedir()
+            else:
+                if isinstance(atomic_data_savedir, str):
+                    atomic_data_savedir = Path(atomic_data_savedir)
+                if not atomic_data_savedir.exists():
+                    raise FileNotFoundError(
+                        "The atomic data savedir specified at input ('{}') does not appear to exist.".format(
+                            atomic_data_savedir
+                        )
                     )
-                )
-            self.atomic_data_savedir = atomic_data_savedir
+                self.atomic_data_savedir = atomic_data_savedir
 
         self.num_procs = 1  # TODO: Parallelisation
         self.rank = 0  # TODO: Parallelisation
@@ -486,3 +489,12 @@ def get_atomic_data_savedir() -> Path:
         raise FileNotFoundError(
             "No config file found. Have you run setup to download the atomic data? See readme for instructions."
         )
+
+
+def get_test_data_dir() -> Path:
+    """Find the location of the saved atomic data for tests
+
+    :return: Path to test atomic data savedir
+    """
+    # This file sits 2 directories below the project root.
+    return Path(__file__).resolve().parents[2] / TEST_DATA_LOCATION
