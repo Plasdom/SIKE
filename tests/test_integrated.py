@@ -111,3 +111,57 @@ def test_init_methods():
             atol=1e-1,
             rtol=1e-3,
         ).all()
+
+
+def test_update_profiles():
+    """Test the update_profiles() method with new Te, ne profiles in SIKE.core"""
+    # Initialise the initial and final plasma profiles
+    nx = 4
+    Te_i = np.logspace(-1, 3, nx)
+    ne_i = 1e20 * np.ones(nx)
+    Te_f = 10 * Te_i
+    ne_f = 1e20 * np.ones(nx)
+    elements = ["Li", "C"]
+
+    for el in elements:
+        # Initialise using Te and ne profiles
+        c = sike.SIKERun(Te=Te_i, ne=ne_i, element=el)
+        ds_i = c.evolve(dt_s=1e6)
+        Zavg_i = spp.get_Zavg(ds_i)
+
+        # Update profiles
+        c.update_profiles(Te=Te_f, ne=ne_f)
+
+        # Iterate solution for small timesteps, confirming that mean charge state is increasing
+        for i in range(10):
+            ds_new = c.evolve(dt_s=1e-4)
+            Zavg_new = spp.get_Zavg(ds_new)
+            assert np.all(Zavg_new.values > Zavg_i.values)
+
+
+def test_update_distributions():
+    """Test the update_profiles() method with new distributions in SIKE.core"""
+    # Initialise the initial and final plasma profiles
+    nx = 4
+    Te_i = np.logspace(-1, 3, nx)
+    ne_i = 1e20 * np.ones(nx)
+    fe_i = sike.get_maxwellians(ne=ne_i, Te=Te_i, normalised=False)
+    Te_f = 10 * Te_i
+    ne_f = 1e20 * np.ones(nx)
+    fe_f = sike.get_maxwellians(ne=ne_f, Te=Te_f, normalised=False)
+    elements = ["Li", "C"]
+
+    for el in elements:
+        # Initialise using distributions
+        c = sike.SIKERun(fe=fe_i, element=el)
+        ds_i = c.evolve(dt_s=1e6)
+        Zavg_i = spp.get_Zavg(ds_i)
+
+        # Update distributions
+        c.update_profiles(fe=fe_f)
+
+        # Iterate solution for small timesteps, confirming that mean charge state is increasing
+        for i in range(10):
+            ds_new = c.evolve(dt_s=1e-4)
+            Zavg_new = spp.get_Zavg(ds_new)
+            assert np.all(Zavg_new.values > Zavg_i.values)
