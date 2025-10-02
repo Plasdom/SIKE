@@ -111,5 +111,8 @@ Above,
     - Tungsten ("W")
 - `<SAVEDIR>` is the location of a directory where the atomic data will be saved. By default, a directory called "sike_atomic_data" will be created here, and the downloaded atomic data placed inside. If empty or `None`, then you will be prompted to input the location. 
 
+## Publications 
 
+- D. Power et al 2025 Plasma Phys. Control. Fusion 67 045030 https://doi.org/10.1088/1361-6587/adc200 
+- J. Roeltgen et al 2025 Nucl. Fusion 65 106020 https://doi.org/10.1088/1741-4326/adff28 
 

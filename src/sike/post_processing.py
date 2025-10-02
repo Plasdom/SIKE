@@ -277,10 +277,10 @@ def get_ground_states(ds: xr.Dataset) -> np.ndarray:
 
 
 def get_Lz_br(ds: xr.Dataset) -> xr.DataArray:
-    """TODO: Docstring
+    """Get the radiation from Bremsstrahlung
 
-    :param ds: _description_
-    :return: _description_
+    :param ds: xarray dataset from SIKERun
+    :return: A DataArray containing Bremsstrahlung radiation from the impurity species
     """
 
     Zs = sorted(list(set(ds.state_Z.values)))

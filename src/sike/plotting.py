@@ -29,13 +29,18 @@ def plot_Zavg(
 
     if ax is None:
         _, ax = plt.subplots(1)
+        custom_axes = False
+    else:
+        custom_axes = True
     ax.plot(x, Zavg, **mpl_kwargs)
     ax.set_xlabel(xlabel)
     ax.set_ylabel("Average ionization")
     ax.set_title("Average ionization: " + ds.metadata["element"])
-    ax.grid()
+    ax.grid(True)
     if logx:
         ax.set_xscale("log")
+    if custom_axes is True:
+        ax.legend()
 
     return ax
 
