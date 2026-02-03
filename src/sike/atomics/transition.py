@@ -114,7 +114,6 @@ class ExTrans(Transition):
         # Calculate cross-section
         cs = np.zeros(len(Egrid))
         for i in range(len(Egrid)):
-            # E = 0.5 * EL_MASS * vgrid[i] ** 2 / EL_CHARGE
             E = Egrid[i]
             U = E / eps
             if eps <= E:
@@ -394,14 +393,11 @@ class IzTrans(Transition):
         :param to_state: Atomic state object of the final state
         :return: Cross-sections computed on Egrid
         """
-        # Note
         z = from_state.nuc_chg - from_state.num_el
-        # z = delta_z
 
         I_H = 13.6058
         a_0 = 5.29177e-11
         cs = np.zeros(len(Egrid))
-        # nu = 0.25 * (np.sqrt((100 * z + 91) / (4 * z + 3)) - 1)
         C = 2.0
 
         zeta = [c for c in from_state.config if c != 0][-1]

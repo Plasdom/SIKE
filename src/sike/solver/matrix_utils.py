@@ -61,7 +61,7 @@ def fill_rate_matrix(
             to_pos = trans.to_pos
             typ = trans.type
 
-            # # Calculate the value to be added to the matrix
+            # Calculate the value to be added to the matrix
             val = trans.get_mat_value(fe[:, i + min_x], Egrid, dE)
 
             # Add the loss term
@@ -74,7 +74,7 @@ def fill_rate_matrix(
             col = from_pos
             mat[i][row, col] += val
 
-            # # Calculate inverse process matrix entries (3-body recombination & de-excitation)
+            # Calculate inverse process matrix entries (3-body recombination & de-excitation)
             if typ == "excitation":
                 val = trans.get_mat_value_inv(fe[:, i + min_x], Egrid, dE)
 

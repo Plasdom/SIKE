@@ -78,7 +78,6 @@ def generate_output(
         {"state_" + k: v for k, v in s.__dict__.items() if k in selected_state_cols}
         for s in impurity.states
     ]
-    # selected_trans_cols = ["from_id", "to_id", "type", "rate", "rate_inv", "delta_E"]
     selected_trans_cols = ["from_id", "to_id", "type", "delta_E"]
     transitions = [
         {
@@ -105,7 +104,6 @@ def generate_output(
     )
     transitions_df.index.name = "i"
     transitions_df["transition_delta_E"] *= T_norm
-    # transitions_df["transition_rate"] /= t_norm
 
     # Generate xarray dataset from transitions and states dataframes
     output_ds = xr.Dataset.from_dataframe(states_df)

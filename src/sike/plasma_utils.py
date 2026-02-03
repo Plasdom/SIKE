@@ -69,7 +69,7 @@ def saha_dist(
                 g += zs.stat_weight * np.exp(
                     -(eps_zp1 + (zs.energy - ground_states[z + 1].energy)) / Te
                 )
-        # g = ground_states[z].stat_weight
+
         dens_ratios[z - 1] = (2.0 * (g / gm1) * np.exp(-eps / Te)) / (
             ne * (de_broglie_l**3)
         )
