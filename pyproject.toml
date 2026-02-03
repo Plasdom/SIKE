@@ -30,5 +30,38 @@ test = [
     "pytest-cov",
     "hypothesis"
 ]
+lint = [
+    "ruff>=0.14.14",
+]
 
 [tool.setuptools_scm]
+
+[tool.ruff.lint]
+extend-select = [
+  "B",   # flake8-bugbear
+  "I",   # isort
+  "ARG", # flake8-unused-arguments
+  "C4",  # flake8-comprehensions
+  "ICN", # flake8-import-conventions
+  "G",   # flake8-logging-format
+  "PGH", # pygrep-hooks
+  "PIE", # flake8-pie
+  "PL",  # pylint
+  "PT",  # flake8-pytest-style
+  "PTH", # flake8-use-pathlib
+  "RET", # flake8-return
+  "RUF", # Ruff-specific
+  "SIM", # flake8-simplify
+  "UP",  # pyupgrade
+  "YTT", # flake8-2020
+  "EXE", # flake8-executable
+  "NPY", # NumPy specific rules
+  "PD",  # pandas-vet
+]
+ignore = [
+  "PLR0912", # too many branches
+  "PLR0913", # too many arguments
+  "PLR0917", # too many positional arguments
+  "PLR2004", # magic-comparison
+  "B9",      # flake8-bugbear opinionated warnings
+]

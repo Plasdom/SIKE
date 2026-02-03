@@ -1,11 +1,13 @@
 """Setup script for obtaining atomic data and telling SIKE where to find it."""
 
-import zipfile
-from requests import get
-from zipfile import ZipFile
-import shutil
+import contextlib
 import os
+import shutil
+import zipfile
 from pathlib import Path
+from zipfile import ZipFile
+
+from requests import get
 
 from sike import constants as c
 
@@ -87,7 +89,7 @@ def setup(elements: list[str] | None = None, savedir: str | Path | None = None) 
     config_filepath = Path(os.getenv("HOME")) / c.CONFIG_FILENAME
     if config_filepath.exists():
         print("Existing config file exists, which will be overwritten.")
-    with open(config_filepath, "w+") as f:
+    with Path.open(config_filepath, "w+") as f:
         f.write(str(sike_data_savedir))
 
     # Download data for the specified elements
@@ -97,22 +99,18 @@ def setup(elements: list[str] | None = None, savedir: str | Path | None = None) 
         element_zip_path = sike_data_savedir / element_zip_name
         url = c.ATOMIC_DATA_BASE_URL + element_zip_name + "?download=1"
         r = get(url=url)
-        open(element_zip_path, "wb").write(r.content)
+        Path.open(element_zip_path, "wb").write(r.content)
         try:
             with ZipFile(element_zip_path, "r") as zip_ref:
                 zip_ref.extractall(sike_data_savedir)
                 element_zip_path.unlink()
-                try:
+                with contextlib.suppress(FileNotFoundError):
                     shutil.rmtree(sike_data_savedir / "__MACOSX")
-                except FileNotFoundError:
-                    pass
         except zipfile.BadZipFile:
             print(f"Error downloading data for {element}.")
-    print("Finished downloading atomic data, saved to: {}".format(sike_data_savedir))
+    print(f"Finished downloading atomic data, saved to: {sike_data_savedir}")
     print(
-        "A config file containing the location of this directory has been saved to {}".format(
-            config_filepath
-        )
+        f"A config file containing the location of this directory has been saved to {config_filepath}"
     )
 
     return sike_data_savedir

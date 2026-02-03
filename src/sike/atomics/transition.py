@@ -1,9 +1,9 @@
-from scipy import interpolate
 import numpy as np
 from numba import jit
+from scipy import interpolate
 
-from sike.constants import *
 from sike.atomics.atomic_state import State
+from sike.constants import EL_CHARGE, EL_MASS, MARCHAND_SCREENING_COEFFS
 
 
 class Transition:
@@ -114,10 +114,9 @@ class ExTrans(Transition):
         # Calculate cross-section
         cs = np.zeros(len(Egrid))
         for i in range(len(Egrid)):
-            # E = 0.5 * EL_MASS * vgrid[i] ** 2 / EL_CHARGE
             E = Egrid[i]
             U = E / eps
-            if E >= eps:
+            if eps <= E:
                 cs[i] = (
                     (8.0 * np.pi**2 * a_0**2 / np.sqrt(3))
                     * (I_H / eps) ** 2
@@ -262,9 +261,7 @@ class ExTrans(Transition):
         :param v_th: Normalisation constant [ms^-1] for electron velocities
         :return: local de-excitation cross-section
         """
-        sigma_deex = get_sigma_deex(Egrid, Egrid_inv, sigma_interp, g_ratio)
-
-        return sigma_deex
+        return get_sigma_deex(Egrid, Egrid_inv, sigma_interp, g_ratio)
 
 
 class IzTrans(Transition):
@@ -310,9 +307,7 @@ class IzTrans(Transition):
             self.sigma = self.interpolate_cross_section(
                 sigma, fit_params, E_grid, simulation_E_grid
             )
-        elif isinstance(from_state.config, list) or isinstance(
-            from_state.config, np.ndarray
-        ):
+        elif isinstance(from_state.config, list | np.ndarray):
             # Compute cross-sections from scratch
             sigma = self.compute_cross_section(simulation_E_grid, from_state, to_state)
             sigma = 1e-4 * np.array(sigma) / sigma_norm
@@ -386,11 +381,7 @@ class IzTrans(Transition):
         :param v_th: Normalisation constant [ms^-1] for electron velocities
         :return: Three-body recombination cross-section
         """
-        sigma_tbrec = get_sigma_tbr(
-            Egrid, self.Egrid_inv, self.sigma_interp, self.g_ratio, Te
-        )
-
-        return sigma_tbrec
+        return get_sigma_tbr(Egrid, self.Egrid_inv, self.sigma_interp, self.g_ratio, Te)
 
     def compute_cross_section(
         self, Egrid: np.ndarray, from_state: State, to_state: State
@@ -402,14 +393,11 @@ class IzTrans(Transition):
         :param to_state: Atomic state object of the final state
         :return: Cross-sections computed on Egrid
         """
-        # Note
         z = from_state.nuc_chg - from_state.num_el
-        # z = delta_z
 
         I_H = 13.6058
         a_0 = 5.29177e-11
         cs = np.zeros(len(Egrid))
-        # nu = 0.25 * (np.sqrt((100 * z + 91) / (4 * z + 3)) - 1)
         C = 2.0
 
         zeta = [c for c in from_state.config if c != 0][-1]
@@ -417,7 +405,7 @@ class IzTrans(Transition):
 
         for i in range(len(Egrid)):
             E = Egrid[i]
-            if E >= I_n:
+            if I_n <= E:
                 beta = 0.25 * (((100 * z + 91) / (4 * z + 3)) ** 0.5 - 5)
                 W = np.log(E / I_n) ** (beta * I_n / E)
                 cs[i] = (
@@ -505,7 +493,7 @@ class RRTrans(Transition):
         to_state: State,
         from_stat_weight: float | None = None,
         to_stat_weight: float | None = None,
-        l: int | None = None,
+        l: int | None = None,  # noqa: E741
         fit_params: np.ndarray | None = None,
         E_grid: np.ndarray | None = None,  # TODO: Unify use of underscores
         sigma: np.ndarray | None = None,
@@ -537,9 +525,7 @@ class RRTrans(Transition):
             self.sigma = self.interpolate_cross_section(
                 sigma, fit_params, E_grid, simulation_E_grid
             )
-        elif isinstance(from_state.config, list) or isinstance(
-            from_state.config, np.ndarray
-        ):
+        elif isinstance(from_state.config, list | np.ndarray):
             # Compute cross-sections from scratch
             sigma = self.compute_cross_section(simulation_E_grid, from_state, to_state)
             sigma = 1e-4 * np.array(sigma) / sigma_norm
@@ -815,10 +801,9 @@ def get_sigma_tbr(
     :param v_th: Normalisation constant [ms^-1] for electron velocities
     :return: Three-body recombination cross-section
     """
-    sigma_tbrec = (
+    return (
         0.5 * g_ratio * ((1 / (np.sqrt(Te) ** 3)) * sigma_interp * (Egrid_inv / Egrid))
     )
-    return sigma_tbrec
 
 
 @jit(nopython=True)
@@ -837,8 +822,7 @@ def get_sigma_deex(
     :param v_th: Normalisation constant [ms^-1] for electron velocities
     :return: De-excitation cross-section
     """
-    sigma_deex = g_ratio * sigma_interp * (Egrid_inv / Egrid)
-    return sigma_deex
+    return g_ratio * sigma_interp * (Egrid_inv / Egrid)
 
 
 @jit(nopython=True)

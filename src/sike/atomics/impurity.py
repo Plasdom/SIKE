@@ -1,11 +1,19 @@
-import numpy as np
-import os
 import json
+from pathlib import Path
 
-from sike.atomics.transition import *
-from sike.atomics.atomic_state import State
-from sike.plasma_utils import saha_dist, boltzmann_dist
+import numpy as np
+
 import sike.constants as c
+from sike.atomics.atomic_state import State
+from sike.atomics.transition import (
+    AiTrans,
+    EmTrans,
+    ExTrans,
+    IzTrans,
+    RRTrans,
+    get_associated_transitions,
+)
+from sike.plasma_utils import boltzmann_dist, saha_dist
 
 
 class Impurity:
@@ -119,14 +127,10 @@ class Impurity:
         levels_filepath_nlj = (
             self.atomic_data_savedir / self.longname / (self.name + "_levels_nlj.json")
         )
-        # levels_filepath_nl = (
-        #     self.atomic_data_savedir / self.longname / (self.name + "_levels_nl.json")
-        # )
         levels_filepath_n = (
             self.atomic_data_savedir / self.longname / (self.name + "_levels_n.json")
         )
         j_resolved_exists = levels_filepath_nlj.exists()
-        # l_resolved_exists = levels_filepath_nl.exists()
         n_resolved_exists = levels_filepath_n.exists()
 
         # Compare with input options
@@ -134,61 +138,32 @@ class Impurity:
             # Resolved in both l and j
             if j_resolved_exists:
                 return
-            else:
-                raise FileNotFoundError(
-                    "Data for "
-                    + self.longname
-                    + " resolved in l or j was not found. Set resolve_j=False and resolve_l=False."
-                )
-                # if l_resolved_exists and not n_resolved_exists:
-                #     # Set resolve_j = False and resolve_l = True
-                #     raise FileNotFoundError(
-                #         "Data for "
-                #         + self.longname
-                #         + " resolved in both l and j was not found. Set resolve_j=False."
-                #     )
-                # elif not l_resolved_exists and n_resolved_exists:
-                #     # Set resolve_j = False and resolve_l = False
-                #     raise FileNotFoundError(
-                #         "Data for "
-                #         + self.longname
-                #         + " resolved in both l and j was not found. Set resolve_j=False and resolve_l=False."
-                #     )
-                # else:
-                #     raise Exception
+
+            raise FileNotFoundError(
+                "Data for "
+                + self.longname
+                + " resolved in l or j was not found. Set resolve_j=False and resolve_l=False."
+            )
         if self.resolve_l and not self.resolve_j:
             raise Exception(
                 "Atomic data resolved in l but not j is not yet implemented. Either set both resolve_j and resolve_l to True or both to False."
             )
-        elif self.resolve_j and not self.resolve_l:
+        if self.resolve_j and not self.resolve_l:
             # Resolved in j but not l - this does not make sense
             raise Exception("resolve_j=True is not compatible with resolve_l=False.")
-        # elif not self.resolve_j and self.resolve_l:
-        #     # Resolved in l but not j
-        #     if l_resolved_exists:
-        #         return
-        #     else:
-        #         if n_resolved_exists:
-        #             raise FileNotFoundError(
-        #                 "Data for "
-        #                 + self.longname
-        #                 + " resolved in l was not found. Set resolve_l=False."
-        #             )
-        #         else:
-        #             raise Exception
-        elif not self.resolve_j and not self.resolve_j:
+        if not self.resolve_j and not self.resolve_j:
             # Resolved in n only
             if n_resolved_exists:
                 return
-            else:
-                if j_resolved_exists:
-                    raise FileNotFoundError(
-                        "Data for "
-                        + self.longname
-                        + " resolved in only n was not found. Set resolve_l=True and resolve_j=True, or resolve_l=True and resolve_j=False."
-                    )
-                else:
-                    raise Exception
+
+            if j_resolved_exists:
+                raise FileNotFoundError(
+                    "Data for "
+                    + self.longname
+                    + " resolved in only n was not found. Set resolve_l=True and resolve_j=True, or resolve_l=True and resolve_j=False."
+                )
+
+        raise Exception
 
     def _get_element_data(self):
         """Set the nuclear charge and number of ionisation stages"""
@@ -208,19 +183,12 @@ class Impurity:
                 / (self.name + "_levels_nlj.json")
             )
         else:
-            # if self.resolve_l:
-            #     levels_f = (
-            #         self.atomic_data_savedir
-            #         / self.longname
-            #         / (self.name + "_levels_nl.json")
-            #     )
-            # else:
             levels_f = (
                 self.atomic_data_savedir
                 / self.longname
                 / (self.name + "_levels_n.json")
             )
-        with open(levels_f) as f:
+        with Path.open(levels_f) as f:
             levels_dict = json.load(f)
             self.states = [None] * len(levels_dict)
             for i, level_dict in enumerate(levels_dict):
@@ -260,7 +228,7 @@ class Impurity:
             else:
                 self.states[i].ground = False
 
-            if self.states[i].Z < self.num_Z - 1:
+            if self.num_Z - 1 > self.states[i].Z:
                 iz_energy = gs_energies[self.states[i].Z + 1] - self.states[i].energy
                 self.states[i].iz_energy = iz_energy
             else:
@@ -271,7 +239,7 @@ class Impurity:
 
     def _init_transitions(
         self,
-        vgrid: np.ndarray,
+        vgrid: np.ndarray,  # noqa: ARG002
         Egrid: np.ndarray,
     ):
         """Initialise all transitions between evolved atomic states
@@ -294,7 +262,7 @@ class Impurity:
                 / (self.name + "_transitions_n.json")
             )
         print("  Loading transitions from json...")
-        with open(trans_f) as f:
+        with Path.open(trans_f) as f:
             trans_dict = json.load(f)
 
         print("  Creating transition objects...")
@@ -302,13 +270,13 @@ class Impurity:
         transitions = [None] * num_transitions
 
         for i, trans in enumerate(trans_dict):
-            if self.state_ids is not None:
-                if (trans["from_id"] not in self.state_ids) or (
-                    trans["to_id"] not in self.state_ids
-                ):
-                    continue
-            from_state = [s for s in self.states if s.id == trans["from_id"]][0]
-            to_state = [s for s in self.states if s.id == trans["to_id"]][0]
+            if self.state_ids is not None and (
+                (trans["from_id"] not in self.state_ids)
+                or (trans["to_id"] not in self.state_ids)
+            ):
+                continue
+            from_state = next(s for s in self.states if s.id == trans["from_id"])
+            to_state = next(s for s in self.states if s.id == trans["to_id"])
             if trans["type"] == "ionization" and self.ionization:
                 transitions[i] = IzTrans(
                     **trans,
@@ -361,7 +329,7 @@ class Impurity:
         print("  Creating data for inverse transitions...")
         id2pos = {self.states[i].id: i for i in range(len(self.states))}
         if self.excitation:
-            for i, t in enumerate(self.transitions):
+            for _i, t in enumerate(self.transitions):
                 if t.type == "excitation":
                     g_ratio = (
                         self.states[id2pos[t.from_id]].stat_weight
@@ -371,7 +339,7 @@ class Impurity:
 
         # Set the statistical weight ratios for ionization cross-sections
         if self.ionization:
-            for i, t in enumerate(self.transitions):
+            for _i, t in enumerate(self.transitions):
                 if t.type == "ionization":
                     g_ratio = (
                         self.states[id2pos[t.from_id]].stat_weight
@@ -387,7 +355,6 @@ class Impurity:
         """Perform some checks on states and transitions belonging to the impurity. Removes orphaned states, transitions where one or more associated states are not evolved, etc"""
 
         # Check for no orphaned states (i.e. states with either no associated transitions or )
-        id2pos = {self.states[i].id: i for i in range(len(self.states))}
         from_ids = np.array([t.from_id for t in self.transitions], dtype=int)
         to_ids = np.array([t.to_id for t in self.transitions], dtype=int)
         for i, state in enumerate(self.states):
@@ -411,14 +378,9 @@ class Impurity:
 
         # Remove excitation/ionisation transitions with negative transition energy
         for i, trans in enumerate(self.transitions):
-            if trans.type == "excitation" or trans.type == "ionization":
-                if trans.delta_E < 0.0:
-                    self.transitions[i] = None
-                    print(
-                        "Removing {} transition with transition energy < 0 eV".format(
-                            trans.type
-                        )
-                    )
+            if (trans.type in {"excitation", "ionization"}) and trans.delta_E < 0.0:
+                self.transitions[i] = None
+                print(f"Removing {trans.type} transition with transition energy < 0 eV")
         self.transitions = [t for t in self.transitions if t is not None]
 
         # Check for no orphaned transitions (i.e. transitions where either from_id or to_id is not evolved)
@@ -473,16 +435,15 @@ class Impurity:
                     if self.fixed_fraction_init:
                         self.dens[i, locs] *= self.frac_imp_dens * ne[i]
 
-        else:
-            if self.fixed_fraction_init:
-                self.dens[:, 0] = self.frac_imp_dens * ne
+        elif self.fixed_fraction_init:
+            self.dens[:, 0] = self.frac_imp_dens * ne
 
-            else:
-                self.dens[:, 0] = 1.0
+        else:
+            self.dens[:, 0] = 1.0
 
     def _set_state_positions(self):
         """Store the positions of each state (which may be different from the state ID)"""
-        for i, state in enumerate(self.states):
+        for i, _state in enumerate(self.states):
             self.states[i].pos = i
 
     def _set_transition_positions(self):
@@ -492,7 +453,7 @@ class Impurity:
         for i, state in enumerate(self.states):
             id2pos[state.id] = i
 
-        for i, trans in enumerate(self.transitions):
+        for i, _trans in enumerate(self.transitions):
             self.transitions[i].from_pos = id2pos[self.transitions[i].from_id]
             self.transitions[i].to_pos = id2pos[self.transitions[i].to_id]
 

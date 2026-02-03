@@ -36,15 +36,11 @@ def solve(
     # Solve the matrix equation
     for i in range(loc_num_x):
         n_solved[i] = np.linalg.inv(rate_matrix[i]) @ rhs[i]
-        # n_solved[i] = np.linalg.solve(rate_matrix[i], rhs[i])
 
     n_solved = np.array(n_solved)
 
-    print(
-        "Conservation check: {:.2e}".format(
-            np.sum(n_solved) - np.sum(n_init[min_x:max_x, :])
-        )
-    )
+    out = np.sum(n_solved) - np.sum(n_init[min_x:max_x, :])
+    print(f"Conservation check: {out:.2e}")
 
     return n_solved
 
@@ -70,7 +66,6 @@ def evolve(
     :return: Equilibrium densities
     """
 
-    # dndt_thresh *= (n_norm / t_norm)
     num_states = len(n_init[0, :])
     rank = 0  # TODO: Implement parallelisation
 
@@ -81,7 +76,7 @@ def evolve(
     n_new = [np.zeros(num_states) for i in range(loc_num_x)]
 
     # Create an identity matrix
-    I = np.diag(np.ones(num_states))
+    I = np.diag(np.ones(num_states))  # noqa: E741
 
     # Create the backwards Euler operator matrix
     be_op_mat = []
@@ -91,58 +86,20 @@ def evolve(
     # Find inverse of operator matrix
     for i in range(loc_num_x):
         be_op_mat[i] = np.linalg.inv(be_op_mat[i])
-    for i in range(num_t):
+    for _i in range(num_t):
         # Solve the matrix equation
         for j in range(loc_num_x):
             n_new[j] = be_op_mat[j].dot(n_old[j])
-            # n_new[j] = np.linalg.solve(be_op_mat[j], n_old[j])
-
-        # # Find dn/dt
-        # dndt = 0
-        # for j in range(loc_num_x):
-        #     dndt_cur = np.max(np.abs(n_old[j] - n_new[j])) / dt
-        #     if dndt_cur > dndt:
-        #         dndt = dndt_cur
 
         # Update densities
         for j in range(loc_num_x):
             n_old[j] = n_new[j]
 
-        # # Do some communication
-        # all_dndts = MPI.COMM_WORLD.gather(dndt, root=0)
-        # max_dndt = None
-        # if rank == 0:
-        #     max_dndt = max(all_dndts)
-        # dndt_global = MPI.COMM_WORLD.bcast(max_dndt, root=0)
-
-        # if dndt_global > prev_residual and i/num_t > 0.01:
-        #   print('Finishing time integration because dn/dt has begun to increase.')
-        #   break
-
-        # prev_residual = dndt_global
-
-        # if rank == 0:
-        #     print(
-        #         "TIMESTEP "
-        #         + str(i + 1)
-        #         + " | max(dn/dt) {:.2e}".format((n_norm / t_norm) * dndt)
-        #         + " / {:.2e}".format((n_norm / t_norm) * dndt_thresh)
-        #         + "            ",
-        #         end="\r",
-        #     )
-
-        # if dndt < dndt_thresh:
-        #     print("Finishing time integration because dn/dt reached threshold.")
-        #     break
-
     n_solved = np.array(n_new)
 
     if rank == 0:
         print("")
-    print(
-        "Conservation check on rank "
-        + str(rank)
-        + ": {:.2e}".format(np.sum(n_solved) - np.sum(n_init[min_x:max_x, :]))
-    )
+    out = np.sum(n_solved) - np.sum(n_init[min_x:max_x, :])
+    print(f"Conservation check on rank {rank}: {out:.2e}")
 
     return n_solved
