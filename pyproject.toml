@@ -30,6 +30,9 @@ test = [
     "pytest-cov",
     "hypothesis"
 ]
+lint = [
+    "ruff>=0.14.14",
+]
 
 [tool.setuptools_scm]
 
@@ -56,6 +59,9 @@ extend-select = [
   "PD",  # pandas-vet
 ]
 ignore = [
+  "PLR0912", # too many branches
+  "PLR0913", # too many arguments
+  "PLR0917", # too many positional arguments
   "PLR2004", # magic-comparison
   "B9",      # flake8-bugbear opinionated warnings
 ]
