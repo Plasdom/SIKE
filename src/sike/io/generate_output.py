@@ -1,7 +1,8 @@
-import xarray as xr
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import xarray as xr
 
 from sike.atomics.impurity import Impurity
 
@@ -170,9 +171,8 @@ def generate_output(
         atomic_data_savedir,
     )
     output_ds = add_coordinate_info(output_ds)
-    output_ds = add_data_info(output_ds)
 
-    return output_ds
+    return add_data_info(output_ds)
 
 
 def get_metadata(
@@ -200,7 +200,7 @@ def get_metadata(
     :return: Metadata dictionary
     """
     # Generate dictionary
-    metadata_dict = {
+    return {
         "element": impurity.name,
         "longname": impurity.longname,
         "resolve_l_states": resolve_l,
@@ -212,9 +212,6 @@ def get_metadata(
         "autoionization": autoionization,
         "atomic_data_savedir": atomic_data_savedir,
     }
-    metadata_dict
-
-    return metadata_dict
 
 
 def add_data_info(ds: xr.Dataset) -> xr.Dataset:
