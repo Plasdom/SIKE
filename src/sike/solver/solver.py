@@ -40,11 +40,8 @@ def solve(
 
     n_solved = np.array(n_solved)
 
-    print(
-        "Conservation check: {:.2e}".format(
-            np.sum(n_solved) - np.sum(n_init[min_x:max_x, :])
-        )
-    )
+    out = np.sum(n_solved) - np.sum(n_init[min_x:max_x, :])
+    print(f"Conservation check: {out:.2e}")
 
     return n_solved
 
@@ -81,7 +78,7 @@ def evolve(
     n_new = [np.zeros(num_states) for i in range(loc_num_x)]
 
     # Create an identity matrix
-    I = np.diag(np.ones(num_states))
+    I = np.diag(np.ones(num_states))  # noqa: E741
 
     # Create the backwards Euler operator matrix
     be_op_mat = []
@@ -91,7 +88,7 @@ def evolve(
     # Find inverse of operator matrix
     for i in range(loc_num_x):
         be_op_mat[i] = np.linalg.inv(be_op_mat[i])
-    for i in range(num_t):
+    for _i in range(num_t):
         # Solve the matrix equation
         for j in range(loc_num_x):
             n_new[j] = be_op_mat[j].dot(n_old[j])
@@ -139,10 +136,7 @@ def evolve(
 
     if rank == 0:
         print("")
-    print(
-        "Conservation check on rank "
-        + str(rank)
-        + ": {:.2e}".format(np.sum(n_solved) - np.sum(n_init[min_x:max_x, :]))
-    )
+    out = np.sum(n_solved) - np.sum(n_init[min_x:max_x, :])
+    print(f"Conservation check on rank {rank}: {out:.2e}")
 
     return n_solved

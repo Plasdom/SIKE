@@ -1,21 +1,36 @@
-import numpy as np
-from numba import jit
 import os
+from pathlib import Path
+
+import numpy as np
 import xarray as xr
 
 from sike.atomics.impurity import Impurity
-from sike.constants import *
-from sike.solver.matrix_utils import *
-from sike.solver import solver
-from sike.plasma_utils import *
+from sike.constants import (
+    CONFIG_FILENAME,
+    EL_CHARGE,
+    EL_MASS,
+    EPSILON_0,
+    PLANCK_H,
+    TEST_DATA_LOCATION,
+)
 from sike.io.generate_output import generate_output
+from sike.plasma_utils import (
+    density_moment_en,
+    generate_vgrid,
+    get_maxwellians,
+    lambda_ei,
+    temperature_moment_en,
+    velocity2energy,
+)
+from sike.solver import solver
+from sike.solver.matrix_utils import build_matrix, fill_rate_matrix
 
 # TODO: Do we ever want to actually evolve all states? Or only build M_eff and get derived coefficients? Opportunity to massively simplify by removing petsc & mpi dependency
 # TODO: I guess we should only ever really be evolving the P states, so all that code is still useful, but could probably do it with dense numpy matrices rather than petsc, and probably don't need MPI!
 # TODO: Make Egrid normalised in code for consistency with normalised vgrid used everywhere
 
 
-class SIKERun(object):
+class SIKERun:
     """
     A class which stores all relevant data and methods for a SIKE simulation.
 
@@ -106,19 +121,16 @@ class SIKERun(object):
         self.state_ids = state_ids
         if element == "T":
             self.atomic_data_savedir = get_test_data_dir()
+        elif atomic_data_savedir is None:
+            self.atomic_data_savedir = get_atomic_data_savedir()
         else:
-            if atomic_data_savedir is None:
-                self.atomic_data_savedir = get_atomic_data_savedir()
-            else:
-                if isinstance(atomic_data_savedir, str):
-                    atomic_data_savedir = Path(atomic_data_savedir)
-                if not atomic_data_savedir.exists():
-                    raise FileNotFoundError(
-                        "The atomic data savedir specified at input ('{}') does not appear to exist.".format(
-                            atomic_data_savedir
-                        )
-                    )
-                self.atomic_data_savedir = atomic_data_savedir
+            if isinstance(atomic_data_savedir, str):
+                atomic_data_savedir = Path(atomic_data_savedir)
+            if not atomic_data_savedir.exists():
+                raise FileNotFoundError(
+                    f"The atomic data savedir specified at input ('{atomic_data_savedir}') does not appear to exist."
+                )
+            self.atomic_data_savedir = atomic_data_savedir
 
         self.num_procs = 1  # TODO: Parallelisation
         self.rank = 0  # TODO: Parallelisation
@@ -475,20 +487,18 @@ def get_atomic_data_savedir() -> Path:
     """
     config_file = Path(os.getenv("HOME")) / CONFIG_FILENAME
     if config_file.exists():
-        with open(config_file, "r+") as f:
-            l = f.readlines()
-        atomic_data_savepath = Path(l[0].strip("\n"))
+        with Path.open(config_file, "r+") as f:
+            lines = f.readlines()
+        atomic_data_savepath = Path(lines[0].strip("\n"))
         if not atomic_data_savepath.exists():
             raise FileNotFoundError(
-                "The atomic data savedir specified in the config file ('{}') does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions.".format(
-                    atomic_data_savepath
-                )
+                f"The atomic data savedir specified in the config file ('{atomic_data_savepath}') does not appear to exist. Has it been moved? Check the config file ('$HOME/.sike_config') or re-run setup, see readme for instructions."
             )
         return atomic_data_savepath
-    else:
-        raise FileNotFoundError(
-            "No config file found. Have you run setup to download the atomic data? See readme for instructions."
-        )
+
+    raise FileNotFoundError(
+        "No config file found. Have you run setup to download the atomic data? See readme for instructions."
+    )
 
 
 def get_test_data_dir() -> Path:

@@ -1,13 +1,11 @@
-import pytest
 import numpy as np
+import pytest
 import xarray as xr
 
 import sike
 import sike.plasma_utils
-import sike.post_processing as spp
 import sike.post_processing
-
-from pathlib import Path
+import sike.post_processing as spp
 
 
 def data_exists(element: str) -> bool:
@@ -94,7 +92,7 @@ def test_saha_boltzmann_init(element):
     nx = 2
     Te = np.linspace(1, 10, nx)
     ne = 1e20 * np.ones(nx)
-    vgrid, Egrid = sike.plasma_utils.generate_vgrid()
+    vgrid, _ = sike.plasma_utils.generate_vgrid()
 
     c = sike.SIKERun(
         Te=Te,
@@ -122,8 +120,8 @@ def test_all_elements_n_resolved(element):
     nx = 2
     Te = np.linspace(1, 10, nx)
     ne = 1e20 * np.ones(nx)
-    vgrid, _ = sike.generate_vgrid(nv=2)
-    c = sike.SIKERun(Te=Te, ne=ne, resolve_l=False, resolve_j=False, element=element)
+    _vgrid, _Egrid = sike.generate_vgrid(nv=2)
+    sike.SIKERun(Te=Te, ne=ne, resolve_l=False, resolve_j=False, element=element)
 
 
 @pytest.mark.parametrize("element", ["H", "C", "Ne"])
@@ -177,7 +175,7 @@ def test_update_profiles(element):
     c.update_profiles(Te=Te_f, ne=ne_f)
 
     # Iterate solution for small timesteps, confirming that mean charge state is increasing
-    for i in range(10):
+    for _i in range(10):
         ds_new = c.evolve(dt_s=1e-4)
         Zavg_new = spp.get_Zavg(ds_new)
         assert np.all(Zavg_new.values > Zavg_i.values)
@@ -204,7 +202,7 @@ def test_update_distributions(element):
     c.update_profiles(fe=fe_f)
 
     # Iterate solution for small timesteps, confirming that mean charge state is increasing
-    for i in range(10):
+    for _i in range(10):
         ds_new = c.evolve(dt_s=1e-4)
         Zavg_new = spp.get_Zavg(ds_new)
         assert np.all(Zavg_new.values > Zavg_i.values)

@@ -1,5 +1,4 @@
 import numpy as np
-from numba import jit
 
 from sike.atomics.impurity import Impurity
 
@@ -18,7 +17,7 @@ def build_matrix(min_x, max_x, num_states):
     """
 
     rate_mat = []
-    for i in range(min_x, max_x):
+    for _i in range(min_x, max_x):
         loc_mat = np.zeros([num_states, num_states])
         rate_mat.append(loc_mat)
 
@@ -28,7 +27,7 @@ def build_matrix(min_x, max_x, num_states):
 def fill_rate_matrix(
     loc_num_x: int,
     min_x: int,
-    max_x: int,
+    max_x: int,  # noqa: ARG001
     mat: list,
     impurity: Impurity,
     fe: np.ndarray,
@@ -50,15 +49,14 @@ def fill_rate_matrix(
         :param v_th: Normalisation constant [ms^-1] for electron velocities
     """
 
-    num_states = impurity.tot_states
-
     # Next, calculate the values
     rank = 0  # TODO: Implement parallelisation
     for i in range(loc_num_x):
         if rank == 0:
-            print(" {:.1f}%".format(100 * float(i / loc_num_x)), end="\r")
+            out = 100 * float(i / loc_num_x)
+            print(f" {out:.1f}%", end="\r")
 
-        for j, trans in enumerate(impurity.transitions):
+        for _j, trans in enumerate(impurity.transitions):
             from_pos = trans.from_pos
             to_pos = trans.to_pos
             typ = trans.type
@@ -106,6 +104,6 @@ def fill_rate_matrix(
                 mat[i][row, col] += val
 
     if rank == 0:
-        print(" {:.1f}%".format(100))
+        print(f" {100:.1f}%")
 
     return mat

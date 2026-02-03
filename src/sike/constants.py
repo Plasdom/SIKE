@@ -1,7 +1,4 @@
-from pathlib import Path
 import numpy as np
-
-# from sike.plasma_utils import energy2velocity
 
 TEST_DATA_LOCATION = "tests/data"
 ATOMIC_DATA_LOCATION = "sike_atomic_data"
@@ -23,7 +20,7 @@ SYMBOL2ELEMENT = {
     "Mo": "Molybdenum",
     "W": "Tungsten",
     "Xe": "Xenon",
-    "T": "Testium"
+    "T": "Testium",
 }
 ELEMENT2SYMBOL = {v: k for k, v in SYMBOL2ELEMENT.items()}
 CONFIG_FILENAME = ".sike_config"

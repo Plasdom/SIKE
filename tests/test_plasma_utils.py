@@ -1,17 +1,18 @@
-import pytest
 import json
 from pathlib import Path
 
-from sike.plasma_utils import *
-from sike.atomics.atomic_state import State
 import numpy as np
+import pytest
+
+from sike.atomics.atomic_state import State
+from sike.plasma_utils import boltzmann_dist, saha_dist
 
 
 @pytest.fixture
 def input_states():
     examples_states_filepath = Path(__file__).parent / "data" / "example_states.json"
 
-    with open(examples_states_filepath) as f:
+    with Path.open(examples_states_filepath) as f:
         levels_dict = json.load(f)
         states = [None] * len(levels_dict)
         for i, level_dict in enumerate(levels_dict):

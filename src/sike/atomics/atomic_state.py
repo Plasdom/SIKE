@@ -10,7 +10,7 @@ class State:
         energy: float,
         stat_weight: int,
         n: int,
-        l: int | None = None,
+        l: int | None = None,  # noqa: E741
         j: int | None = None,
         config_full: str | None = None,
         metastable: bool = True,
@@ -55,11 +55,6 @@ class State:
             and self.config == other.config
         ):
             if self.j is not None:
-                if self.j == other.j:
-                    return True
-                else:
-                    return False
-            else:
-                return True
-        else:
-            return False
+                return self.j == other.j
+            return True
+        return False
