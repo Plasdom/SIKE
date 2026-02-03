@@ -1,7 +1,8 @@
 # SIKE
 
-> [!NOTE]
-> SIKE is a work in progress and documentation will be coming soon. Please contact power8@llnl.gov for any questions running the code in the meantime.
+```{note}
+SIKE is a work in progress and documentation will be coming soon. Please contact power8@llnl.gov for any questions running the code in the meantime.
+```
 
 SIKE (**S**crape-off layer **I**mpurities with **K**inetic **E**lectrons) is a simple atomic kinetics solver for impurity species relevant to magnetic fusion plasmas. It is intended to study the effect of non-Maxwellian electron distributions on mean ionisation, radiative loss rates, etc. For a set of atomic state densities $\vec{n}$, it solves the equation
 
@@ -15,8 +16,9 @@ SIKE was developed to study the sensitivity of atomic rates to non-Maxwellian el
 
 ## Quickstart
 
-> [!NOTE]
-> SIKE is a python package, intended to work with python>=3.11. It is recommended to create and activate a virtual environment with conda (e.g. `conda create -n sike python=3.11 && conda activate sike`) prior to following the quickstart steps below in order to avoid any conflicts with existing python environments. 
+```{note}
+SIKE is a python package, intended to work with python>=3.11. It is recommended to create and activate a virtual environment with conda (e.g. `conda create -n sike python=3.11 && conda activate sike`) prior to following the quickstart steps below in order to avoid any conflicts with existing python environments.
+``` 
 
 1. Clone or download the repository, open a terminal in the top-level directory and run:
 
@@ -26,8 +28,9 @@ SIKE was developed to study the sensitivity of atomic rates to non-Maxwellian el
 
     `python scripts/sike_setup.py`
 
-> [!NOTE]
-> If the download fails for any reason, see section on atomic data below for manual setup instructions.
+```{note}
+If the download fails for any reason, see section on atomic data below for manual setup instructions.
+```
 
 3. In a python script or notebook, run the following code:
 
@@ -44,7 +47,7 @@ SIKE was developed to study the sensitivity of atomic rates to non-Maxwellian el
 
     sike.plotting.plot_nz(ds)
     ```
-    ![Charge state profiles](https://github.com/Plasdom/SIKE/blob/main/example_plots/C_dist.png)
+    ![Charge state profiles](example_plots/C_dist.png)
 
 4. The above example was initialised with plasma temperature and density profiles. To use electron distributions instead:
 
@@ -66,7 +69,7 @@ SIKE was developed to study the sensitivity of atomic rates to non-Maxwellian el
 
     sike.plotting.plot_nz(ds)
     ```
-    ![Charge state profiles with bi-Maxwellians](https://github.com/Plasdom/SIKE/blob/main/example_plots/C_dist_bimax.png)
+    ![Charge state profiles with bi-Maxwellians](example_plots/C_dist_bimax.png)
 
 ## Atomic data
 
