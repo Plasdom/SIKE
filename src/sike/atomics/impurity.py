@@ -127,14 +127,10 @@ class Impurity:
         levels_filepath_nlj = (
             self.atomic_data_savedir / self.longname / (self.name + "_levels_nlj.json")
         )
-        # levels_filepath_nl = (
-        #     self.atomic_data_savedir / self.longname / (self.name + "_levels_nl.json")
-        # )
         levels_filepath_n = (
             self.atomic_data_savedir / self.longname / (self.name + "_levels_n.json")
         )
         j_resolved_exists = levels_filepath_nlj.exists()
-        # l_resolved_exists = levels_filepath_nl.exists()
         n_resolved_exists = levels_filepath_n.exists()
 
         # Compare with input options
@@ -148,22 +144,6 @@ class Impurity:
                 + self.longname
                 + " resolved in l or j was not found. Set resolve_j=False and resolve_l=False."
             )
-            # if l_resolved_exists and not n_resolved_exists:
-            #     # Set resolve_j = False and resolve_l = True
-            #     raise FileNotFoundError(
-            #         "Data for "
-            #         + self.longname
-            #         + " resolved in both l and j was not found. Set resolve_j=False."
-            #     )
-            # elif not l_resolved_exists and n_resolved_exists:
-            #     # Set resolve_j = False and resolve_l = False
-            #     raise FileNotFoundError(
-            #         "Data for "
-            #         + self.longname
-            #         + " resolved in both l and j was not found. Set resolve_j=False and resolve_l=False."
-            #     )
-            # else:
-            #     raise Exception
         if self.resolve_l and not self.resolve_j:
             raise Exception(
                 "Atomic data resolved in l but not j is not yet implemented. Either set both resolve_j and resolve_l to True or both to False."
@@ -171,19 +151,6 @@ class Impurity:
         if self.resolve_j and not self.resolve_l:
             # Resolved in j but not l - this does not make sense
             raise Exception("resolve_j=True is not compatible with resolve_l=False.")
-        # elif not self.resolve_j and self.resolve_l:
-        #     # Resolved in l but not j
-        #     if l_resolved_exists:
-        #         return
-        #     else:
-        #         if n_resolved_exists:
-        #             raise FileNotFoundError(
-        #                 "Data for "
-        #                 + self.longname
-        #                 + " resolved in l was not found. Set resolve_l=False."
-        #             )
-        #         else:
-        #             raise Exception
         if not self.resolve_j and not self.resolve_j:
             # Resolved in n only
             if n_resolved_exists:
@@ -216,13 +183,6 @@ class Impurity:
                 / (self.name + "_levels_nlj.json")
             )
         else:
-            # if self.resolve_l:
-            #     levels_f = (
-            #         self.atomic_data_savedir
-            #         / self.longname
-            #         / (self.name + "_levels_nl.json")
-            #     )
-            # else:
             levels_f = (
                 self.atomic_data_savedir
                 / self.longname
