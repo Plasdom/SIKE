@@ -34,7 +34,7 @@ extensions = [
 autosummary_generate = True
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["build", "Thumbs.db", ".DS_Store"]
 
 autodoc_default_options = {"ignore-module-all": True}
 autodoc_typehints = "description"
