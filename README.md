@@ -1,9 +1,5 @@
 # SIKE
 
-```{note}
-SIKE is a work in progress and documentation will be coming soon. Please contact power8@llnl.gov for any questions running the code in the meantime.
-```
-
 SIKE (**S**crape-off layer **I**mpurities with **K**inetic **E**lectrons) is a simple atomic kinetics solver for impurity species relevant to magnetic fusion plasmas. It is intended to study the effect of non-Maxwellian electron distributions on mean ionisation, radiative loss rates, etc. For a set of atomic state densities $\vec{n}$, it solves the equation
 
 $\frac{d\vec{n}}{dt} = \mathbf{M}\vec{n}$,
@@ -13,6 +9,10 @@ where $\mathbf{M}$ is the rate matrix for transitions between states. No collisi
 The SIKE model and atomic data is described in more detail in Power et al. 2025 PPCF 67 045030: https://doi.org/10.1088/1361-6587/adc200. 
 
 SIKE was developed to study the sensitivity of atomic rates to non-Maxwellian electron distributions in magnetic fusion plasmas. It is not currently as accurate as commonly used modelling databases such as ADAS, please see the notebook and comparison plots in the benchmarking directory to get an idea of the differences. 
+
+## Documentation
+
+https://sike.readthedocs.io/en/latest/
 
 ## Quickstart
 
