@@ -1,6 +1,5 @@
-from xml.etree.ElementInclude import include
-import xarray as xr
 import numpy as np
+import xarray as xr
 
 from sike import constants as c
 
@@ -11,8 +10,7 @@ def get_Zavg(ds: xr.Dataset) -> xr.DataArray:
     :param ds: xarray dataset from SIKERun
     :return: Zavg (coords = x)
     """
-    Zavg = ((ds.nk * ds.state_Z).sum(dim="k")) / ds.nk.sum(dim="k")
-    return Zavg
+    return ((ds.nk * ds.state_Z).sum(dim="k")) / ds.nk.sum(dim="k")
 
 
 def get_nz(ds: xr.Dataset) -> xr.DataArray:
@@ -21,12 +19,11 @@ def get_nz(ds: xr.Dataset) -> xr.DataArray:
     :param ds: xarray dataset from SIKERun
     :return: Z_dens (coords = [x, state_Z])
     """
-    Z_dens = ds.nk.groupby(ds.state_Z).sum(dim="k")
-    return Z_dens
+    return ds.nk.groupby(ds.state_Z).sum(dim="k")
 
 
 def get_Qz(ds: xr.Dataset) -> xr.DataArray:
-    Zs = sorted(list(set(ds.state_Z.values)))
+    Zs = sorted(set(ds.state_Z.values))
     Qz = np.zeros((len(ds.x), len(Zs)))
     for Z in Zs:
         Z_states = ds.k[ds.state_Z == Z]
@@ -41,8 +38,7 @@ def get_Qz(ds: xr.Dataset) -> xr.DataArray:
             * emission_ds.transition_rates
             * emission_ds.nk.sel(k=emission_ds.transition_from_k)
         ).sum(dim="i")
-    Qz = xr.DataArray(Qz, coords={"x": ds.x, "state_Z": Zs})
-    return Qz
+    return xr.DataArray(Qz, coords={"x": ds.x, "state_Z": Zs})
 
 
 def get_Qz_tot(ds: xr.Dataset) -> xr.DataArray:
@@ -52,13 +48,12 @@ def get_Qz_tot(ds: xr.Dataset) -> xr.DataArray:
     :return: Qz_tot (coords = [x, state_Z])
     """
     emission_ds = ds.sel(i=(ds["transition_type"] == "emission"))
-    Qz_tot = 1e-6 * (
+    return 1e-6 * (
         emission_ds.transition_delta_E
         * c.EL_CHARGE
         * emission_ds.transition_rates
         * emission_ds.nk.sel(k=emission_ds.transition_from_k)
     ).sum(dim="i")
-    return Qz_tot
 
 
 def get_Lz_avg(ds: xr.Dataset, include_radrec: bool = False) -> xr.DataArray:
@@ -101,9 +96,7 @@ def get_Lz_avg_rr(ds: xr.Dataset) -> xr.DataArray:
     ).sum(dim="i")
     Lz_avg = Qz_avg / (ds.ne.values * ds.nk.sum(dim="k").values)
 
-    Lz_avg = xr.DataArray(Lz_avg, coords={"x": ds.x})
-
-    return Lz_avg
+    return xr.DataArray(Lz_avg, coords={"x": ds.x})
 
 
 def get_Lz(ds: xr.Dataset, include_radrec: bool = False) -> xr.DataArray:
@@ -113,7 +106,7 @@ def get_Lz(ds: xr.Dataset, include_radrec: bool = False) -> xr.DataArray:
     :param include_radrec: whether to include radiative recombination contributions, defaults to False
     :return: Qz_tot (coords = [x, state_Z])
     """
-    Zs = sorted(list(set(ds.state_Z.values)))
+    Zs = sorted(set(ds.state_Z.values))
     nz = get_nz(ds)
     Lz = np.zeros((len(ds.x), len(Zs)))
     for Z in Zs:
@@ -134,8 +127,8 @@ def get_Lz(ds: xr.Dataset, include_radrec: bool = False) -> xr.DataArray:
             Qz += get_Lz_rr(ds)
 
         Lz[:, Z] = Qz / (ds.ne.values * nz.sel(state_Z=Z).values)
-    Lz = xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
-    return Lz
+
+    return xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
 
 
 def get_Lz_rr(ds: xr.Dataset) -> xr.DataArray:
@@ -144,7 +137,7 @@ def get_Lz_rr(ds: xr.Dataset) -> xr.DataArray:
     :param include_radrec: whether to include radiative recombination contributions, defaults to False
     :return: Qz_tot (coords = [x, state_Z])
     """
-    Zs = sorted(list(set(ds.state_Z.values)))
+    Zs = sorted(set(ds.state_Z.values))
     nz = get_nz(ds)
     Lz = np.zeros((len(ds.x), len(Zs)))
     for Z in Zs:
@@ -162,12 +155,10 @@ def get_Lz_rr(ds: xr.Dataset) -> xr.DataArray:
 
         Lz[:, Z] = Qz / (ds.ne.values * nz.sel(state_Z=Z).values)
 
-    Lz = xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
-
-    return Lz
+    return xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
 
 
-def get_Meff(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataArray:
+def get_Meff(ds: xr.Dataset, P_states: list[int] | None = None) -> xr.DataArray:
     """Find the effective rate matrix for a given list of P states (see Greenland, P. T., "Collisional Radiative Models with Molecules" (2001))
 
     :param ds: xarray dataset from SIKERun
@@ -191,12 +182,10 @@ def get_Meff(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataArray:
     # Calculate M_eff
     M_eff = -(M_P - M_PQ @ np.linalg.inv(M_Q) @ M_QP)
 
-    M_eff = xr.DataArray(M_eff, coords={"x": ds.x, "j": P_states, "k": P_states})
-
-    return M_eff
+    return xr.DataArray(M_eff, coords={"x": ds.x, "j": P_states, "k": P_states})
 
 
-def get_Keff_iz(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataArray:
+def get_Keff_iz(ds: xr.Dataset, P_states: list[int] | None = None) -> xr.DataArray:
     """Get the effective ionisation rate coefficients between ground states of each charge state (effective rates for transitions between other states can be specified with the P_states argument)
 
     :param ds: xarray dataset from SIKERun
@@ -214,12 +203,10 @@ def get_Keff_iz(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataArr
     for Z in Zs:
         Keff_iz[:, Z] = -Meff.isel(k=Z, j=Z + 1).values / ds.ne.values
 
-    Keff_iz = xr.DataArray(Keff_iz, coords={"x": ds.x, "state_Z": Zs})
-
-    return Keff_iz
+    return xr.DataArray(Keff_iz, coords={"x": ds.x, "state_Z": Zs})
 
 
-def get_Keff_rec(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataArray:
+def get_Keff_rec(ds: xr.Dataset, P_states: list[int] | None = None) -> xr.DataArray:
     """Get the effective recombination rate coefficients between ground states of each charge state (effective rates for transitions between other states can be specified with the P_states argument)
 
     :param ds: xarray dataset from SIKERun
@@ -237,9 +224,7 @@ def get_Keff_rec(ds: xr.Dataset, P_states: None | list[int] = None) -> xr.DataAr
     for Z in Zs:
         Keff_rec[:, Z - 1] = -Meff.isel(k=Z, j=Z - 1).values / ds.ne.values
 
-    Keff_rec = xr.DataArray(Keff_rec, coords={"x": ds.x, "state_Z": Zs})
-
-    return Keff_rec
+    return xr.DataArray(Keff_rec, coords={"x": ds.x, "state_Z": Zs})
 
 
 def get_K_rr(ds: xr.Dataset) -> xr.DataArray:
@@ -249,20 +234,18 @@ def get_K_rr(ds: xr.Dataset) -> xr.DataArray:
     :return: Effective recombination rate coefficients between P states
     """
 
-    Zs = sorted(list(set(ds.state_Z.values)))
+    Zs = sorted(set(ds.state_Z.values))
 
     K_rr = np.zeros((len(ds.x), len(Zs)))
     for Z in Zs:
-        Z_states = Z_states = ds.k[ds.state_Z == Z]
+        Z_states = ds.k[ds.state_Z == Z]
         rr_ds = ds.sel(
             i=(ds["transition_type"] == "radiative_recombination")
             & ds["transition_from_k"].isin(Z_states)
         )
         K_rr[:, Z] = rr_ds.transition_rates.sum(dim="i")
 
-    K_rr_ds = xr.DataArray(K_rr, coords={"x": ds.x, "state_Z": Zs})
-
-    return K_rr_ds
+    return xr.DataArray(K_rr, coords={"x": ds.x, "state_Z": Zs})
 
 
 def get_ground_states(ds: xr.Dataset) -> np.ndarray:
@@ -271,9 +254,7 @@ def get_ground_states(ds: xr.Dataset) -> np.ndarray:
     :param ds: xarray dataset from SIKERun
     :return: A numpy array of ground states indices
     """
-    ground_states = ds.sel(k=ds.state_is_ground == True).k.values
-
-    return ground_states
+    return ds.sel(k=ds.state_is_ground).k.values
 
 
 def get_Lz_br(ds: xr.Dataset) -> xr.DataArray:
@@ -283,15 +264,12 @@ def get_Lz_br(ds: xr.Dataset) -> xr.DataArray:
     :return: A DataArray containing Bremsstrahlung radiation from the impurity species
     """
 
-    Zs = sorted(list(set(ds.state_Z.values)))
-    nz = get_nz(ds)
+    Zs = sorted(set(ds.state_Z.values))
     Lz = np.zeros((len(ds.x), len(Zs)))
     for Z in Zs:
         Lz[:, Z] = Z**2 * np.sqrt(ds.Te) / (7.69e18**2)
 
-    Lz = xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
-
-    return Lz
+    return xr.DataArray(Lz, coords={"x": ds.x, "state_Z": Zs})
 
 
 def get_Lz_avg_br(ds: xr.Dataset) -> xr.DataArray:
@@ -301,14 +279,12 @@ def get_Lz_avg_br(ds: xr.Dataset) -> xr.DataArray:
     :return: _description_
     """
 
-    Zs = sorted(list(set(ds.state_Z.values)))
+    Zs = sorted(set(ds.state_Z.values))
     nz = get_nz(ds)
-    Lz = np.zeros((len(ds.x)))
+    Lz = np.zeros(len(ds.x))
     for Z in Zs:
         Lz += nz.sel(state_Z=Z) * Z**2 * np.sqrt(ds.Te) / (7.69e18**2)
 
     Lz = 1e-6 * Lz / nz.sum(dim="state_Z")
 
-    Lz = xr.DataArray(Lz, coords={"x": ds.x})
-
-    return Lz
+    return xr.DataArray(Lz, coords={"x": ds.x})

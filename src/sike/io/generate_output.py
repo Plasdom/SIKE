@@ -1,7 +1,8 @@
-import xarray as xr
-import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import xarray as xr
 
 from sike.atomics.impurity import Impurity
 
@@ -77,7 +78,6 @@ def generate_output(
         {"state_" + k: v for k, v in s.__dict__.items() if k in selected_state_cols}
         for s in impurity.states
     ]
-    # selected_trans_cols = ["from_id", "to_id", "type", "rate", "rate_inv", "delta_E"]
     selected_trans_cols = ["from_id", "to_id", "type", "delta_E"]
     transitions = [
         {
@@ -104,7 +104,6 @@ def generate_output(
     )
     transitions_df.index.name = "i"
     transitions_df["transition_delta_E"] *= T_norm
-    # transitions_df["transition_rate"] /= t_norm
 
     # Generate xarray dataset from transitions and states dataframes
     output_ds = xr.Dataset.from_dataframe(states_df)
@@ -170,9 +169,8 @@ def generate_output(
         atomic_data_savedir,
     )
     output_ds = add_coordinate_info(output_ds)
-    output_ds = add_data_info(output_ds)
 
-    return output_ds
+    return add_data_info(output_ds)
 
 
 def get_metadata(
@@ -200,7 +198,7 @@ def get_metadata(
     :return: Metadata dictionary
     """
     # Generate dictionary
-    metadata_dict = {
+    return {
         "element": impurity.name,
         "longname": impurity.longname,
         "resolve_l_states": resolve_l,
@@ -212,9 +210,6 @@ def get_metadata(
         "autoionization": autoionization,
         "atomic_data_savedir": atomic_data_savedir,
     }
-    metadata_dict
-
-    return metadata_dict
 
 
 def add_data_info(ds: xr.Dataset) -> xr.Dataset:

@@ -1,8 +1,13 @@
 import numpy as np
 from numba import jit
 
-from sike.constants import *
 from sike.atomics.atomic_state import State
+from sike.constants import (
+    EL_CHARGE,
+    EL_MASS,
+    LIGHT_SPEED,
+    PLANCK_H,
+)
 
 
 def boltzmann_dist(
@@ -39,7 +44,7 @@ def saha_dist(
     :return: Numpy array of Saha distribution of ionisation stage densities
     """
     ground_states = [s for s in states if s.ground is True]
-    ground_states = list(reversed(sorted(ground_states, key=lambda x: x.num_el)))
+    ground_states = sorted(ground_states, key=lambda x: x.num_el, reverse=True)
 
     de_broglie_l = np.sqrt((PLANCK_H**2) / (2 * np.pi * EL_MASS * EL_CHARGE * Te))
 
@@ -48,13 +53,13 @@ def saha_dist(
     for z in range(1, num_Z):
         eps = -(ground_states[z - 1].energy - ground_states[z].energy)
 
-        Zm1_states = [s for s in states if s.Z == z - 1]
+        Zm1_states = [s for s in states if z - 1 == s.Z]
         gm1 = 0
         for zs in Zm1_states:
             gm1 += zs.stat_weight * np.exp(
                 -(eps + (zs.energy - ground_states[z].energy)) / Te
             )
-        Z_states = [s for s in states if s.Z == z]
+        Z_states = [s for s in states if z == s.Z]
         g = 0
         if z == num_Z - 1:
             g = 1
@@ -64,7 +69,7 @@ def saha_dist(
                 g += zs.stat_weight * np.exp(
                     -(eps_zp1 + (zs.energy - ground_states[z + 1].energy)) / Te
                 )
-        # g = ground_states[z].stat_weight
+
         dens_ratios[z - 1] = (2.0 * (g / gm1) * np.exp(-eps / Te)) / (
             ne * (de_broglie_l**3)
         )
@@ -95,8 +100,8 @@ def lambda_ei(n: float, T: float, T_0: float, n_0: float, Z_0: float) -> float:
         return 23.00 - np.log(
             np.sqrt(n * n_0 * 1.00e-6) * Z_0 * (T * T_0) ** (-3.00 / 2.00)
         )
-    else:
-        return 24.00 - np.log(np.sqrt(n * n_0 * 1.00e-6) / (T * T_0))
+
+    return 24.00 - np.log(np.sqrt(n * n_0 * 1.00e-6) / (T * T_0))
 
 
 @jit(nopython=True)
@@ -112,9 +117,7 @@ def maxwellian(T: float, n: float, Egrid: np.ndarray) -> np.ndarray:
     f = [0.0 for i in range(len(Egrid))]
     for i, E in enumerate(Egrid):
         f[i] = n * (np.pi * T) ** (-3 / 2) * np.exp(-E / T)
-    f = np.array(f)
-
-    return f
+    return np.array(f)
 
 
 @jit(nopython=True)
@@ -136,9 +139,7 @@ def bimaxwellian(
         f[i] = (n1 * (np.pi * T1) ** (-3 / 2) * np.exp(-E / T1)) + (
             n2 * (np.pi * T2) ** (-3 / 2) * np.exp(-E / T2)
         )
-    f = np.array(f)
-
-    return f
+    return np.array(f)
 
 
 def get_maxwellians(
@@ -204,7 +205,7 @@ def get_bimaxwellians(
 
     if Egrid is None:
         print("Using default velocity grid.")
-        vgrid, Egrid = generate_vgrid()
+        _, Egrid = generate_vgrid()
 
     if normalised is False:
         T_norm = 10
@@ -338,8 +339,7 @@ def energy2velocity(E: np.ndarray | float) -> np.ndarray:
     :return: Electron velocities [m/s]
     """
     gamma = (E * EL_CHARGE) / (EL_MASS * LIGHT_SPEED**2) + 1
-    v = np.sqrt(1 - (1 / gamma**2)) * LIGHT_SPEED
-    return v
+    return np.sqrt(1 - (1 / gamma**2)) * LIGHT_SPEED
 
 
 @jit(nopython=True)

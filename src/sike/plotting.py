@@ -1,6 +1,6 @@
-import xarray as xr
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 
 import sike.post_processing as spp
 
@@ -75,7 +75,7 @@ def plot_nz(
 
     Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max() + 1)
     for Z in Zs:
-        (l,) = ax.plot([], [])
+        (l,) = ax.plot([], [])  # noqa: E741
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
         ax.plot(
             x,
@@ -130,7 +130,7 @@ def plot_Qz(
 
     Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max() + 1)
     for Z in Zs:
-        (l,) = ax.plot([], [])
+        (l,) = ax.plot([], [])  # noqa: E741
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
         ax.plot(
             x,
@@ -185,7 +185,7 @@ def plot_Lz(
 
     Zs = range(ds.state_Z.data.min(), ds.state_Z.data.max())
     for Z in Zs:
-        (l,) = ax.plot([], [])
+        (l,) = ax.plot([], [])  # noqa: E741
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
         ax.plot(
             x,
@@ -280,7 +280,7 @@ def plot_Lz_avg(
 
 def plot_Keff_iz(
     ds: xr.Dataset,
-    P_states: None | list[int] = None,
+    P_states: list[int] | None = None,
     xaxis: str = "Te",
     logx: bool = False,
     logy: bool = True,
@@ -306,7 +306,7 @@ def plot_Keff_iz(
 
     Zs = Keff_iz.state_Z.values
     for Z in Zs:
-        (l,) = ax.plot([], [])
+        (l,) = ax.plot([], [])  # noqa: E741
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
         ax.plot(
             x,
@@ -330,7 +330,7 @@ def plot_Keff_iz(
 
 def plot_Keff_rec(
     ds: xr.Dataset,
-    P_states: None | list[int] = None,
+    P_states: list[int] | None = None,
     xaxis: str = "Te",
     logx: bool = False,
     logy: bool = True,
@@ -356,7 +356,7 @@ def plot_Keff_rec(
 
     Zs = Keff_rec.state_Z.values
     for Z in Zs:
-        (l,) = ax.plot([], [])
+        (l,) = ax.plot([], [])  # noqa: E741
         label = ds.metadata["element"] + "$^{" + str(Z) + "{+}}$"
         ax.plot(
             x,
